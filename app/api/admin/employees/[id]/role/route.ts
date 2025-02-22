@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import * as z from "zod"
 
@@ -7,9 +7,9 @@ const roleUpdateSchema = z.object({
 })
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<Response> {
   try {
     const body = await req.json()
     const { role } = roleUpdateSchema.parse(body)
