@@ -23,6 +23,13 @@ type EmployeeWithUserAndTeam = Employee & {
       reportsToId: string | null;
     }[];
   } | null;
+  reportsTo: Employee | null;
+  subordinates: (Employee & {
+    user: User;
+    subordinates: (Employee & {
+      user: User;
+    })[];
+  })[];
 };
 
 async function getEmployees() {
@@ -43,25 +50,48 @@ async function getEmployees() {
           members: {
             include: {
               user: true
-            },
-            orderBy: {
-              employeeRole: 'asc'
+            }
+          }
+        }
+      },
+      reportsTo: true,
+      subordinates: {
+        include: {
+          user: true,
+          subordinates: {
+            include: {
+              user: true
             }
           }
         }
       }
-    },
-    orderBy: [
-      { employeeRole: 'asc' },
-      { dateOfJoining: 'asc' }
-    ]
+    }
   });
 
   // Separate employees into team leaders and unassigned
   const teamLeaders = employees.filter(e => e.leadsTeam);
   const unassigned = employees.filter(e => !e.memberOfTeam && !e.leadsTeam);
 
-  return { teamLeaders, unassigned };
+  // Build hierarchy for each team
+  const buildHierarchy = (leader: EmployeeWithUserAndTeam) => {
+    const findSubordinates = (managerId: string): EmployeeWithUserAndTeam[] => {
+      return employees
+        .filter(e => e.reportsToId === managerId)
+        .map(subordinate => ({
+          ...subordinate,
+          subordinates: findSubordinates(subordinate.id)
+        })) as EmployeeWithUserAndTeam[];
+    };
+
+    return {
+      ...leader,
+      subordinates: findSubordinates(leader.id)
+    };
+  };
+
+  const hierarchicalTeams = teamLeaders.map(buildHierarchy);
+
+  return { teamLeaders: hierarchicalTeams, unassigned };
 }
 
 export const dynamic = 'force-dynamic'
@@ -132,24 +162,15 @@ function EmployeeNode({
         </div>
       </div>
 
-      {/* Render team members if this is a team leader */}
-      {employee.leadsTeam?.members.length > 0 && (
+      {/* Render subordinates */}
+      {employee.subordinates?.length > 0 && (
         <div className="mt-2">
-          {employee.leadsTeam.members
-            .sort((a, b) => {
-              const roleOrder = {
-                DIRECTOR: 1,
-                JOINT_DIRECTOR: 2,
-                FIELD_OFFICER: 3
-              };
-              return (roleOrder[a.employeeRole] || 99) - (roleOrder[b.employeeRole] || 99);
-            })
-            .map((member) => (
-              <EmployeeNode 
-                key={member.id} 
-                employee={member as EmployeeWithUserAndTeam}
-                level={level + 1}
-              />
+          {employee.subordinates.map((subordinate) => (
+            <EmployeeNode 
+              key={subordinate.id} 
+              employee={subordinate}
+              level={level + 1}
+            />
           ))}
         </div>
       )}
