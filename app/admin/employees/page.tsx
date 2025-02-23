@@ -3,11 +3,6 @@ import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Employee, User, EmployeeRole } from "@prisma/client";
 
-interface EmployeeWithDetails extends Employee {
-  user: User;
-  subordinates: (Employee & { user: User })[];
-}
-
 interface EmployeeNode {
   id: string;
   user: User;
@@ -24,11 +19,15 @@ const roleOrder = {
 
 async function getEmployees() {
   try {
-    // First, get all employees with their relationships
-    const employees = await db.employee.findMany({
+    // Get all teams with their leaders and members
+    const teams = await db.team.findMany({
       include: {
-        user: true,
-        reportsTo: {
+        leader: {
+          include: {
+            user: true
+          }
+        },
+        members: {
           include: {
             user: true
           }
@@ -36,40 +35,46 @@ async function getEmployees() {
       }
     });
 
-    // Build the hierarchy
-    const employeeMap = new Map<string, EmployeeNode>();
-    
-    // Initialize the map with all employees
-    employees.forEach(emp => {
-      employeeMap.set(emp.id, {
-        id: emp.id,
-        user: emp.user,
-        employeeRole: emp.employeeRole,
-        children: []
-      });
-    });
-
-    // Build parent-child relationships
-    employees.forEach(emp => {
-      if (emp.reportsToId) {
-        const parent = employeeMap.get(emp.reportsToId);
-        if (parent) {
-          parent.children.push(employeeMap.get(emp.id)!);
-        }
+    // Get all employees who are not in any team
+    const unassignedEmployees = await db.employee.findMany({
+      where: {
+        AND: [
+          { teamId: null },
+          { leadsTeam: null }
+        ]
+      },
+      include: {
+        user: true
       }
     });
 
-    // Get root nodes (employees who don't report to anyone)
-    const roots = Array.from(employeeMap.values()).filter(emp => {
-      const employee = employees.find(e => e.id === emp.id);
-      return !employee?.reportsToId;
-    });
-    
-    // Separate executives and unassigned
-    const executives = roots.filter(emp => emp.employeeRole === "EXECUTIVE_DIRECTOR");
-    const unassigned = roots.filter(emp => emp.employeeRole !== "EXECUTIVE_DIRECTOR");
+    // Create nodes for team leaders (executives)
+    const executives = teams.map(team => ({
+      id: team.leader.id,
+      user: team.leader.user,
+      employeeRole: team.leader.employeeRole,
+      children: team.members.map(member => ({
+        id: member.id,
+        user: member.user,
+        employeeRole: member.employeeRole,
+        children: []
+      }))
+    }));
 
-    // Sort by name
+    // Sort team members by role
+    executives.forEach(exec => {
+      exec.children.sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole]);
+    });
+
+    // Create nodes for unassigned employees
+    const unassigned = unassignedEmployees.map(emp => ({
+      id: emp.id,
+      user: emp.user,
+      employeeRole: emp.employeeRole,
+      children: []
+    }));
+
+    // Sort executives and unassigned by name
     executives.sort((a, b) => a.user.name.localeCompare(b.user.name));
     unassigned.sort((a, b) => a.user.name.localeCompare(b.user.name));
 
@@ -131,7 +136,7 @@ function EmployeeNodeComponent({
           <div className="flex items-center space-x-2">
             {showTeamBadge && employee.employeeRole === "EXECUTIVE_DIRECTOR" && (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                Executive
+                Team Leader
               </span>
             )}
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles.badge}`}>
@@ -204,7 +209,7 @@ export default async function EmployeesPage() {
       {/* Executive Directors Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Executive Directors</CardTitle>
+          <CardTitle>Executive Directors & Their Teams</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-8">
