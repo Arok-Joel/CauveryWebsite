@@ -1,19 +1,12 @@
 import { db } from "@/lib/db";
 import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Employee, User } from "@prisma/client";
+import { Employee, User, Team } from "@prisma/client";
 
 type EmployeeWithUserAndTeam = Employee & {
   user: User;
-  leadsTeam: {
-    id: string;
-  } | null;
-  memberOfTeam: {
-    id: string;
-    leader: {
-      id: string;
-    };
-  } | null;
+  leadsTeam: Team | null;
+  memberOfTeam: Team | null;
 };
 
 // Remove caching to ensure fresh data on each request
@@ -21,21 +14,8 @@ async function getEmployees() {
   const employees = await db.employee.findMany({
     include: { 
       user: true,
-      leadsTeam: {
-        select: {
-          id: true
-        }
-      },
-      memberOfTeam: {
-        select: {
-          id: true,
-          leader: {
-            select: {
-              id: true
-            }
-          }
-        }
-      }
+      leadsTeam: true,
+      memberOfTeam: true
     }
   });
   return employees as EmployeeWithUserAndTeam[];
