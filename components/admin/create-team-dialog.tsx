@@ -31,6 +31,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
+import { Plus } from "lucide-react"
 
 const createTeamSchema = z.object({
   name: z.string().min(1, "Team name is required"),
@@ -68,6 +69,8 @@ export function CreateTeamDialog() {
     setOpen(open);
     if (open) {
       fetchExecutiveDirectors();
+    } else {
+      form.reset();
     }
   };
 
@@ -99,7 +102,10 @@ export function CreateTeamDialog() {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button>Create Team</Button>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Team
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

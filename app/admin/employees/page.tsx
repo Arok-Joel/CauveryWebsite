@@ -1,30 +1,48 @@
 import { db } from "@/lib/db";
 import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Employee, User } from "@prisma/client";
-import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
-import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
 
-type EmployeeWithUserAndTeams = Employee & {
+type EmployeeWithUserAndTeam = Employee & {
   user: User;
-  leadsTeam: { id: string; name: string } | null;
-  memberOfTeam: { id: string; name: string } | null;
+  memberOfTeam: {
+    id: string;
+    name: string;
+    leader: {
+      id: string;
+      user: {
+        name: string;
+      };
+    };
+  } | null;
+  leadsTeam: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 // Remove caching to ensure fresh data on each request
 async function getEmployees() {
   const employees = await db.employee.findMany({
-    orderBy: { employeeRole: "asc" },
     include: { 
       user: true,
-      leadsTeam: {
+      memberOfTeam: {
         select: {
           id: true,
-          name: true
+          name: true,
+          leader: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
         }
       },
-      memberOfTeam: {
+      leadsTeam: {
         select: {
           id: true,
           name: true
@@ -32,7 +50,7 @@ async function getEmployees() {
       }
     }
   });
-  return employees as EmployeeWithUserAndTeams[];
+  return employees as EmployeeWithUserAndTeam[];
 }
 
 export const dynamic = 'force-dynamic'
@@ -41,78 +59,157 @@ export const revalidate = 0
 export default async function EmployeesPage() {
   const employees = await getEmployees();
 
-  // Group employees by role
-  const roleOrder = ["EXECUTIVE_DIRECTOR", "DIRECTOR", "JOINT_DIRECTOR", "FIELD_OFFICER"];
-  const employeesByRole = roleOrder.reduce((acc, role) => {
-    acc[role] = employees.filter(emp => emp.employeeRole === role);
+  // First, group employees by team
+  const employeesByTeam = employees.reduce((acc, employee) => {
+    if (employee.leadsTeam) {
+      // Create or get the team group
+      if (!acc[employee.leadsTeam.id]) {
+        acc[employee.leadsTeam.id] = {
+          id: employee.leadsTeam.id,
+          name: employee.leadsTeam.name,
+          leader: employee,
+          members: []
+        };
+      }
+    } else if (employee.memberOfTeam) {
+      // Add to existing team group
+      if (!acc[employee.memberOfTeam.id]) {
+        acc[employee.memberOfTeam.id] = {
+          id: employee.memberOfTeam.id,
+          name: employee.memberOfTeam.name,
+          leader: null,
+          members: []
+        };
+      }
+      acc[employee.memberOfTeam.id].members.push(employee);
+    }
     return acc;
-  }, {} as Record<string, EmployeeWithUserAndTeams[]>);
+  }, {} as Record<string, { id: string; name: string; leader: EmployeeWithUserAndTeam | null; members: EmployeeWithUserAndTeam[] }>);
+
+  // Get unassigned employees
+  const unassignedEmployees = employees.filter(
+    emp => !emp.leadsTeam && !emp.memberOfTeam
+  );
+
+  // Role order for sorting
+  const roleOrder = {
+    "EXECUTIVE_DIRECTOR": 0,
+    "DIRECTOR": 1,
+    "JOINT_DIRECTOR": 2,
+    "FIELD_OFFICER": 3
+  };
+
+  // Sort unassigned employees by role
+  const sortedUnassignedEmployees = unassignedEmployees.sort(
+    (a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole]
+  );
+
+  // Sort team members by role
+  Object.values(employeesByTeam).forEach(team => {
+    team.members.sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole]);
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Employees</h2>
-        <CreateTeamDialog />
       </div>
-      
-      {roleOrder.map((role) => (
-        <Card key={role}>
+
+      {/* Teams */}
+      {Object.values(employeesByTeam).map((team) => (
+        <Card key={team.id}>
           <CardHeader>
-            <CardTitle className="capitalize">
-              {role.replace(/_/g, " ")}s ({employeesByRole[role]?.length || 0})
-            </CardTitle>
+            <CardTitle className="text-xl font-bold">{team.name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {employeesByRole[role]?.map((employee) => (
-                    <tr key={employee.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{employee.user.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{employee.user.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{employee.user.phone}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {employee.leadsTeam ? (
+            <div className="space-y-6">
+              {/* Team Leader */}
+              {team.leader && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">Team Leader</h3>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{team.leader.user.name}</p>
+                        <p className="text-sm text-gray-500">{team.leader.user.email}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          {team.leader.employeeRole.replace(/_/g, " ")}
+                        </span>
+                        <EmployeeRoleSelect
+                          employeeId={team.leader.id}
+                          currentRole={team.leader.employeeRole}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Team Members */}
+              {team.members.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">Team Members</h3>
+                  <div className="space-y-3">
+                    {team.members.map((member) => (
+                      <div key={member.id} className="bg-white border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{member.user.name}</p>
+                            <p className="text-sm text-gray-500">{member.user.email}</p>
+                          </div>
                           <div className="flex items-center space-x-2">
-                            <span className="text-green-600 font-medium">
-                              Team Leader of {employee.leadsTeam.name}
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                              {member.employeeRole.replace(/_/g, " ")}
                             </span>
-                            <AssignTeamMemberDialog
-                              teamId={employee.leadsTeam.id}
-                              teamName={employee.leadsTeam.name}
+                            <EmployeeRoleSelect
+                              employeeId={member.id}
+                              currentRole={member.employeeRole}
                             />
                           </div>
-                        ) : employee.memberOfTeam ? (
-                          <span className="text-blue-600 font-medium">
-                            Member of {employee.memberOfTeam.name}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">Not in any team</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <EmployeeRoleSelect
-                          employeeId={employee.id}
-                          currentRole={employee.employeeRole}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       ))}
+
+      {/* Unassigned Employees */}
+      {sortedUnassignedEmployees.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl font-bold">Unassigned Employees</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {sortedUnassignedEmployees.map((employee) => (
+                <div key={employee.id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
+                      <p className="text-sm text-gray-500">{employee.user.email}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                        {employee.employeeRole.replace(/_/g, " ")}
+                      </span>
+                      <EmployeeRoleSelect
+                        employeeId={employee.id}
+                        currentRole={employee.employeeRole}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

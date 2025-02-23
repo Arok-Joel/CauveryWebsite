@@ -17,6 +17,10 @@ export default function AdminLayout({
       href: "/admin",
     },
     {
+      name: "Teams",
+      href: "/admin/teams",
+    },
+    {
       name: "Employees",
       href: "/admin/employees",
     },
