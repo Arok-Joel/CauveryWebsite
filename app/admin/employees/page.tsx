@@ -30,16 +30,14 @@ export default async function EmployeesPage() {
   // First, group employees by team
   const employeesByTeam = employees.reduce((acc, employee) => {
     if (employee.leadsTeam) {
-      // Create or get the team group
-      if (!acc[employee.leadsTeam.id]) {
-        acc[employee.leadsTeam.id] = {
-          id: employee.leadsTeam.id,
-          leader: employee,
-          members: []
-        };
-      }
+      // Create or update the team group
+      acc[employee.leadsTeam.id] = {
+        id: employee.leadsTeam.id,
+        leader: employee,
+        members: acc[employee.leadsTeam.id]?.members || []
+      };
     } else if (employee.memberOfTeam) {
-      // Add to existing team group
+      // Add to existing team group or create new one preserving existing leader
       if (!acc[employee.memberOfTeam.id]) {
         acc[employee.memberOfTeam.id] = {
           id: employee.memberOfTeam.id,
@@ -51,6 +49,15 @@ export default async function EmployeesPage() {
     }
     return acc;
   }, {} as Record<string, { id: string; leader: EmployeeWithUserAndTeam | null; members: EmployeeWithUserAndTeam[] }>);
+
+  // Process teams to ensure all leaders are properly set
+  const teamsWithLeaders = employees
+    .filter(emp => emp.leadsTeam)
+    .forEach(leader => {
+      if (employeesByTeam[leader.leadsTeam!.id]) {
+        employeesByTeam[leader.leadsTeam!.id].leader = leader;
+      }
+    });
 
   // Get unassigned employees
   const unassignedEmployees = employees.filter(
