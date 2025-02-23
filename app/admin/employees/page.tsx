@@ -19,52 +19,69 @@ const roleOrder = {
 
 async function getEmployees() {
   try {
-    // Get all teams with their leaders and members
-    const teams = await db.team.findMany({
+    // Get all employees with their reporting relationships
+    const employees = await db.employee.findMany({
       include: {
-        leader: {
+        user: true,
+        subordinates: {
           include: {
-            user: true
+            user: true,
+            subordinates: {
+              include: {
+                user: true,
+                subordinates: {
+                  include: {
+                    user: true
+                  }
+                }
+              }
+            }
           }
-        },
-        members: {
-          include: {
-            user: true
-          }
+        }
+      },
+      where: {
+        reportsToId: null, // Get only top-level employees (Executive Directors)
+        employeeRole: "EXECUTIVE_DIRECTOR"
+      },
+      orderBy: {
+        user: {
+          name: 'asc'
         }
       }
     });
 
-    // Get all employees who are not in any team
+    // Get unassigned employees (those who don't report to anyone)
     const unassignedEmployees = await db.employee.findMany({
       where: {
         AND: [
-          { teamId: null },
-          { leadsTeam: null }
+          { reportsToId: null },
+          { employeeRole: { not: "EXECUTIVE_DIRECTOR" } }
         ]
       },
       include: {
         user: true
+      },
+      orderBy: {
+        user: {
+          name: 'asc'
+        }
       }
     });
 
-    // Create nodes for team leaders (executives)
-    const executives = teams.map(team => ({
-      id: team.leader.id,
-      user: team.leader.user,
-      employeeRole: team.leader.employeeRole,
-      children: team.members.map(member => ({
-        id: member.id,
-        user: member.user,
-        employeeRole: member.employeeRole,
-        children: []
-      }))
-    }));
+    // Convert the flat structure into a tree
+    function buildHierarchyTree(employee: any): EmployeeNode {
+      return {
+        id: employee.id,
+        user: employee.user,
+        employeeRole: employee.employeeRole,
+        children: employee.subordinates
+          .sort((a: any, b: any) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
+          .map((subordinate: any) => buildHierarchyTree(subordinate))
+      };
+    }
 
-    // Sort team members by role
-    executives.forEach(exec => {
-      exec.children.sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole]);
-    });
+    // Create the hierarchy trees for executive directors
+    const executives = employees.map(exec => buildHierarchyTree(exec));
 
     // Create nodes for unassigned employees
     const unassigned = unassignedEmployees.map(emp => ({
@@ -73,10 +90,6 @@ async function getEmployees() {
       employeeRole: emp.employeeRole,
       children: []
     }));
-
-    // Sort executives and unassigned by name
-    executives.sort((a, b) => a.user.name.localeCompare(b.user.name));
-    unassigned.sort((a, b) => a.user.name.localeCompare(b.user.name));
 
     return { executives, unassigned };
   } catch (error) {
