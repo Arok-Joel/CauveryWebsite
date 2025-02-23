@@ -1,110 +1,72 @@
 import { db } from "@/lib/db";
 import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Employee, User } from "@prisma/client";
+import { Employee, User, EmployeeRole } from "@prisma/client";
 
-type EmployeeWithUserAndTeam = Employee & {
+type EmployeeWithDetails = Employee & {
   user: User;
-  memberOfTeam: {
-    id: string;
-    leader: {
-      id: string;
-      user: {
-        name: string;
-      };
-    };
-  } | null;
-  leadsTeam: {
-    id: string;
-    members: {
-      id: string;
-      employeeRole: string;
-      user: User;
-      reportsToId: string | null;
-    }[];
-  } | null;
-  reportsTo: Employee | null;
-  subordinates: (Employee & {
+  reportsTo: (Employee & { user: User }) | null;
+  subordinates: Array<Employee & {
     user: User;
-    subordinates: (Employee & {
+    subordinates: Array<Employee & {
       user: User;
-    })[];
-  })[];
+    }>;
+  }>;
 };
 
+const roleOrder = {
+  EXECUTIVE_DIRECTOR: 1,
+  DIRECTOR: 2,
+  JOINT_DIRECTOR: 3,
+  FIELD_OFFICER: 4
+} as const;
+
 async function getEmployees() {
-  const employees = await db.employee.findMany({
-    include: {
-      user: true,
-      memberOfTeam: {
-        include: {
-          leader: {
-            include: {
-              user: true
-            }
+  try {
+    const employees = await db.employee.findMany({
+      include: {
+        user: true,
+        reportsTo: {
+          include: {
+            user: true
           }
-        }
-      },
-      leadsTeam: {
-        include: {
-          members: {
-            include: {
-              user: true
-            }
-          }
-        }
-      },
-      reportsTo: true,
-      subordinates: {
-        include: {
-          user: true,
-          subordinates: {
-            include: {
-              user: true
+        },
+        subordinates: {
+          include: {
+            user: true,
+            subordinates: {
+              include: {
+                user: true
+              }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  // Separate employees into team leaders and unassigned
-  const teamLeaders = employees.filter(e => e.leadsTeam);
-  const unassigned = employees.filter(e => !e.memberOfTeam && !e.leadsTeam);
+    // Get top-level employees (those who don't report to anyone)
+    const topLevel = employees.filter(e => !e.reportsToId) as EmployeeWithDetails[];
+    const unassigned = topLevel.filter(e => e.employeeRole !== "EXECUTIVE_DIRECTOR") as EmployeeWithDetails[];
+    const executives = topLevel.filter(e => e.employeeRole === "EXECUTIVE_DIRECTOR") as EmployeeWithDetails[];
 
-  // Build hierarchy for each team
-  const buildHierarchy = (leader: EmployeeWithUserAndTeam) => {
-    const findSubordinates = (managerId: string): EmployeeWithUserAndTeam[] => {
-      return employees
-        .filter(e => e.reportsToId === managerId)
-        .map(subordinate => ({
-          ...subordinate,
-          subordinates: findSubordinates(subordinate.id)
-        })) as EmployeeWithUserAndTeam[];
-    };
+    // Sort by role and then by name
+    executives.sort((a, b) => a.user.name.localeCompare(b.user.name));
 
-    return {
-      ...leader,
-      subordinates: findSubordinates(leader.id)
-    };
-  };
-
-  const hierarchicalTeams = teamLeaders.map(buildHierarchy);
-
-  return { teamLeaders: hierarchicalTeams, unassigned };
+    return { executives, unassigned };
+  } catch (error) {
+    console.error("Error fetching employees:", error);
+    return { executives: [], unassigned: [] };
+  }
 }
-
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 function EmployeeNode({ 
   employee, 
   level = 0,
   showTeamBadge = false
 }: { 
-  employee: EmployeeWithUserAndTeam, 
-  level?: number,
-  showTeamBadge?: boolean
+  employee: EmployeeWithDetails;
+  level?: number;
+  showTeamBadge?: boolean;
 }) {
   const styles = getRoleStyles(employee.employeeRole);
 
@@ -144,11 +106,16 @@ function EmployeeNode({
           <div>
             <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
             <p className="text-sm text-gray-500">{employee.user.email}</p>
+            {employee.reportsTo && (
+              <p className="text-xs text-gray-400 mt-1">
+                Reports to: {employee.reportsTo.user.name}
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
-            {showTeamBadge && employee.leadsTeam && (
+            {showTeamBadge && employee.employeeRole === "EXECUTIVE_DIRECTOR" && (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                Team Leader
+                Executive
               </span>
             )}
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles.badge}`}>
@@ -165,13 +132,15 @@ function EmployeeNode({
       {/* Render subordinates */}
       {employee.subordinates?.length > 0 && (
         <div className="mt-2">
-          {employee.subordinates.map((subordinate) => (
-            <EmployeeNode 
-              key={subordinate.id} 
-              employee={subordinate}
-              level={level + 1}
-            />
-          ))}
+          {employee.subordinates
+            .sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
+            .map((subordinate) => (
+              <EmployeeNode 
+                key={subordinate.id} 
+                employee={subordinate as EmployeeWithDetails}
+                level={level + 1}
+              />
+            ))}
         </div>
       )}
     </div>
@@ -179,7 +148,7 @@ function EmployeeNode({
 }
 
 // Helper function to get role-based styles
-function getRoleStyles(role: string) {
+function getRoleStyles(role: EmployeeRole) {
   switch (role) {
     case "EXECUTIVE_DIRECTOR":
       return {
@@ -204,8 +173,11 @@ function getRoleStyles(role: string) {
   }
 }
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function EmployeesPage() {
-  const { teamLeaders, unassigned } = await getEmployees();
+  const { executives, unassigned } = await getEmployees();
 
   return (
     <div className="space-y-6">
@@ -213,17 +185,17 @@ export default async function EmployeesPage() {
         <h2 className="text-2xl font-bold">Employees</h2>
       </div>
 
-      {/* Teams Section */}
+      {/* Executive Directors Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Teams</CardTitle>
+          <CardTitle>Executive Directors</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-8">
-            {teamLeaders.map((leader) => (
+            {executives.map((executive) => (
               <EmployeeNode 
-                key={leader.id} 
-                employee={leader}
+                key={executive.id} 
+                employee={executive}
                 showTeamBadge={true}
               />
             ))}
