@@ -7,6 +7,7 @@ interface EmployeeNode {
   id: string;
   user: User;
   employeeRole: EmployeeRole;
+  reportsTo?: string | null;
   children: EmployeeNode[];
 }
 
@@ -29,7 +30,13 @@ async function getEmployees() {
         },
         members: {
           include: {
-            user: true
+            user: true,
+            reportsTo: {
+              select: {
+                id: true,
+                employeeRole: true
+              }
+            }
           }
         }
       }
@@ -44,26 +51,82 @@ async function getEmployees() {
         ]
       },
       include: {
-        user: true
+        user: true,
+        reportsTo: {
+          select: {
+            id: true,
+            employeeRole: true
+          }
+        }
       }
     });
 
     // Create nodes for team leaders (executives)
-    const executives = teams.map(team => ({
-      id: team.leader.id,
-      user: team.leader.user,
-      employeeRole: team.leader.employeeRole,
-      children: team.members.map(member => ({
-        id: member.id,
-        user: member.user,
-        employeeRole: member.employeeRole,
-        children: []
-      }))
-    }));
+    const executives = teams.map(team => {
+      // First, organize team members by role
+      const directors: EmployeeNode[] = [];
+      const jointDirectors: EmployeeNode[] = [];
+      const fieldOfficers: EmployeeNode[] = [];
 
-    // Sort team members by role
+      team.members.forEach(member => {
+        const node: EmployeeNode = {
+          id: member.id,
+          user: member.user,
+          employeeRole: member.employeeRole,
+          reportsTo: member.reportsTo?.id,
+          children: []
+        };
+
+        switch (member.employeeRole) {
+          case 'DIRECTOR':
+            directors.push(node);
+            break;
+          case 'JOINT_DIRECTOR':
+            jointDirectors.push(node);
+            break;
+          case 'FIELD_OFFICER':
+            fieldOfficers.push(node);
+            break;
+        }
+      });
+
+      // Build the hierarchy
+      // Field Officers report to Joint Directors
+      fieldOfficers.forEach(fo => {
+        const reportingJD = jointDirectors.find(jd => fo.reportsTo === jd.id);
+        if (reportingJD) {
+          reportingJD.children.push(fo);
+        }
+      });
+
+      // Joint Directors report to Directors
+      jointDirectors.forEach(jd => {
+        const reportingDirector = directors.find(d => jd.reportsTo === d.id);
+        if (reportingDirector) {
+          reportingDirector.children.push(jd);
+        }
+      });
+
+      // Directors report to Executive Director
+      return {
+        id: team.leader.id,
+        user: team.leader.user,
+        employeeRole: team.leader.employeeRole,
+        children: directors
+      };
+    });
+
+    // Sort all levels by name
+    const sortByName = (a: EmployeeNode, b: EmployeeNode) => a.user.name.localeCompare(b.user.name);
+    executives.sort(sortByName);
     executives.forEach(exec => {
-      exec.children.sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole]);
+      exec.children.sort(sortByName);
+      exec.children.forEach(director => {
+        director.children.sort(sortByName);
+        director.children.forEach(jd => {
+          jd.children.sort(sortByName);
+        });
+      });
     });
 
     // Create nodes for unassigned employees
@@ -71,12 +134,15 @@ async function getEmployees() {
       id: emp.id,
       user: emp.user,
       employeeRole: emp.employeeRole,
+      reportsTo: emp.reportsTo?.id,
       children: []
     }));
 
-    // Sort executives and unassigned by name
-    executives.sort((a, b) => a.user.name.localeCompare(b.user.name));
-    unassigned.sort((a, b) => a.user.name.localeCompare(b.user.name));
+    // Sort unassigned by role first, then name
+    unassigned.sort((a, b) => {
+      const roleDiff = roleOrder[a.employeeRole] - roleOrder[b.employeeRole];
+      return roleDiff !== 0 ? roleDiff : a.user.name.localeCompare(b.user.name);
+    });
 
     return { executives, unassigned };
   } catch (error) {

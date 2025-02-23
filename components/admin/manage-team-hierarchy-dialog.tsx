@@ -51,7 +51,7 @@ export function ManageTeamHierarchyDialog({
   const jointDirectors = members.filter(m => m.employeeRole === "JOINT_DIRECTOR")
   const fieldOfficers = members.filter(m => m.employeeRole === "FIELD_OFFICER")
 
-  const updateReporting = async (employeeId: string, reportsToId: string) => {
+  const updateReporting = async (employeeId: string, reportsToId: string | null) => {
     try {
       setIsLoading(true)
       const response = await fetch(`/api/admin/employees/${employeeId}/reports-to`, {
@@ -88,95 +88,87 @@ export function ManageTeamHierarchyDialog({
         <DialogHeader>
           <DialogTitle>Manage Team Hierarchy</DialogTitle>
           <DialogDescription>
-            Set up who reports to whom within {teamName}. Directors report to the Executive Director,
-            Joint Directors report to Directors, and Field Officers report to Joint Directors.
+            Set up who reports to whom within Team. Directors report to the Executive Director, Joint
+            Directors report to Directors, and Field Officers report to Joint Directors.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Directors Section */}
-          {directors.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-sm">Directors</h3>
-              <div className="pl-4 space-y-3">
-                {directors.map((director) => (
-                  <div key={director.id} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{director.user.name}</p>
-                      <p className="text-sm text-gray-500">{director.user.email}</p>
-                    </div>
-                  </div>
-                ))}
+        {/* Directors Section */}
+        {directors.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Directors</h3>
+            {directors.map(director => (
+              <div key={director.id} className="flex items-center justify-between p-4 bg-sky-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{director.user.name}</p>
+                  <p className="text-sm text-gray-500">{director.user.email}</p>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
 
-          {/* Joint Directors Section */}
-          {jointDirectors.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-sm">Joint Directors</h3>
-              <div className="pl-4 space-y-3">
-                {jointDirectors.map((jointDirector) => (
-                  <div key={jointDirector.id} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{jointDirector.user.name}</p>
-                      <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
-                    </div>
-                    <Select
-                      defaultValue={jointDirector.reportsToId || ""}
-                      onValueChange={(value) => updateReporting(jointDirector.id, value)}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Reports to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {directors.map((director) => (
-                          <SelectItem key={director.id} value={director.id}>
-                            {director.user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+        {/* Joint Directors Section */}
+        {jointDirectors.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Joint Directors</h3>
+            {jointDirectors.map(jointDirector => (
+              <div key={jointDirector.id} className="flex items-center justify-between p-4 bg-violet-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{jointDirector.user.name}</p>
+                  <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
+                </div>
+                <Select
+                  value={jointDirector.reportsToId || ""}
+                  onValueChange={(value) => updateReporting(jointDirector.id, value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Reports to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {directors.map(director => (
+                      <SelectItem key={director.id} value={director.id}>
+                        {director.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
 
-          {/* Field Officers Section */}
-          {fieldOfficers.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-sm">Field Officers</h3>
-              <div className="pl-4 space-y-3">
-                {fieldOfficers.map((officer) => (
-                  <div key={officer.id} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{officer.user.name}</p>
-                      <p className="text-sm text-gray-500">{officer.user.email}</p>
-                    </div>
-                    <Select
-                      defaultValue={officer.reportsToId || ""}
-                      onValueChange={(value) => updateReporting(officer.id, value)}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Reports to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jointDirectors.map((jointDirector) => (
-                          <SelectItem key={jointDirector.id} value={jointDirector.id}>
-                            {jointDirector.user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+        {/* Field Officers Section */}
+        {fieldOfficers.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Field Officers</h3>
+            {fieldOfficers.map(fieldOfficer => (
+              <div key={fieldOfficer.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{fieldOfficer.user.name}</p>
+                  <p className="text-sm text-gray-500">{fieldOfficer.user.email}</p>
+                </div>
+                <Select
+                  value={fieldOfficer.reportsToId || ""}
+                  onValueChange={(value) => updateReporting(fieldOfficer.id, value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Reports to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jointDirectors.map(jointDirector => (
+                      <SelectItem key={jointDirector.id} value={jointDirector.id}>
+                        {jointDirector.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
