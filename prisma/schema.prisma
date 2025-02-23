@@ -52,8 +52,8 @@ model Employee {
   memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadsTeam        Team?        @relation("TeamLeader")
-  reportsTo        Employee?    @relation("EmployeeHierarchy", fields: [reportsToId], references: [id])
-  subordinates     Employee[]   @relation("EmployeeHierarchy")
+  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
+  subordinates     Employee[]   @relation("EmployeeReporting")
 }
 
 model Announcement {
