@@ -5,6 +5,7 @@ import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
 import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
 import { DeleteTeamDialog } from "@/components/admin/delete-team-dialog";
 import { ManageTeamDialog } from "@/components/admin/manage-team-dialog";
+import { ManageTeamHierarchyDialog } from "@/components/admin/manage-team-hierarchy-dialog";
 import { UserCircle } from "lucide-react";
 
 type TeamWithLeaderAndMembers = {
@@ -86,6 +87,11 @@ export default async function TeamsPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xl font-bold">{team.name}</CardTitle>
                 <div className="flex items-center gap-2">
+                  <ManageTeamHierarchyDialog
+                    teamId={team.id}
+                    teamName={team.name || "Team"}
+                    members={team.members}
+                  />
                   <ManageTeamDialog
                     teamId={team.id}
                     currentLeaderId={team.leader.id}
