@@ -33,11 +33,10 @@ export function EmployeeRoleSelect({
   ] as const
 
   async function onRoleChange(newRole: EmployeeRole) {
-    // Optimistically update the UI
-    setRole(newRole)
-    setIsLoading(true)
+    if (newRole === role) return;
 
     try {
+      setIsLoading(true)
       const response = await fetch(`/api/admin/employees/${employeeId}/role`, {
         method: "PATCH",
         headers: {
@@ -46,17 +45,19 @@ export function EmployeeRoleSelect({
         body: JSON.stringify({ role: newRole }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to update role")
+        throw new Error(data.error || "Failed to update role")
       }
 
+      // Only update the UI state if the request was successful
+      setRole(newRole)
       toast.success("Role updated successfully")
-      // Still refresh to ensure consistency with server
       router.refresh()
     } catch (error) {
-      toast.error("Failed to update role")
-      // Revert to previous role on error
-      setRole(currentRole)
+      toast.error(error instanceof Error ? error.message : "Failed to update role")
+      // Don't update the select value on error
     } finally {
       setIsLoading(false)
     }
