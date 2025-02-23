@@ -74,6 +74,10 @@ model Employee {
   leadsTeam        Team?        @relation("TeamLeader")
   memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
   teamId           String?
+  // Reporting relations
+  reportsTo        Employee?    @relation("EmployeeHierarchy", fields: [reportsToId], references: [id])
+  reportsToId      String?
+  subordinates     Employee[]   @relation("EmployeeHierarchy")
 }
 
 model Announcement {
