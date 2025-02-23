@@ -87,31 +87,31 @@ export default async function EmployeesPage() {
     switch (role) {
       case "EXECUTIVE_DIRECTOR":
         return {
-          bg: "bg-green-50",
-          border: "border-green-500",
-          dot: "bg-green-500",
-          badge: "bg-green-100 text-green-800"
+          bg: "bg-emerald-50 hover:bg-emerald-100 transition-colors",
+          border: "border-emerald-500",
+          dot: "bg-emerald-500",
+          badge: "bg-emerald-100 text-emerald-800"
         };
       case "DIRECTOR":
         return {
-          bg: "bg-blue-50",
-          border: "border-blue-500",
-          dot: "bg-blue-500",
-          badge: "bg-blue-100 text-blue-800"
+          bg: "bg-sky-50 hover:bg-sky-100 transition-colors",
+          border: "border-sky-500",
+          dot: "bg-sky-500",
+          badge: "bg-sky-100 text-sky-800"
         };
       case "JOINT_DIRECTOR":
         return {
-          bg: "bg-purple-50",
-          border: "border-purple-500",
-          dot: "bg-purple-500",
-          badge: "bg-purple-100 text-purple-800"
+          bg: "bg-violet-50 hover:bg-violet-100 transition-colors",
+          border: "border-violet-500",
+          dot: "bg-violet-500",
+          badge: "bg-violet-100 text-violet-800"
         };
       default:
         return {
-          bg: "bg-gray-50",
-          border: "border-gray-300",
-          dot: "bg-gray-400",
-          badge: "bg-gray-100 text-gray-800"
+          bg: "bg-slate-50 hover:bg-slate-100 transition-colors",
+          border: "border-slate-300",
+          dot: "bg-slate-400",
+          badge: "bg-slate-100 text-slate-800"
         };
     }
   };
@@ -128,11 +128,11 @@ export default async function EmployeesPage() {
           <Card key={team.id} className="overflow-hidden">
             <CardContent className="p-0">
               {team.leader && (
-                <div className="border-l-4 border-green-500 bg-green-50">
+                <div className="border-l-4 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 transition-colors">
                   <div className="flex items-center justify-between p-4">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{team.leader.user.name}</p>
@@ -140,7 +140,7 @@ export default async function EmployeesPage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800">
                         {team.leader.employeeRole.replace(/_/g, " ")}
                       </span>
                       <EmployeeRoleSelect
@@ -152,14 +152,12 @@ export default async function EmployeesPage() {
                 </div>
               )}
 
-              {team.members.map((member, index) => {
+              {team.members.map((member) => {
                 const styles = getRoleStyles(member.employeeRole);
                 return (
                   <div 
                     key={member.id}
-                    className={`border-l-4 ${styles.border} ${styles.bg} ${
-                      index !== team.members.length - 1 ? 'border-b border-gray-200' : ''
-                    }`}
+                    className={`border-l-4 ${styles.border} ${styles.bg}`}
                   >
                     <div className="flex items-center justify-between p-4">
                       <div className="flex items-center space-x-3">
@@ -192,14 +190,12 @@ export default async function EmployeesPage() {
         {sortedUnassignedEmployees.length > 0 && (
           <Card className="overflow-hidden">
             <CardContent className="p-0">
-              {sortedUnassignedEmployees.map((employee, index) => {
+              {sortedUnassignedEmployees.map((employee) => {
                 const styles = getRoleStyles(employee.employeeRole);
                 return (
                   <div 
                     key={employee.id}
-                    className={`border-l-4 ${styles.border} ${styles.bg} ${
-                      index !== sortedUnassignedEmployees.length - 1 ? 'border-b border-gray-200' : ''
-                    }`}
+                    className={`border-l-4 ${styles.border} ${styles.bg}`}
                   >
                     <div className="flex items-center justify-between p-4">
                       <div className="flex items-center space-x-3">
