@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Employee, User } from "@prisma/client";
 import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
+import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
 
 type EmployeeWithUserAndTeams = Employee & {
   user: User;
@@ -81,9 +82,15 @@ export default async function EmployeesPage() {
                       <td className="px-6 py-4 whitespace-nowrap">{employee.user.phone}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {employee.leadsTeam ? (
-                          <span className="text-green-600 font-medium">
-                            Team Leader of {employee.leadsTeam.name}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-600 font-medium">
+                              Team Leader of {employee.leadsTeam.name}
+                            </span>
+                            <AssignTeamMemberDialog
+                              teamId={employee.leadsTeam.id}
+                              teamName={employee.leadsTeam.name}
+                            />
+                          </div>
                         ) : employee.memberOfTeam ? (
                           <span className="text-blue-600 font-medium">
                             Member of {employee.memberOfTeam.name}
