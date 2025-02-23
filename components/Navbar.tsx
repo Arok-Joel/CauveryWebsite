@@ -75,8 +75,18 @@ export function Navbar() {
                       </DropdownMenuItem>
                     )}
                     {user.role === "EMPLOYEE" && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/employee/dashboard">Employee Dashboard</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/employee/profile">My Profile</Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {user.role === "USER" && (
                       <DropdownMenuItem asChild>
-                        <Link href="/employee/dashboard">Employee Dashboard</Link>
+                        <Link href="/profile">My Profile</Link>
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -126,8 +136,18 @@ export function Navbar() {
                       </Link>
                     )}
                     {user.role === "EMPLOYEE" && (
-                      <Link href="/employee/dashboard" className="text-lg">
-                        Employee Dashboard
+                      <>
+                        <Link href="/employee/dashboard" className="text-lg">
+                          Employee Dashboard
+                        </Link>
+                        <Link href="/employee/profile" className="text-lg">
+                          My Profile
+                        </Link>
+                      </>
+                    )}
+                    {user.role === "USER" && (
+                      <Link href="/profile" className="text-lg">
+                        My Profile
                       </Link>
                     )}
                     <Button 
