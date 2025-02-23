@@ -3,6 +3,11 @@ import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Employee, User, EmployeeRole } from "@prisma/client";
 
+interface EmployeeWithRelations extends Employee {
+  user: User;
+  subordinates: EmployeeWithRelations[];
+}
+
 interface EmployeeNode {
   id: string;
   user: User;
@@ -19,11 +24,10 @@ const roleOrder = {
 
 async function getEmployees() {
   try {
-    // Get all employees with their reporting relationships
-    const employees = await db.employee.findMany({
+    // Get all teams with their complete hierarchy
+    const teams = await db.team.findMany({
       include: {
-        user: true,
-        subordinates: {
+        leader: {
           include: {
             user: true,
             subordinates: {
@@ -31,31 +35,27 @@ async function getEmployees() {
                 user: true,
                 subordinates: {
                   include: {
-                    user: true
+                    user: true,
+                    subordinates: {
+                      include: {
+                        user: true
+                      }
+                    }
                   }
                 }
               }
             }
           }
         }
-      },
-      where: {
-        reportsToId: null, // Get only top-level employees (Executive Directors)
-        employeeRole: "EXECUTIVE_DIRECTOR"
-      },
-      orderBy: {
-        user: {
-          name: 'asc'
-        }
       }
     });
 
-    // Get unassigned employees (those who don't report to anyone)
+    // Get unassigned employees (those not in any team)
     const unassignedEmployees = await db.employee.findMany({
       where: {
         AND: [
-          { reportsToId: null },
-          { employeeRole: { not: "EXECUTIVE_DIRECTOR" } }
+          { teamId: null },
+          { leadsTeam: null }
         ]
       },
       include: {
@@ -68,20 +68,43 @@ async function getEmployees() {
       }
     });
 
-    // Convert the flat structure into a tree
-    function buildHierarchyTree(employee: any): EmployeeNode {
-      return {
+    // Convert the flat structure into a hierarchical tree
+    function buildHierarchyTree(employee: EmployeeWithRelations): EmployeeNode {
+      const node: EmployeeNode = {
         id: employee.id,
         user: employee.user,
         employeeRole: employee.employeeRole,
-        children: employee.subordinates
-          .sort((a: any, b: any) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
-          .map((subordinate: any) => buildHierarchyTree(subordinate))
+        children: []
       };
+
+      // Filter and sort subordinates based on role
+      if (employee.subordinates) {
+        if (employee.employeeRole === "EXECUTIVE_DIRECTOR") {
+          // Executive Director should only show Directors
+          node.children = employee.subordinates
+            .filter(sub => sub.employeeRole === "DIRECTOR")
+            .sort((a, b) => a.user.name.localeCompare(b.user.name))
+            .map(buildHierarchyTree);
+        } else if (employee.employeeRole === "DIRECTOR") {
+          // Directors should only show Joint Directors
+          node.children = employee.subordinates
+            .filter(sub => sub.employeeRole === "JOINT_DIRECTOR")
+            .sort((a, b) => a.user.name.localeCompare(b.user.name))
+            .map(buildHierarchyTree);
+        } else if (employee.employeeRole === "JOINT_DIRECTOR") {
+          // Joint Directors should only show Field Officers
+          node.children = employee.subordinates
+            .filter(sub => sub.employeeRole === "FIELD_OFFICER")
+            .sort((a, b) => a.user.name.localeCompare(b.user.name))
+            .map(buildHierarchyTree);
+        }
+      }
+
+      return node;
     }
 
-    // Create the hierarchy trees for executive directors
-    const executives = employees.map(exec => buildHierarchyTree(exec));
+    // Create hierarchy trees for each team
+    const executives = teams.map(team => buildHierarchyTree(team.leader as EmployeeWithRelations));
 
     // Create nodes for unassigned employees
     const unassigned = unassignedEmployees.map(emp => ({
@@ -106,7 +129,7 @@ function EmployeeNodeComponent({
   level?: number;
 }) {
   const styles = getRoleStyles(employee.employeeRole);
-  const indentSize = level * 2.5; // Increased indent for better visibility
+  const indentSize = level * 2.5;
 
   return (
     <div 
@@ -146,6 +169,11 @@ function EmployeeNodeComponent({
             <p className="text-sm text-gray-500">{employee.user.email}</p>
           </div>
           <div className="flex items-center space-x-2">
+            {level === 0 && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                Team Leader
+              </span>
+            )}
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles.badge}`}>
               {employee.employeeRole.replace(/_/g, " ")}
             </span>
@@ -157,7 +185,6 @@ function EmployeeNodeComponent({
         </div>
       </div>
 
-      {/* Render children */}
       {employee.children.length > 0 && (
         <div className="mt-4">
           {employee.children.map((child) => (
@@ -173,7 +200,6 @@ function EmployeeNodeComponent({
   );
 }
 
-// Update the role styles for better visual hierarchy
 function getRoleStyles(role: EmployeeRole) {
   switch (role) {
     case "EXECUTIVE_DIRECTOR":
@@ -211,10 +237,10 @@ export default async function EmployeesPage() {
         <h2 className="text-2xl font-bold">Employees</h2>
       </div>
 
-      {/* Organization Hierarchy Section */}
+      {/* Teams Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Organization Hierarchy</CardTitle>
+          <CardTitle>Teams & Hierarchy</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-8">
@@ -224,6 +250,9 @@ export default async function EmployeesPage() {
                 employee={executive}
               />
             ))}
+            {executives.length === 0 && (
+              <p className="text-sm text-gray-500 text-center">No teams configured yet</p>
+            )}
           </div>
         </CardContent>
       </Card>
