@@ -5,7 +5,11 @@ export async function GET() {
   try {
     const executiveDirectors = await db.employee.findMany({
       where: {
-        employeeRole: "EXECUTIVE_DIRECTOR",
+        AND: [
+          { employeeRole: "EXECUTIVE_DIRECTOR" },
+          { leadsTeam: null }, // Only get those who don't lead any team
+          { memberOfTeam: null } // And are not members of any team
+        ]
       },
       include: {
         user: {
@@ -29,4 +33,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-} 
+}

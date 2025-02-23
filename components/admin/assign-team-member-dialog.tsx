@@ -43,10 +43,19 @@ interface AssignTeamMemberDialogProps {
   teamName: string;
 }
 
+interface Employee {
+  id: string;
+  user: {
+    name: string;
+    email: string;
+  };
+  employeeRole: string;
+}
+
 export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [availableEmployees, setAvailableEmployees] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
   const router = useRouter();
 
   const form = useForm<AssignMemberValues>({
@@ -59,11 +68,23 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
   // Fetch available employees when dialog opens
   const fetchAvailableEmployees = async () => {
     try {
+      setIsLoading(true);
+      console.log("Fetching employees for team:", teamId);
       const response = await fetch(`/api/admin/teams/${teamId}/available-employees`);
       const data = await response.json();
-      setAvailableEmployees(data.employees);
+      
+      if (!response.ok) {
+        console.error("Error response:", data);
+        throw new Error(data.error || "Failed to fetch available employees");
+      }
+      
+      console.log("Fetched employees:", data.employees?.length || 0);
+      setAvailableEmployees(data.employees || []);
     } catch (error) {
-      toast.error("Failed to fetch available employees");
+      console.error("Error in fetchAvailableEmployees:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to fetch available employees");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -122,8 +143,9 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
               name="employeeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Employee</FormLabel>
+                  <FormLabel>Select Employee</FormLabel>
                   <Select
+                    disabled={isLoading}
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
@@ -135,7 +157,7 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
                     <SelectContent>
                       {availableEmployees.map((employee) => (
                         <SelectItem key={employee.id} value={employee.id}>
-                          {employee.name} ({employee.role})
+                          {employee.user.name} - {employee.employeeRole}
                         </SelectItem>
                       ))}
                     </SelectContent>

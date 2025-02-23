@@ -3,14 +3,13 @@ import { db } from "@/lib/db"
 import * as z from "zod"
 
 const createTeamSchema = z.object({
-  name: z.string().min(1),
   leaderId: z.string().min(1),
 })
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { name, leaderId } = createTeamSchema.parse(body)
+    const { leaderId } = createTeamSchema.parse(body)
 
     // Verify that the leader is an Executive Director
     const leader = await db.employee.findUnique({
@@ -19,13 +18,11 @@ export async function POST(req: Request) {
         leadsTeam: {
           select: {
             id: true,
-            name: true
           }
         },
         memberOfTeam: {
           select: {
             id: true,
-            name: true
           }
         }
       }
@@ -55,7 +52,6 @@ export async function POST(req: Request) {
     // Create the team
     const team = await db.team.create({
       data: {
-        name,
         leader: {
           connect: { id: leaderId }
         }
@@ -81,4 +77,4 @@ export async function POST(req: Request) {
       { status: 500 }
     )
   }
-} 
+}

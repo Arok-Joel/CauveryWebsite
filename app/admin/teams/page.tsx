@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
 import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
+import { DeleteTeamDialog } from "@/components/admin/delete-team-dialog";
+import { ManageTeamDialog } from "@/components/admin/manage-team-dialog";
 import { UserCircle } from "lucide-react";
 
 type TeamWithLeaderAndMembers = {
@@ -83,7 +85,14 @@ export default async function TeamsPage() {
             <Card key={team.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-xl font-bold">{team.name}</CardTitle>
-                <AssignTeamMemberDialog teamId={team.id} teamName={team.name} />
+                <div className="flex items-center gap-2">
+                  <ManageTeamDialog
+                    teamId={team.id}
+                    currentLeaderId={team.leader.id}
+                  />
+                  <AssignTeamMemberDialog teamId={team.id} teamName={team.name} />
+                  <DeleteTeamDialog teamId={team.id} teamName={team.name} />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
