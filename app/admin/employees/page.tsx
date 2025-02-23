@@ -17,11 +17,10 @@ type EmployeeWithUserAndReports = Employee & {
 };
 
 async function getEmployees() {
-  // Get all employees with their reporting structure
+  // Get top-level employees (those who don't report to anyone)
   const employees = await db.employee.findMany({
     where: {
-      reportsToId: null, // Get top-level employees (those who don't report to anyone)
-      employeeRole: "EXECUTIVE_DIRECTOR" // Start with Executive Directors
+      reportsToId: null,
     },
     include: {
       user: true,
@@ -52,7 +51,6 @@ async function getEmployees() {
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Helper function to render an employee and their subordinates recursively
 function EmployeeNode({ 
   employee, 
   level = 0 
@@ -61,40 +59,43 @@ function EmployeeNode({
   level?: number 
 }) {
   const styles = getRoleStyles(employee.employeeRole);
-  const indentClass = `ml-${level * 8}`;
 
   return (
-    <div className="relative">
-      {/* Vertical line from parent */}
+    <div 
+      className="relative"
+      style={{ 
+        marginLeft: `${level * 2}rem`,
+        marginBottom: "0.5rem"
+      }}
+    >
       {level > 0 && (
-        <div 
-          className="absolute left-0 top-0 h-full border-l-2 border-gray-200" 
-          style={{ left: `${(level * 2) - 1}rem` }}
-        />
-      )}
-      
-      {/* Horizontal line to current node */}
-      {level > 0 && (
-        <div 
-          className="absolute border-t-2 border-gray-200" 
-          style={{ 
-            left: `${(level * 2) - 1}rem`, 
-            width: '1rem',
-            top: '1.5rem'
-          }}
-        />
+        <>
+          {/* Vertical line */}
+          <div 
+            className="absolute border-l-2 border-gray-200"
+            style={{ 
+              left: "-1rem",
+              top: "-0.5rem",
+              height: "calc(100% + 1rem)"
+            }}
+          />
+          {/* Horizontal line */}
+          <div 
+            className="absolute border-t-2 border-gray-200"
+            style={{ 
+              left: "-1rem",
+              width: "1rem",
+              top: "1.5rem"
+            }}
+          />
+        </>
       )}
 
-      <div 
-        className={`relative ${styles.bg} rounded-lg mb-2 transition-all`}
-        style={{ marginLeft: `${level * 2}rem` }}
-      >
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <div>
-              <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
-              <p className="text-sm text-gray-500">{employee.user.email}</p>
-            </div>
+      <div className={`${styles.bg} rounded-lg p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
+            <p className="text-sm text-gray-500">{employee.user.email}</p>
           </div>
           <div className="flex items-center space-x-2">
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles.badge}`}>
@@ -108,7 +109,6 @@ function EmployeeNode({
         </div>
       </div>
 
-      {/* Render subordinates recursively */}
       {employee.subordinates?.length > 0 && (
         <div className="mt-2">
           {employee.subordinates.map((subordinate) => (
