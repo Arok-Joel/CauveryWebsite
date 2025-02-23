@@ -5,6 +5,7 @@ import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
 import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
 import { DeleteTeamDialog } from "@/components/admin/delete-team-dialog";
 import { ManageTeamDialog } from "@/components/admin/manage-team-dialog";
+import { ManageTeamHierarchyDialog } from "@/components/admin/manage-team-hierarchy-dialog";
 import { UserCircle } from "lucide-react";
 
 type TeamWithLeaderAndMembers = {

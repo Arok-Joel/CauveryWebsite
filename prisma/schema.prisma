@@ -1,17 +1,96 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  phone         String
+  address       String?
+  pincode       String?
+  role          UserRole       @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  announcements Announcement[]
+  employee      Employee?
+}
+
+model Team {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  leaderId  String     @unique
+  members   Employee[] @relation("TeamMembers")
+  leader    Employee   @relation("TeamLeader", fields: [leaderId], references: [id])
+}
+
+model Employee {
+  id               String       @id @default(cuid())
+  guardianName     String
+  dateOfBirth      DateTime
+  age              Int
+  gender           String
+  pancardNumber    String       @unique
+  aadharCardNumber String       @unique
+  bankName         String
+  bankBranch       String
+  accountNumber    String
+  ifscCode         String
+  dateOfJoining    DateTime
+  employeeRole     EmployeeRole
+  userId           String       @unique
+  teamId           String?
+  reportsToId      String?
+  memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadsTeam        Team?        @relation("TeamLeader")
+  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
+  subordinates     Employee[]   @relation("EmployeeReporting")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  adminId   String
+  admin     User     @relation(fields: [adminId], references: [id])
+}
+
+model Layout {
+  id        String   @id
+  name      String
+  image     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Plot      Plot[]
+}
+
+model Plot {
+  id          String   @id
+  plotNumber  String   @unique
+  siteName    String
+  size        String
+  plotAddress String
+  price       Decimal
+  dimensions  String
+  facing      String
+  status      String
+  coordinates Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  layoutId    String?
+  Layout      Layout?  @relation(fields: [layoutId], references: [id])
 }
 
 enum UserRole {
@@ -25,65 +104,4 @@ enum EmployeeRole {
   DIRECTOR
   JOINT_DIRECTOR
   FIELD_OFFICER
-}
-
-model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String
-  address   String?
-  pincode   String?
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // Relations
-  employee  Employee?
-  announcements Announcement[]
-}
-
-model Team {
-  id          String    @id @default(cuid())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  // Relations
-  leader      Employee  @relation("TeamLeader", fields: [leaderId], references: [id])
-  leaderId    String    @unique
-  members     Employee[] @relation("TeamMembers")
-}
-
-model Employee {
-  id                String       @id @default(cuid())
-  guardianName     String
-  dateOfBirth      DateTime
-  age              Int
-  gender           String
-  pancardNumber    String       @unique
-  aadharCardNumber String       @unique
-  bankName         String
-  bankBranch       String
-  accountNumber    String
-  ifscCode        String
-  dateOfJoining    DateTime
-  employeeRole     EmployeeRole
-  // Relations
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String       @unique
-  // Team relations
-  leadsTeam        Team?        @relation("TeamLeader")
-  memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
-  teamId           String?
-}
-
-model Announcement {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // Relations
-  admin     User     @relation(fields: [adminId], references: [id])
-  adminId   String
 }
