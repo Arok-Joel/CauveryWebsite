@@ -5,15 +5,7 @@ import { Employee, User } from "@prisma/client";
 
 type EmployeeWithUserAndTeam = Employee & {
   user: User;
-  memberOfTeam: {
-    id: string;
-    leader: {
-      id: string;
-      user: {
-        name: string;
-      };
-    };
-  } | null;
+  teamId: string | null;
   leadsTeam: {
     id: string;
   } | null;
@@ -24,21 +16,6 @@ async function getEmployees() {
   const employees = await db.employee.findMany({
     include: { 
       user: true,
-      memberOfTeam: {
-        select: {
-          id: true,
-          leader: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
-        }
-      },
       leadsTeam: {
         select: {
           id: true
@@ -66,23 +43,23 @@ export default async function EmployeesPage() {
           members: []
         };
       }
-    } else if (employee.memberOfTeam) {
+    } else if (employee.teamId) {
       // Add to existing team group
-      if (!acc[employee.memberOfTeam.id]) {
-        acc[employee.memberOfTeam.id] = {
-          id: employee.memberOfTeam.id,
+      if (!acc[employee.teamId]) {
+        acc[employee.teamId] = {
+          id: employee.teamId,
           leader: null,
           members: []
         };
       }
-      acc[employee.memberOfTeam.id].members.push(employee);
+      acc[employee.teamId].members.push(employee);
     }
     return acc;
   }, {} as Record<string, { id: string; leader: EmployeeWithUserAndTeam | null; members: EmployeeWithUserAndTeam[] }>);
 
   // Get unassigned employees
   const unassignedEmployees = employees.filter(
-    emp => !emp.leadsTeam && !emp.memberOfTeam
+    emp => !emp.leadsTeam && !emp.teamId
   );
 
   // Role order for sorting
