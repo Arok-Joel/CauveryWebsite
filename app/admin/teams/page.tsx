@@ -21,6 +21,7 @@ type TeamWithLeaderAndMembers = {
   members: {
     id: string;
     employeeRole: string;
+    reportsToId: string | null;
     user: {
       name: string;
       email: string;
@@ -48,7 +49,8 @@ async function getTeams() {
               name: true,
               email: true
             }
-          }
+          },
+          reportsTo: true
         }
       }
     }
@@ -80,18 +82,23 @@ export default async function TeamsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6">
           {teams.map((team) => (
             <Card key={team.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xl font-bold">{team.name}</CardTitle>
+                <CardTitle className="text-xl font-bold">Team {team.leader.user.name}</CardTitle>
                 <div className="flex items-center gap-2">
+                  <ManageTeamHierarchyDialog
+                    teamId={team.id}
+                    teamName={`Team ${team.leader.user.name}`}
+                    members={team.members}
+                  />
                   <ManageTeamDialog
                     teamId={team.id}
                     currentLeaderId={team.leader.id}
                   />
-                  <AssignTeamMemberDialog teamId={team.id} teamName={team.name} />
-                  <DeleteTeamDialog teamId={team.id} teamName={team.name} />
+                  <AssignTeamMemberDialog teamId={team.id} teamName={`Team ${team.leader.user.name}`} />
+                  <DeleteTeamDialog teamId={team.id} teamName={`Team ${team.leader.user.name}`} />
                 </div>
               </CardHeader>
               <CardContent>

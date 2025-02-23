@@ -5,59 +5,233 @@ import { Employee, User, Team, EmployeeRole } from "@prisma/client";
 
 type EmployeeWithUserAndTeam = Employee & {
   user: User;
-  leadsTeam: Team | null;
-  memberOfTeam: Team | null;
-};
-
-type RoleStyles = {
-  bg: string;
-  border: string;
-  dot: string;
-  badge: string;
-};
-
-type RoleOrder = {
-  [K in EmployeeRole]: number;
-};
-
-// Remove caching to ensure fresh data on each request
-async function getEmployees() {
-  const employees = await db.employee.findMany({
-    include: { 
-      user: true,
-      leadsTeam: true,
-      memberOfTeam: true
-    },
-    orderBy: {
-      employeeRole: 'asc'
-    }
-  });
-  return employees as EmployeeWithUserAndTeam[];
+  employeeRole: EmployeeRole;
+  reportsTo?: string | null;
+  children: EmployeeNode[];
 }
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+const roleOrder = {
+  EXECUTIVE_DIRECTOR: 1,
+  DIRECTOR: 2,
+  JOINT_DIRECTOR: 3,
+  FIELD_OFFICER: 4
+} as const;
 
-export default async function EmployeesPage() {
-  const employees = await getEmployees();
+async function getEmployees() {
+  try {
+    // Get all teams with their leaders and members
+    const teams = await db.team.findMany({
+      include: {
+        leader: {
+          include: {
+            user: true
+          }
+        },
+        members: {
+          include: {
+            user: true,
+            reportsTo: {
+              select: {
+                id: true,
+                employeeRole: true
+              }
+            }
+          }
+        }
+      }
+    });
 
-  // Role order for sorting and hierarchy
-  const roleOrder: RoleOrder = {
-    "EXECUTIVE_DIRECTOR": 0,
-    "DIRECTOR": 1,
-    "JOINT_DIRECTOR": 2,
-    "FIELD_OFFICER": 3
-  };
+    // Get all employees who are not in any team
+    const unassignedEmployees = await db.employee.findMany({
+      where: {
+        AND: [
+          { teamId: null },
+          { leadsTeam: null }
+        ]
+      },
+      include: {
+        user: true,
+        reportsTo: {
+          select: {
+            id: true,
+            employeeRole: true
+          }
+        }
+      }
+    });
 
-  // First, organize employees by their roles
-  const employeesByRole = employees.reduce((acc, employee) => {
-    const role = employee.employeeRole;
-    if (!acc[role]) {
-      acc[role] = [];
-    }
-    acc[role].push(employee);
-    return acc;
-  }, {} as Record<EmployeeRole, EmployeeWithUserAndTeam[]>);
+    // Create nodes for team leaders (executives)
+    const executives = teams.map(team => {
+      // First, organize team members by role
+      const directors: EmployeeNode[] = [];
+      const jointDirectors: EmployeeNode[] = [];
+      const fieldOfficers: EmployeeNode[] = [];
+
+      team.members.forEach(member => {
+        const node: EmployeeNode = {
+          id: member.id,
+          user: member.user,
+          employeeRole: member.employeeRole,
+          reportsTo: member.reportsTo?.id,
+          children: []
+        };
+
+        switch (member.employeeRole) {
+          case 'DIRECTOR':
+            directors.push(node);
+            break;
+          case 'JOINT_DIRECTOR':
+            jointDirectors.push(node);
+            break;
+          case 'FIELD_OFFICER':
+            fieldOfficers.push(node);
+            break;
+        }
+      });
+
+      // Build the hierarchy
+      // Field Officers report to Joint Directors
+      fieldOfficers.forEach(fo => {
+        const reportingJD = jointDirectors.find(jd => fo.reportsTo === jd.id);
+        if (reportingJD) {
+          reportingJD.children.push(fo);
+        }
+      });
+
+      // Joint Directors report to Directors
+      jointDirectors.forEach(jd => {
+        const reportingDirector = directors.find(d => jd.reportsTo === d.id);
+        if (reportingDirector) {
+          reportingDirector.children.push(jd);
+        }
+      });
+
+      // Directors report to Executive Director
+      return {
+        id: team.leader.id,
+        user: team.leader.user,
+        employeeRole: team.leader.employeeRole,
+        children: directors
+      };
+    });
+
+    // Sort all levels by name
+    const sortByName = (a: EmployeeNode, b: EmployeeNode) => a.user.name.localeCompare(b.user.name);
+    executives.sort(sortByName);
+    executives.forEach(exec => {
+      exec.children.sort(sortByName);
+      exec.children.forEach(director => {
+        director.children.sort(sortByName);
+        director.children.forEach(jd => {
+          jd.children.sort(sortByName);
+        });
+      });
+    });
+
+    // Create nodes for unassigned employees
+    const unassigned = unassignedEmployees.map(emp => ({
+      id: emp.id,
+      user: emp.user,
+      employeeRole: emp.employeeRole,
+      reportsTo: emp.reportsTo?.id,
+      children: []
+    }));
+
+    // Sort unassigned by role first, then name
+    unassigned.sort((a, b) => {
+      const roleDiff = roleOrder[a.employeeRole] - roleOrder[b.employeeRole];
+      return roleDiff !== 0 ? roleDiff : a.user.name.localeCompare(b.user.name);
+    });
+
+    return { executives, unassigned };
+  } catch (error) {
+    console.error("Error fetching employees:", error);
+    return { executives: [], unassigned: [] };
+  }
+}
+
+function EmployeeNodeComponent({ 
+  employee, 
+  level = 0,
+  showTeamBadge = false
+}: { 
+  employee: EmployeeNode;
+  level?: number;
+  showTeamBadge?: boolean;
+}) {
+  const styles = getRoleStyles(employee.employeeRole);
+
+  return (
+    <div 
+      className="relative"
+      style={{ 
+        marginLeft: `${level * 2}rem`,
+        marginBottom: "0.5rem"
+      }}
+    >
+      {level > 0 && (
+        <>
+          {/* Vertical line */}
+          <div 
+            className="absolute border-l-2 border-gray-200"
+            style={{ 
+              left: "-1rem",
+              top: "-0.5rem",
+              height: "calc(100% + 1rem)"
+            }}
+          />
+          {/* Horizontal line */}
+          <div 
+            className="absolute border-t-2 border-gray-200"
+            style={{ 
+              left: "-1rem",
+              width: "1rem",
+              top: "1.5rem"
+            }}
+          />
+        </>
+      )}
+
+      <div className={`${styles.bg} rounded-lg p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
+            <p className="text-sm text-gray-500">{employee.user.email}</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            {showTeamBadge && employee.employeeRole === "EXECUTIVE_DIRECTOR" && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                Team Leader
+              </span>
+            )}
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles.badge}`}>
+              {employee.employeeRole.replace(/_/g, " ")}
+            </span>
+            <EmployeeRoleSelect
+              employeeId={employee.id}
+              currentRole={employee.employeeRole}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Render children */}
+      {employee.children.length > 0 && (
+        <div className="mt-2">
+          {employee.children
+            .sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
+            .map((child) => (
+              <EmployeeNodeComponent 
+                key={child.id} 
+                employee={child}
+                level={level + 1}
+              />
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
   // Helper function to get role-based styles
   const getRoleStyles = (role: EmployeeRole): RoleStyles => {
