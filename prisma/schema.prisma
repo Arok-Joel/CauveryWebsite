@@ -87,3 +87,31 @@ model Announcement {
   admin     User     @relation(fields: [adminId], references: [id])
   adminId   String
 }
+
+model Plot {
+  id            String   @id @default(cuid())
+  plotNumber    String   @unique
+  siteName      String
+  size          String
+  plotAddress   String
+  price         Decimal
+  dimensions    String
+  facing        String
+  status        String
+  coordinates   Json     // Store the array of points
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  // Relations
+  layout        Layout?  @relation(fields: [layoutId], references: [id])
+  layoutId      String?
+}
+
+model Layout {
+  id        String   @id @default(cuid())
+  name      String
+  image     String   // Base64 encoded image
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Relations
+  plots     Plot[]
+}
