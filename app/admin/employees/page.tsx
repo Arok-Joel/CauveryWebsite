@@ -3,16 +3,17 @@ import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Employee, User, EmployeeRole } from "@prisma/client";
 
-type EmployeeWithDetails = Employee & {
+interface EmployeeWithDetails extends Employee {
   user: User;
-  reportsTo: (Employee & { user: User }) | null;
-  subordinates: Array<Employee & {
-    user: User;
-    subordinates: Array<Employee & {
-      user: User;
-    }>;
-  }>;
-};
+  subordinates: (Employee & { user: User })[];
+}
+
+interface EmployeeNode {
+  id: string;
+  user: User;
+  employeeRole: EmployeeRole;
+  children: EmployeeNode[];
+}
 
 const roleOrder = {
   EXECUTIVE_DIRECTOR: 1,
@@ -23,6 +24,7 @@ const roleOrder = {
 
 async function getEmployees() {
   try {
+    // First, get all employees with their relationships
     const employees = await db.employee.findMany({
       include: {
         user: true,
@@ -30,27 +32,46 @@ async function getEmployees() {
           include: {
             user: true
           }
-        },
-        subordinates: {
-          include: {
-            user: true,
-            subordinates: {
-              include: {
-                user: true
-              }
-            }
-          }
         }
       }
     });
 
-    // Get top-level employees (those who don't report to anyone)
-    const topLevel = employees.filter(e => !e.reportsToId) as EmployeeWithDetails[];
-    const unassigned = topLevel.filter(e => e.employeeRole !== "EXECUTIVE_DIRECTOR") as EmployeeWithDetails[];
-    const executives = topLevel.filter(e => e.employeeRole === "EXECUTIVE_DIRECTOR") as EmployeeWithDetails[];
+    // Build the hierarchy
+    const employeeMap = new Map<string, EmployeeNode>();
+    
+    // Initialize the map with all employees
+    employees.forEach(emp => {
+      employeeMap.set(emp.id, {
+        id: emp.id,
+        user: emp.user,
+        employeeRole: emp.employeeRole,
+        children: []
+      });
+    });
 
-    // Sort by role and then by name
+    // Build parent-child relationships
+    employees.forEach(emp => {
+      if (emp.reportsToId) {
+        const parent = employeeMap.get(emp.reportsToId);
+        if (parent) {
+          parent.children.push(employeeMap.get(emp.id)!);
+        }
+      }
+    });
+
+    // Get root nodes (employees who don't report to anyone)
+    const roots = Array.from(employeeMap.values()).filter(emp => {
+      const employee = employees.find(e => e.id === emp.id);
+      return !employee?.reportsToId;
+    });
+    
+    // Separate executives and unassigned
+    const executives = roots.filter(emp => emp.employeeRole === "EXECUTIVE_DIRECTOR");
+    const unassigned = roots.filter(emp => emp.employeeRole !== "EXECUTIVE_DIRECTOR");
+
+    // Sort by name
     executives.sort((a, b) => a.user.name.localeCompare(b.user.name));
+    unassigned.sort((a, b) => a.user.name.localeCompare(b.user.name));
 
     return { executives, unassigned };
   } catch (error) {
@@ -59,12 +80,12 @@ async function getEmployees() {
   }
 }
 
-function EmployeeNode({ 
+function EmployeeNodeComponent({ 
   employee, 
   level = 0,
   showTeamBadge = false
 }: { 
-  employee: EmployeeWithDetails;
+  employee: EmployeeNode;
   level?: number;
   showTeamBadge?: boolean;
 }) {
@@ -106,11 +127,6 @@ function EmployeeNode({
           <div>
             <p className="text-sm font-medium text-gray-900">{employee.user.name}</p>
             <p className="text-sm text-gray-500">{employee.user.email}</p>
-            {employee.reportsTo && (
-              <p className="text-xs text-gray-400 mt-1">
-                Reports to: {employee.reportsTo.user.name}
-              </p>
-            )}
           </div>
           <div className="flex items-center space-x-2">
             {showTeamBadge && employee.employeeRole === "EXECUTIVE_DIRECTOR" && (
@@ -129,15 +145,15 @@ function EmployeeNode({
         </div>
       </div>
 
-      {/* Render subordinates */}
-      {employee.subordinates?.length > 0 && (
+      {/* Render children */}
+      {employee.children.length > 0 && (
         <div className="mt-2">
-          {employee.subordinates
+          {employee.children
             .sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
-            .map((subordinate) => (
-              <EmployeeNode 
-                key={subordinate.id} 
-                employee={subordinate as EmployeeWithDetails}
+            .map((child) => (
+              <EmployeeNodeComponent 
+                key={child.id} 
+                employee={child}
                 level={level + 1}
               />
             ))}
@@ -193,7 +209,7 @@ export default async function EmployeesPage() {
         <CardContent className="p-6">
           <div className="space-y-8">
             {executives.map((executive) => (
-              <EmployeeNode 
+              <EmployeeNodeComponent 
                 key={executive.id} 
                 employee={executive}
                 showTeamBadge={true}
@@ -212,7 +228,7 @@ export default async function EmployeesPage() {
           <CardContent className="p-6">
             <div className="space-y-4">
               {unassigned.map((employee) => (
-                <EmployeeNode 
+                <EmployeeNodeComponent 
                   key={employee.id} 
                   employee={employee}
                 />
