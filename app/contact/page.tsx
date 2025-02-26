@@ -1,11 +1,11 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -13,70 +13,70 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
-import { MapPin, Phone, Mail, Clock } from "lucide-react"
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 const contactFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
-})
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().min(10, 'Please enter a valid phone number'),
+  message: z.string().min(10, 'Message must be at least 10 characters'),
+});
 
-type ContactFormValues = z.infer<typeof contactFormSchema>
+type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function ContactPage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      message: "",
+      name: '',
+      email: '',
+      phone: '',
+      message: '',
     },
-  })
+  });
 
   async function onSubmit(data: ContactFormValues) {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       // Here you would typically send the data to your API
-      console.log(data)
-      toast.success("Message sent successfully!")
-      form.reset()
+      console.log(data);
+      toast.success('Message sent successfully!');
+      form.reset();
     } catch (error) {
-      toast.error("Failed to send message. Please try again.")
+      toast.error('Failed to send message. Please try again.');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   const contactInfo = [
     {
       icon: MapPin,
-      title: "Visit Us",
-      details: ["Sri Sai Nagar", "Kalladai Panchayat Road", "Trichy, Tamil Nadu"],
+      title: 'Visit Us',
+      details: ['Sri Sai Nagar', 'Kalladai Panchayat Road', 'Trichy, Tamil Nadu'],
     },
     {
       icon: Phone,
-      title: "Call Us",
-      details: ["+91 98765 43210", "+91 98765 43211"],
+      title: 'Call Us',
+      details: ['+91 98765 43210', '+91 98765 43211'],
     },
     {
       icon: Mail,
-      title: "Email Us",
-      details: ["info@royalcauveryfarms.com", "sales@royalcauveryfarms.com"],
+      title: 'Email Us',
+      details: ['info@royalcauveryfarms.com', 'sales@royalcauveryfarms.com'],
     },
     {
       icon: Clock,
-      title: "Business Hours",
-      details: ["Monday - Saturday", "9:00 AM - 6:00 PM"],
+      title: 'Business Hours',
+      details: ['Monday - Saturday', '9:00 AM - 6:00 PM'],
     },
-  ]
+  ];
 
   return (
     <main className="min-h-screen bg-[#FAF9F6] py-16">
@@ -84,8 +84,8 @@ export default function ContactPage() {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Have questions about our plots or want to schedule a visit? We're here to help.
-            Reach out to us through any of the following channels or fill out the contact form below.
+            Have questions about our plots or want to schedule a visit? We're here to help. Reach
+            out to us through any of the following channels or fill out the contact form below.
           </p>
         </div>
 
@@ -100,7 +100,9 @@ export default function ContactPage() {
                   </div>
                   <CardTitle className="text-lg mb-2">{info.title}</CardTitle>
                   {info.details.map((detail, idx) => (
-                    <p key={idx} className="text-gray-600">{detail}</p>
+                    <p key={idx} className="text-gray-600">
+                      {detail}
+                    </p>
                   ))}
                 </CardContent>
               </Card>
@@ -164,7 +166,7 @@ export default function ContactPage() {
                       <FormItem>
                         <FormLabel>Message</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Tell us how we can help..."
                             className="min-h-[120px]"
                             {...field}
@@ -174,12 +176,12 @@ export default function ContactPage() {
                       </FormItem>
                     )}
                   />
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Sending..." : "Send Message"}
+                    {isLoading ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
               </Form>
@@ -203,5 +205,5 @@ export default function ContactPage() {
         </Card>
       </div>
     </main>
-  )
-} 
+  );
+}

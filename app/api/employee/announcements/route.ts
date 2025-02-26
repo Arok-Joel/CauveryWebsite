@@ -1,29 +1,24 @@
-import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
-import { verifyAuth } from "@/lib/auth"
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { verifyAuth } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {
     // Get auth token from cookies in headers
-    const cookieHeader = req.headers.get("cookie")
-    const token = cookieHeader?.split(";")
-      .find((c: string) => c.trim().startsWith("auth-token="))
-      ?.split("=")[1]
+    const cookieHeader = req.headers.get('cookie');
+    const token = cookieHeader
+      ?.split(';')
+      .find((c: string) => c.trim().startsWith('auth-token='))
+      ?.split('=')[1];
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify token
-    const verified = await verifyAuth(token)
-    if (!verified || verified.role !== "EMPLOYEE") {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    const verified = await verifyAuth(token);
+    if (!verified || verified.role !== 'EMPLOYEE') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get active announcements
@@ -43,16 +38,13 @@ export async function GET(req: Request) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
-    })
+    });
 
-    return NextResponse.json({ announcements })
+    return NextResponse.json({ announcements });
   } catch (error) {
-    console.error("Announcements fetch error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    console.error('Announcements fetch error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

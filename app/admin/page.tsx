@@ -1,6 +1,6 @@
-import { unstable_cache } from "next/cache"
-import { db } from "@/lib/db"
-import { Card } from "@/components/ui/card"
+import { unstable_cache } from 'next/cache';
+import { db } from '@/lib/db';
+import { Card } from '@/components/ui/card';
 
 async function getCounts() {
   return unstable_cache(
@@ -9,23 +9,23 @@ async function getCounts() {
         db.employee.count(),
         db.announcement.count(),
         db.announcement.count({
-          where: { isActive: true }
-        })
-      ])
+          where: { isActive: true },
+        }),
+      ]);
 
       return {
         employeeCount,
         announcementCount,
-        activeAnnouncementCount
-      }
+        activeAnnouncementCount,
+      };
     },
-    ["dashboard-counts"],
+    ['dashboard-counts'],
     { revalidate: 60 }
-  )()
+  )();
 }
 
 export default async function AdminDashboard() {
-  const { employeeCount, announcementCount, activeAnnouncementCount } = await getCounts()
+  const { employeeCount, announcementCount, activeAnnouncementCount } = await getCounts();
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -42,5 +42,5 @@ export default async function AdminDashboard() {
         <p className="text-3xl font-bold">{activeAnnouncementCount}</p>
       </Card>
     </div>
-  )
-} 
+  );
+}

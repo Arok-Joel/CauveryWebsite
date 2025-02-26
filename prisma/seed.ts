@@ -1,16 +1,16 @@
-import { PrismaClient, UserRole, EmployeeRole } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import { PrismaClient, UserRole, EmployeeRole } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-const hashedPassword = bcrypt.hashSync('password123', 10)
+const hashedPassword = bcrypt.hashSync('password123', 10);
 
 const employeeRoles = [
   EmployeeRole.EXECUTIVE_DIRECTOR,
   EmployeeRole.DIRECTOR,
   EmployeeRole.JOINT_DIRECTOR,
-  EmployeeRole.FIELD_OFFICER
-]
+  EmployeeRole.FIELD_OFFICER,
+];
 
 async function createSampleUsers() {
   // Create 5 regular users
@@ -23,30 +23,32 @@ async function createSampleUsers() {
         phone: `98765${i}${i}${i}${i}${i}`,
         address: `Sample Address ${i}`,
         pincode: `56000${i}`,
-        role: UserRole.USER
-      }
-    })
+        role: UserRole.USER,
+      },
+    });
   }
-  console.log('Created 5 sample users')
+  console.log('Created 5 sample users');
 }
 
 async function createAdminUser() {
-  const adminEmail = process.env.ADMIN_EMAIL
-  const adminPassword = process.env.ADMIN_PASSWORD
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminEmail || !adminPassword) {
-    console.log('Admin credentials not found in environment variables. Using default admin credentials.')
+    console.log(
+      'Admin credentials not found in environment variables. Using default admin credentials.'
+    );
     await prisma.user.create({
       data: {
         email: 'admin@cauvery.com',
         name: 'Admin',
-        password: hashedPassword,  // This will use the same password123
+        password: hashedPassword, // This will use the same password123
         phone: '9876543210',
         role: UserRole.ADMIN,
       },
-    })
-    console.log('Default admin user created successfully')
-    return
+    });
+    console.log('Default admin user created successfully');
+    return;
   }
 
   await prisma.user.create({
@@ -57,8 +59,8 @@ async function createAdminUser() {
       phone: '9876543210',
       role: UserRole.ADMIN,
     },
-  })
-  console.log('Admin user created with provided credentials')
+  });
+  console.log('Admin user created with provided credentials');
 }
 
 async function createSampleEmployees() {
@@ -70,9 +72,9 @@ async function createSampleEmployees() {
         email: `employee${i}@cauvery.com`,
         password: hashedPassword,
         phone: `98765${i}${i}${i}${i}${i}`,
-        role: UserRole.EMPLOYEE
-      }
-    })
+        role: UserRole.EMPLOYEE,
+      },
+    });
 
     await prisma.employee.create({
       data: {
@@ -88,33 +90,33 @@ async function createSampleEmployees() {
         ifscCode: `SBIN000${i}${i}${i}`,
         dateOfJoining: new Date(2023, i % 12, (i % 28) + 1),
         employeeRole: employeeRoles[i % employeeRoles.length],
-        userId: employeeUser.id
-      }
-    })
+        userId: employeeUser.id,
+      },
+    });
   }
-  console.log('Created 10 sample employees')
+  console.log('Created 10 sample employees');
 }
 
 async function main() {
-  console.log('Start seeding...')
-  
+  console.log('Start seeding...');
+
   // Clear existing data
-  await prisma.team.deleteMany()
-  await prisma.employee.deleteMany()
-  await prisma.user.deleteMany()
+  await prisma.team.deleteMany();
+  await prisma.employee.deleteMany();
+  await prisma.user.deleteMany();
 
-  await createSampleUsers()
-  await createAdminUser()
-  await createSampleEmployees()
+  await createSampleUsers();
+  await createAdminUser();
+  await createSampleEmployees();
 
-  console.log('Seeding finished')
+  console.log('Seeding finished');
 }
 
 main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

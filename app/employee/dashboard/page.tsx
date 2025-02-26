@@ -1,10 +1,10 @@
-"use client"
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth-context';
 
 export default function EmployeeDashboard() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -97,5 +97,5 @@ export default function EmployeeDashboard() {
         </CardContent>
       </Card>
     </div>
-  )
-} 
+  );
+}

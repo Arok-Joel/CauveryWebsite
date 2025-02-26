@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,19 +18,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { toast } from "sonner"
-import { Settings, UserMinus } from "lucide-react"
+} from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { Settings, UserMinus } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -38,7 +38,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table';
 
 interface Employee {
   id: string;
@@ -60,7 +60,7 @@ interface Director {
 }
 
 const manageTeamSchema = z.object({
-  leaderId: z.string().min(1, "New team leader is required"),
+  leaderId: z.string().min(1, 'New team leader is required'),
 });
 
 type ManageTeamValues = z.infer<typeof manageTeamSchema>;
@@ -80,7 +80,7 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
   const form = useForm<ManageTeamValues>({
     resolver: zodResolver(manageTeamSchema),
     defaultValues: {
-      leaderId: "",
+      leaderId: '',
     },
   });
 
@@ -88,14 +88,14 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
     try {
       const response = await fetch(`/api/admin/teams/${teamId}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch team members");
+        throw new Error(data.error || 'Failed to fetch team members');
       }
-      
+
       setTeamMembers(data.members || []);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to fetch team members");
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch team members');
     }
   };
 
@@ -103,25 +103,25 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
   const fetchAvailableLeaders = async () => {
     try {
       setIsLoading(true);
-      console.log("Fetching available leaders for team:", teamId);
-      const response = await fetch("/api/admin/employees/executive-directors");
+      console.log('Fetching available leaders for team:', teamId);
+      const response = await fetch('/api/admin/employees/executive-directors');
       const data = await response.json();
-      
+
       if (!response.ok) {
-        console.error("Error response:", data);
-        throw new Error(data.error || "Failed to fetch available leaders");
+        console.error('Error response:', data);
+        throw new Error(data.error || 'Failed to fetch available leaders');
       }
-      
+
       // Filter out the current leader
       const filteredLeaders = (data.executiveDirectors || []).filter(
         (director: Director) => director.id !== currentLeaderId
       );
-      
-      console.log("Fetched leaders:", filteredLeaders.length);
+
+      console.log('Fetched leaders:', filteredLeaders.length);
       setAvailableLeaders(filteredLeaders);
     } catch (error) {
-      console.error("Error in fetchAvailableLeaders:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to fetch available leaders");
+      console.error('Error in fetchAvailableLeaders:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch available leaders');
     } finally {
       setIsLoading(false);
     }
@@ -139,23 +139,23 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
     try {
       setIsLoading(true);
       const response = await fetch(`/api/admin/teams/${teamId}/leader`, {
-        method: "PATCH",
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ leaderId: data.leaderId }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to update team leader");
+        throw new Error(error.error || 'Failed to update team leader');
       }
 
-      toast.success("Team leader updated successfully");
+      toast.success('Team leader updated successfully');
       setOpen(false);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update team leader");
+      toast.error(error instanceof Error ? error.message : 'Failed to update team leader');
     } finally {
       setIsLoading(false);
     }
@@ -165,22 +165,22 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
     try {
       setIsLoading(true);
       const response = await fetch(`/api/admin/teams/${teamId}/members`, {
-        method: "DELETE",
+        method: 'DELETE',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ employeeId: memberId }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to remove team member");
+        throw new Error(error.error || 'Failed to remove team member');
       }
 
-      toast.success("Team member removed successfully");
+      toast.success('Team member removed successfully');
       fetchTeamMembers(); // Refresh the members list
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove team member");
+      toast.error(error instanceof Error ? error.message : 'Failed to remove team member');
     } finally {
       setIsLoading(false);
     }
@@ -196,9 +196,7 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Manage Team</DialogTitle>
-          <DialogDescription>
-            Change the team leader or manage team members.
-          </DialogDescription>
+          <DialogDescription>Change the team leader or manage team members.</DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
           <Form {...form}>
@@ -220,7 +218,7 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {availableLeaders.map((director) => (
+                        {availableLeaders.map(director => (
                           <SelectItem key={director.id} value={director.id}>
                             {director.name}
                           </SelectItem>
@@ -232,7 +230,7 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
                 )}
               />
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Updating..." : "Update Team Leader"}
+                {isLoading ? 'Updating...' : 'Update Team Leader'}
               </Button>
             </form>
           </Form>
@@ -248,7 +246,7 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamMembers.map((member) => (
+                {teamMembers.map(member => (
                   <TableRow key={member.id}>
                     <TableCell>{member.user.name}</TableCell>
                     <TableCell>{member.employeeRole}</TableCell>

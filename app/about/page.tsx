@@ -1,7 +1,7 @@
-import { MapPin, Leaf, Home, CheckCircle2 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import { MapPin, Leaf, Home, CheckCircle2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 export default function AboutPage() {
   return (
@@ -9,7 +9,9 @@ export default function AboutPage() {
       <div className="container mx-auto px-4">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <Badge variant="outline" className="mb-4">About Us</Badge>
+          <Badge variant="outline" className="mb-4">
+            About Us
+          </Badge>
           <h1 className="text-4xl font-bold mb-4">Royal Cauvery Farms</h1>
           <p className="text-gray-600 max-w-3xl mx-auto">
             Welcome to Royal Cauvery Farms, a premium residential plot development located in the
@@ -26,7 +28,8 @@ export default function AboutPage() {
               </div>
               <CardTitle className="mb-2">Prime Location</CardTitle>
               <p className="text-gray-600">
-                Strategically located near Kalladai Panchayat Road with excellent connectivity to Trichy.
+                Strategically located near Kalladai Panchayat Road with excellent connectivity to
+                Trichy.
               </p>
             </CardContent>
           </Card>
@@ -38,7 +41,8 @@ export default function AboutPage() {
               </div>
               <CardTitle className="mb-2">Green Living</CardTitle>
               <p className="text-gray-600">
-                Thoughtfully planned with green spaces and tree-lined streets for a sustainable living environment.
+                Thoughtfully planned with green spaces and tree-lined streets for a sustainable
+                living environment.
               </p>
             </CardContent>
           </Card>
@@ -70,7 +74,8 @@ export default function AboutPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Project Launch</h3>
                   <p className="text-gray-600">
-                    Sri Sai Nagar was conceptualized with a vision to create a modern residential community.
+                    Sri Sai Nagar was conceptualized with a vision to create a modern residential
+                    community.
                   </p>
                 </div>
               </div>
@@ -134,5 +139,5 @@ export default function AboutPage() {
         </Card>
       </div>
     </main>
-  )
-} 
+  );
+}

@@ -1,4 +1,4 @@
-import { AdminLoginForm } from "@/components/auth/admin-login-form"
+import { AdminLoginForm } from '@/components/auth/admin-login-form';
 
 export default function AdminLoginPage() {
   return (
@@ -14,5 +14,5 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </main>
-  )
-} 
+  );
+}

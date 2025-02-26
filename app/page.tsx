@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import Image from "next/image"
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -19,16 +19,20 @@ export default function Home() {
         </div>
         <div className="container relative z-20 mx-auto px-4">
           <div className="max-w-3xl">
-            <h1 className="text-5xl font-bold text-white mb-6">
-              Welcome to Royal Cauvery Farms
-            </h1>
+            <h1 className="text-5xl font-bold text-white mb-6">Welcome to Royal Cauvery Farms</h1>
             <p className="text-xl text-white/90 mb-8">
-              Your gateway to premium plots in Sri Sai Nagar. Experience the perfect blend of nature and modern living.
+              Your gateway to premium plots in Sri Sai Nagar. Experience the perfect blend of nature
+              and modern living.
             </p>
             <Button asChild size="lg" className="mr-4">
               <Link href="/plots">Browse Plots</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="bg-white/10 text-white hover:bg-white/20">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="bg-white/10 text-white hover:bg-white/20"
+            >
               <Link href="/contact">Contact Us</Link>
             </Button>
           </div>
@@ -42,7 +46,8 @@ export default function Home() {
             <div>
               <h2 className="text-3xl font-bold mb-6">About Sri Sai Nagar</h2>
               <p className="text-gray-600 mb-4">
-                Located in a prime location, Sri Sai Nagar offers meticulously planned plots perfect for building your dream home. Our development features:
+                Located in a prime location, Sri Sai Nagar offers meticulously planned plots perfect
+                for building your dream home. Our development features:
               </p>
               <ul className="space-y-3 text-gray-600">
                 <li>✓ Well-developed infrastructure</li>
@@ -69,7 +74,8 @@ export default function Home() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Find Your Perfect Plot?</h2>
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Browse through our available plots and take the first step towards owning your piece of Sri Sai Nagar.
+            Browse through our available plots and take the first step towards owning your piece of
+            Sri Sai Nagar.
           </p>
           <Button asChild size="lg">
             <Link href="/plots">View Available Plots</Link>
@@ -77,5 +83,5 @@ export default function Home() {
         </div>
       </section>
     </main>
-  )
+  );
 }

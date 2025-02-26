@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,19 +18,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { toast } from "sonner"
-import { UserPlus } from "lucide-react"
+} from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { UserPlus } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -38,7 +38,7 @@ interface Employee {
 }
 
 const createTeamSchema = z.object({
-  leaderId: z.string().min(1, "Team leader is required"),
+  leaderId: z.string().min(1, 'Team leader is required'),
 });
 
 type CreateTeamValues = z.infer<typeof createTeamSchema>;
@@ -52,28 +52,28 @@ export function CreateTeamDialog() {
   const form = useForm<CreateTeamValues>({
     resolver: zodResolver(createTeamSchema),
     defaultValues: {
-      leaderId: "",
+      leaderId: '',
     },
   });
 
   const fetchExecutiveDirectors = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/admin/employees/executive-directors");
+      const response = await fetch('/api/admin/employees/executive-directors');
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch executive directors");
+        throw new Error(data.error || 'Failed to fetch executive directors');
       }
 
       // Only show executive directors who aren't already leading a team
       const availableDirectors = data.executiveDirectors.filter(
         (director: Employee) => !director.leadsTeam
       );
-      
+
       setExecutiveDirectors(availableDirectors);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to fetch executive directors");
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch executive directors');
     } finally {
       setIsLoading(false);
     }
@@ -89,24 +89,24 @@ export function CreateTeamDialog() {
   const onSubmit = async (data: CreateTeamValues) => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/admin/teams", {
-        method: "POST",
+      const response = await fetch('/api/admin/teams', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to create team");
+        throw new Error(error.error || 'Failed to create team');
       }
 
-      toast.success("Team created successfully");
+      toast.success('Team created successfully');
       setOpen(false);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create team");
+      toast.error(error instanceof Error ? error.message : 'Failed to create team');
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +146,7 @@ export function CreateTeamDialog() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {executiveDirectors.map((director) => (
+                      {executiveDirectors.map(director => (
                         <SelectItem key={director.id} value={director.id}>
                           {director.name}
                         </SelectItem>
@@ -158,7 +158,7 @@ export function CreateTeamDialog() {
               )}
             />
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Team"}
+              {isLoading ? 'Creating...' : 'Create Team'}
             </Button>
           </form>
         </Form>

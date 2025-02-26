@@ -1,16 +1,15 @@
-import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreateTeamDialog } from "@/components/admin/create-team-dialog";
-import { AssignTeamMemberDialog } from "@/components/admin/assign-team-member-dialog";
-import { DeleteTeamDialog } from "@/components/admin/delete-team-dialog";
-import { ManageTeamDialog } from "@/components/admin/manage-team-dialog";
-import { ManageTeamHierarchyDialog } from "@/components/admin/manage-team-hierarchy-dialog";
-import { UserCircle } from "lucide-react";
+import { getTeamsWithDetails } from '@/lib/queries';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CreateTeamDialog } from '@/components/admin/create-team-dialog';
+import { AssignTeamMemberDialog } from '@/components/admin/assign-team-member-dialog';
+import { DeleteTeamDialog } from '@/components/admin/delete-team-dialog';
+import { ManageTeamDialog } from '@/components/admin/manage-team-dialog';
+import { ManageTeamHierarchyDialog } from '@/components/admin/manage-team-hierarchy-dialog';
+import { UserCircle } from 'lucide-react';
 
 type TeamWithLeaderAndMembers = {
   id: string;
-  name: string;
   leader: {
     id: string;
     employeeRole: string;
@@ -31,36 +30,12 @@ type TeamWithLeaderAndMembers = {
 };
 
 async function getTeams() {
-  const teams = await db.team.findMany({
-    include: {
-      leader: {
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true
-            }
-          }
-        }
-      },
-      members: {
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true
-            }
-          },
-          reportsTo: true
-        }
-      }
-    }
-  });
-  return teams as TeamWithLeaderAndMembers[];
+  const teams = await getTeamsWithDetails();
+  return teams;
 }
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function TeamsPage() {
   const teams = await getTeams();
@@ -84,21 +59,23 @@ export default async function TeamsPage() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {teams.map((team) => (
+          {teams.map(team => (
             <Card key={team.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xl font-bold">Team {team.leader.user.name}</CardTitle>
+                <CardTitle className="text-xl font-bold">
+                  {team.leader.user.name}&apos;s Team
+                </CardTitle>
                 <div className="flex items-center gap-2">
                   <ManageTeamHierarchyDialog
                     teamId={team.id}
                     teamName={`Team ${team.leader.user.name}`}
                     members={team.members}
                   />
-                  <ManageTeamDialog
+                  <ManageTeamDialog teamId={team.id} currentLeaderId={team.leader.id} />
+                  <AssignTeamMemberDialog
                     teamId={team.id}
-                    currentLeaderId={team.leader.id}
+                    teamName={`Team ${team.leader.user.name}`}
                   />
-                  <AssignTeamMemberDialog teamId={team.id} teamName={`Team ${team.leader.user.name}`} />
                   <DeleteTeamDialog teamId={team.id} teamName={`Team ${team.leader.user.name}`} />
                 </div>
               </CardHeader>
@@ -112,22 +89,24 @@ export default async function TeamsPage() {
                         <p className="text-sm text-gray-500">{team.leader.user.email}</p>
                       </div>
                       <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-                        {team.leader.employeeRole.replace(/_/g, " ")}
+                        {team.leader.employeeRole.replace(/_/g, ' ')}
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500">Team Members ({team.members.length})</h4>
+                    <h4 className="text-sm font-medium text-gray-500">
+                      Team Members ({team.members.length})
+                    </h4>
                     <div className="mt-2 divide-y divide-gray-100">
-                      {team.members.map((member) => (
+                      {team.members.map(member => (
                         <div key={member.id} className="flex items-center justify-between py-2">
                           <div>
                             <p className="text-sm font-medium text-gray-900">{member.user.name}</p>
                             <p className="text-sm text-gray-500">{member.user.email}</p>
                           </div>
                           <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                            {member.employeeRole.replace(/_/g, " ")}
+                            {member.employeeRole.replace(/_/g, ' ')}
                           </span>
                         </div>
                       ))}
@@ -144,4 +123,4 @@ export default async function TeamsPage() {
       )}
     </div>
   );
-} 
+}

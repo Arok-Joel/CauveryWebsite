@@ -1,7 +1,7 @@
-import { unstable_cache } from "next/cache"
-import { db } from "@/lib/db"
-import type { Announcement, User } from "@prisma/client"
-import { Button } from "@/components/ui/button"
+import { unstable_cache } from 'next/cache';
+import { db } from '@/lib/db';
+import type { Announcement, User } from '@prisma/client';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -9,31 +9,31 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { format } from "date-fns"
-import Link from "next/link"
+} from '@/components/ui/table';
+import { format } from 'date-fns';
+import Link from 'next/link';
 
 type AnnouncementWithAdmin = Announcement & {
-  admin: User
-}
+  admin: User;
+};
 
 async function getAnnouncements() {
   return unstable_cache(
     async () => {
       const announcements = await db.announcement.findMany({
         take: 10,
-        orderBy: { createdAt: "desc" },
-        include: { admin: true }
-      })
-      return announcements as AnnouncementWithAdmin[]
+        orderBy: { createdAt: 'desc' },
+        include: { admin: true },
+      });
+      return announcements as AnnouncementWithAdmin[];
     },
-    ["announcements-list"],
+    ['announcements-list'],
     { revalidate: 60 }
-  )()
+  )();
 }
 
 export default async function AnnouncementsPage() {
-  const announcements = await getAnnouncements()
+  const announcements = await getAnnouncements();
 
   return (
     <div className="space-y-4">
@@ -63,22 +63,18 @@ export default async function AnnouncementsPage() {
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${
                       announcement.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    {announcement.isActive ? "Active" : "Inactive"}
+                    {announcement.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </TableCell>
                 <TableCell>{announcement.admin.name}</TableCell>
-                <TableCell>
-                  {format(announcement.createdAt, "PPP")}
-                </TableCell>
+                <TableCell>{format(announcement.createdAt, 'PPP')}</TableCell>
                 <TableCell>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/announcements/${announcement.id}`}>
-                      View
-                    </Link>
+                    <Link href={`/admin/announcements/${announcement.id}`}>View</Link>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -94,5 +90,5 @@ export default async function AnnouncementsPage() {
         </Table>
       </div>
     </div>
-  )
-} 
+  );
+}

@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,22 +18,22 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { toast } from "sonner"
-import { UserPlus } from "lucide-react"
+} from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { UserPlus } from 'lucide-react';
 
 const assignMemberSchema = z.object({
-  employeeId: z.string().min(1, "Employee is required"),
+  employeeId: z.string().min(1, 'Employee is required'),
 });
 
 type AssignMemberValues = z.infer<typeof assignMemberSchema>;
@@ -61,7 +61,7 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
   const form = useForm<AssignMemberValues>({
     resolver: zodResolver(assignMemberSchema),
     defaultValues: {
-      employeeId: "",
+      employeeId: '',
     },
   });
 
@@ -69,20 +69,20 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
   const fetchAvailableEmployees = async () => {
     try {
       setIsLoading(true);
-      console.log("Fetching employees for team:", teamId);
+      console.log('Fetching employees for team:', teamId);
       const response = await fetch(`/api/admin/teams/${teamId}/available-employees`);
       const data = await response.json();
-      
+
       if (!response.ok) {
-        console.error("Error response:", data);
-        throw new Error(data.error || "Failed to fetch available employees");
+        console.error('Error response:', data);
+        throw new Error(data.error || 'Failed to fetch available employees');
       }
-      
-      console.log("Fetched employees:", data.employees?.length || 0);
+
+      console.log('Fetched employees:', data.employees?.length || 0);
       setAvailableEmployees(data.employees || []);
     } catch (error) {
-      console.error("Error in fetchAvailableEmployees:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to fetch available employees");
+      console.error('Error in fetchAvailableEmployees:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch available employees');
     } finally {
       setIsLoading(false);
     }
@@ -99,22 +99,22 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
     try {
       setIsLoading(true);
       const response = await fetch(`/api/admin/teams/${teamId}/members`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ employeeId: data.employeeId }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to assign team member");
+        throw new Error('Failed to assign team member');
       }
 
-      toast.success("Team member assigned successfully");
+      toast.success('Team member assigned successfully');
       setOpen(false);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to assign team member");
+      toast.error(error instanceof Error ? error.message : 'Failed to assign team member');
     } finally {
       setIsLoading(false);
     }
@@ -131,9 +131,7 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Team Member</DialogTitle>
-          <DialogDescription>
-            Add a new member to {teamName}
-          </DialogDescription>
+          <DialogDescription>Add a new member to {teamName}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -155,7 +153,7 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableEmployees.map((employee) => (
+                      {availableEmployees.map(employee => (
                         <SelectItem key={employee.id} value={employee.id}>
                           {employee.user.name} - {employee.employeeRole}
                         </SelectItem>
@@ -168,15 +166,11 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
             />
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Adding..." : "Add Member"}
+                {isLoading ? 'Adding...' : 'Add Member'}
               </Button>
             </div>
           </form>
@@ -184,4 +178,4 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
       </DialogContent>
     </Dialog>
   );
-} 
+}

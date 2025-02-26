@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,48 +13,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 
 interface DeleteTeamDialogProps {
-  teamId: string
-  teamName: string
+  teamId: string;
+  teamName: string;
 }
 
 export function DeleteTeamDialog({ teamId, teamName }: DeleteTeamDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleDelete = async () => {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       const response = await fetch(`/api/admin/teams/${teamId}`, {
-        method: "DELETE",
-      })
+        method: 'DELETE',
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to delete team")
+        throw new Error('Failed to delete team');
       }
 
-      toast.success("Team deleted successfully")
-      router.refresh()
+      toast.success('Team deleted successfully');
+      router.refresh();
     } catch (error) {
-      console.error("Error deleting team:", error)
-      toast.error("Failed to delete team")
+      console.error('Error deleting team:', error);
+      toast.error('Failed to delete team');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button
-          variant="destructive"
-          size="icon"
-          className="h-8 w-8"
-        >
+        <Button variant="destructive" size="icon" className="h-8 w-8">
           <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
@@ -62,7 +58,8 @@ export function DeleteTeamDialog({ teamId, teamName }: DeleteTeamDialogProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Team</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete the team &quot;{teamName}&quot;? This action cannot be undone.
+            Are you sure you want to delete the team &quot;{teamName}&quot;? This action cannot be
+            undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -72,10 +69,10 @@ export function DeleteTeamDialog({ teamId, teamName }: DeleteTeamDialogProps) {
             className="bg-red-600 hover:bg-red-700"
             disabled={isLoading}
           >
-            {isLoading ? "Deleting..." : "Delete"}
+            {isLoading ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

@@ -1,48 +1,48 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Announcement {
-  id: string
-  title: string
-  content: string
-  createdAt: string
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
   admin: {
-    name: string
-  }
+    name: string;
+  };
 }
 
 export default function EmployeeAnnouncements() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAnnouncements() {
       try {
-        const response = await fetch("/api/employee/announcements", {
-          credentials: "include",
-        })
-        
+        const response = await fetch('/api/employee/announcements', {
+          credentials: 'include',
+        });
+
         if (!response.ok) {
-          throw new Error("Failed to fetch announcements")
+          throw new Error('Failed to fetch announcements');
         }
 
-        const data = await response.json()
-        setAnnouncements(data.announcements)
+        const data = await response.json();
+        setAnnouncements(data.announcements);
       } catch (error) {
-        console.error("Error fetching announcements:", error)
+        console.error('Error fetching announcements:', error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    fetchAnnouncements()
-  }, [])
+    fetchAnnouncements();
+  }, []);
 
   if (isLoading) {
-    return <AnnouncementsSkeleton />
+    return <AnnouncementsSkeleton />;
   }
 
   if (!announcements.length) {
@@ -51,12 +51,12 @@ export default function EmployeeAnnouncements() {
         <h2 className="text-2xl font-semibold text-gray-600">No announcements yet</h2>
         <p className="text-gray-500 mt-2">Check back later for updates</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
-      {announcements.map((announcement) => (
+      {announcements.map(announcement => (
         <Card key={announcement.id}>
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -67,25 +67,21 @@ export default function EmployeeAnnouncements() {
                 {new Date(announcement.createdAt).toLocaleDateString()}
               </div>
             </div>
-            <div className="text-sm text-gray-500">
-              Posted by {announcement.admin.name}
-            </div>
+            <div className="text-sm text-gray-500">Posted by {announcement.admin.name}</div>
           </CardHeader>
           <CardContent>
-            <div className="prose max-w-none">
-              {announcement.content}
-            </div>
+            <div className="prose max-w-none">{announcement.content}</div>
           </CardContent>
         </Card>
       ))}
     </div>
-  )
+  );
 }
 
 function AnnouncementsSkeleton() {
   return (
     <div className="space-y-6">
-      {[1, 2, 3].map((i) => (
+      {[1, 2, 3].map(i => (
         <Card key={i}>
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -104,5 +100,5 @@ function AnnouncementsSkeleton() {
         </Card>
       ))}
     </div>
-  )
-} 
+  );
+}

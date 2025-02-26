@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -11,58 +11,58 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const announcementSchema = z.object({
   title: z.string().min(2, {
-    message: "Title must be at least 2 characters.",
+    message: 'Title must be at least 2 characters.',
   }),
   content: z.string().min(10, {
-    message: "Content must be at least 10 characters.",
+    message: 'Content must be at least 10 characters.',
   }),
-})
+});
 
-type AnnouncementFormValues = z.infer<typeof announcementSchema>
+type AnnouncementFormValues = z.infer<typeof announcementSchema>;
 
 export default function NewAnnouncementPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<AnnouncementFormValues>({
     resolver: zodResolver(announcementSchema),
     defaultValues: {
-      title: "",
-      content: "",
+      title: '',
+      content: '',
     },
-  })
+  });
 
   async function onSubmit(data: AnnouncementFormValues) {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/admin/announcements", {
-        method: "POST",
+      setIsLoading(true);
+      const response = await fetch('/api/admin/announcements', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to create announcement")
+        throw new Error('Failed to create announcement');
       }
 
-      toast.success("Announcement created successfully")
-      router.push("/admin/announcements")
-      router.refresh()
+      toast.success('Announcement created successfully');
+      router.push('/admin/announcements');
+      router.refresh();
     } catch (error) {
-      toast.error("Failed to create announcement")
+      toast.error('Failed to create announcement');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -108,20 +108,16 @@ export default function NewAnnouncementPage() {
               )}
             />
             <div className="flex justify-end gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-              >
+              <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create Announcement"}
+                {isLoading ? 'Creating...' : 'Create Announcement'}
               </Button>
             </div>
           </form>
         </Form>
       </div>
     </div>
-  )
-} 
+  );
+}

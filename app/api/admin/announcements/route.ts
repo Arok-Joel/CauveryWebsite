@@ -1,54 +1,46 @@
-import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
-import * as z from "zod"
-import { verifyAuth } from "@/lib/auth"
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import * as z from 'zod';
+import { verifyAuth } from '@/lib/auth';
 
 const announcementSchema = z.object({
   title: z.string().min(2),
   content: z.string().min(10),
-})
+});
 
 export async function POST(req: Request) {
   try {
     // Get admin token from cookies in headers
-    const cookieHeader = req.headers.get("cookie")
-    const token = cookieHeader?.split(";")
-      .find((c: string) => c.trim().startsWith("auth-token="))
-      ?.split("=")[1]
+    const cookieHeader = req.headers.get('cookie');
+    const token = cookieHeader
+      ?.split(';')
+      .find((c: string) => c.trim().startsWith('auth-token='))
+      ?.split('=')[1];
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify token and get admin email
-    const verified = await verifyAuth(token)
-    if (!verified || verified.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    const verified = await verifyAuth(token);
+    if (!verified || verified.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get admin user from database
     const admin = await db.user.findFirst({
       where: {
         email: verified.email,
-        role: "ADMIN",
+        role: 'ADMIN',
       },
-    })
+    });
 
     if (!admin) {
-      return NextResponse.json(
-        { error: "Admin not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
     }
 
-    const body = await req.json()
-    const { title, content } = announcementSchema.parse(body)
+    const body = await req.json();
+    const { title, content } = announcementSchema.parse(body);
 
     const announcement = await db.announcement.create({
       data: {
@@ -63,19 +55,16 @@ export async function POST(req: Request) {
           },
         },
       },
-    })
+    });
 
-    return NextResponse.json(announcement)
+    return NextResponse.json(announcement);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 })
+      return NextResponse.json({ error: error.errors }, { status: 400 });
     }
 
-    console.error("Announcement creation error:", error)
-    return NextResponse.json(
-      { error: "Failed to create announcement" },
-      { status: 500 }
-    )
+    console.error('Announcement creation error:', error);
+    return NextResponse.json({ error: 'Failed to create announcement' }, { status: 500 });
   }
 }
 
@@ -83,7 +72,7 @@ export async function GET() {
   try {
     const announcements = await db.announcement.findMany({
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
       include: {
         admin: {
@@ -92,13 +81,10 @@ export async function GET() {
           },
         },
       },
-    })
+    });
 
-    return NextResponse.json(announcements)
+    return NextResponse.json(announcements);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch announcements" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch announcements' }, { status: 500 });
   }
-} 
+}

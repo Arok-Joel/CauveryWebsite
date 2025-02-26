@@ -1,5 +1,5 @@
-import { EmployeeRegisterForm } from "@/components/auth/employee-register-form"
-import Link from "next/link"
+import { EmployeeRegisterForm } from '@/components/auth/employee-register-form';
+import Link from 'next/link';
 
 export default function EmployeeRegisterPage() {
   return (
@@ -14,13 +14,16 @@ export default function EmployeeRegisterPage() {
           <EmployeeRegisterForm />
 
           <p className="text-center mt-6 text-gray-600">
-            Already have an account?{" "}
-            <Link href="/auth/employee/login" className="text-[#3C5A3E] hover:underline font-medium">
+            Already have an account?{' '}
+            <Link
+              href="/auth/employee/login"
+              className="text-[#3C5A3E] hover:underline font-medium"
+            >
               Login here
             </Link>
           </p>
         </div>
       </div>
     </main>
-  )
-} 
+  );
+}

@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { RegisterForm } from "@/components/auth/register-form"
+import Link from 'next/link';
+import { RegisterForm } from '@/components/auth/register-form';
 
 export default function RegisterPage() {
   return (
@@ -10,11 +10,11 @@ export default function RegisterPage() {
             <h1 className="text-2xl font-bold mb-2">Create an account</h1>
             <p className="text-gray-600">Enter your details to register</p>
           </div>
-          
+
           <RegisterForm />
 
           <p className="text-center mt-6 text-sm text-gray-600">
-            Already have an account?{" "}
+            Already have an account?{' '}
             <Link href="/auth/login" className="text-primary hover:underline">
               Sign in
             </Link>
@@ -22,5 +22,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }
