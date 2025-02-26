@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import * as z from 'zod';
 import bcrypt from 'bcryptjs';
+import { generateEmployeeId } from '@/lib/employee-id';
 
 const employeeRegisterSchema = z.object({
   name: z.string().min(2),
@@ -70,9 +71,13 @@ export async function POST(req: Request) {
         },
       });
 
+      // Generate employee ID
+      const employeeId = await generateEmployeeId();
+
       // Create employee
       const employee = await tx.employee.create({
         data: {
+          id: employeeId,
           userId: user.id,
           guardianName: data.guardianName,
           dateOfBirth: dob,
@@ -98,6 +103,7 @@ export async function POST(req: Request) {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
+        employeeId: result.employee.id,
       },
     });
   } catch (error) {

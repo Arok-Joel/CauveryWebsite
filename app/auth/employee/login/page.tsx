@@ -8,7 +8,7 @@ export default function EmployeeLoginPage() {
         <div className="bg-white p-8 rounded-lg shadow-sm">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold mb-2">Employee Login</h1>
-            <p className="text-gray-600">Enter your credentials to access your dashboard</p>
+            <p className="text-gray-600">Enter your employee ID and password to access your dashboard</p>
           </div>
 
           <EmployeeLoginForm />

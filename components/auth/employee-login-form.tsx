@@ -19,8 +19,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
 const employeeLoginFormSchema = z.object({
-  email: z.string().email({
-    message: 'Please enter a valid email address.',
+  employeeId: z.string().min(1, 'Employee ID is required').regex(/^RCF\d{7}$/, {
+    message: 'Please enter a valid employee ID (e.g., RCF2025001)',
   }),
   password: z.string().min(1, 'Password is required'),
 });
@@ -35,7 +35,7 @@ export function EmployeeLoginForm() {
   const form = useForm<EmployeeLoginFormValues>({
     resolver: zodResolver(employeeLoginFormSchema),
     defaultValues: {
-      email: '',
+      employeeId: '',
       password: '',
     },
   });
@@ -49,7 +49,10 @@ export function EmployeeLoginForm() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          employeeId: data.employeeId.toUpperCase(),
+          password: data.password
+        }),
       });
 
       const result = await response.json();
@@ -75,12 +78,18 @@ export function EmployeeLoginForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="email"
+          name="employeeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Employee ID</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="employee@example.com" {...field} />
+                <Input 
+                  type="text" 
+                  placeholder="RCF2025001" 
+                  {...field} 
+                  className="bg-white uppercase"
+                  autoCapitalize="characters"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
