@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import * as z from 'zod';
 import bcrypt from 'bcryptjs';
 import { generateEmployeeId } from '@/lib/employee-id';
+import { sendEmployeeWelcomeEmail } from '@/lib/email';
 
 const employeeRegisterSchema = z.object({
   name: z.string().min(2),
@@ -96,6 +97,20 @@ export async function POST(req: Request) {
 
       return { user, employee };
     });
+
+    // Send welcome email
+    try {
+      const emailResult = await sendEmployeeWelcomeEmail({
+        to: result.user.email,
+        employeeName: result.user.name,
+        employeeId: result.employee.id,
+      });
+      
+      console.log('Email sending result:', emailResult);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Continue with registration response even if email fails
+    }
 
     return NextResponse.json({
       message: 'Employee registered successfully',
