@@ -28,7 +28,7 @@ export async function DELETE(req: Request, { params }: { params: { teamId: strin
     const { teamId } = params;
     const { employeeId } = await req.json();
 
-    // Remove employee from team
+    // Remove employee from team and reset reporting relationship
     await db.employee.update({
       where: {
         id: employeeId,
@@ -36,6 +36,17 @@ export async function DELETE(req: Request, { params }: { params: { teamId: strin
       },
       data: {
         teamId: null,
+        reportsToId: null, // Reset reporting relationship
+      },
+    });
+
+    // Also update any employees that report to this employee
+    await db.employee.updateMany({
+      where: {
+        reportsToId: employeeId,
+      },
+      data: {
+        reportsToId: null,
       },
     });
 

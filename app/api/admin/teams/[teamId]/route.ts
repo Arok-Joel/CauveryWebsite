@@ -48,6 +48,36 @@ export async function DELETE(req: Request, { params }: { params: { teamId: strin
   try {
     const { teamId } = params;
 
+    // First, get all team members to reset their reporting relationships
+    const team = await db.team.findUnique({
+      where: {
+        id: teamId,
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!team) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    // Reset reportsToId for all team members
+    if (team.members.length > 0) {
+      await db.employee.updateMany({
+        where: {
+          teamId: teamId,
+        },
+        data: {
+          reportsToId: null,
+        },
+      });
+    }
+
     // Delete the team
     await db.team.delete({
       where: {

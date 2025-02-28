@@ -44,6 +44,7 @@ export async function GET(req: Request) {
             ifscCode: true,
             dateOfJoining: true,
             employeeRole: true,
+            id: true,
           },
         },
       },
