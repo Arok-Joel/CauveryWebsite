@@ -28,6 +28,10 @@ export default function AdminLayout({
       name: "Announcements",
       href: "/admin/announcements",
     },
+    {
+      name: "Plots",
+      href: "/admin/plots",
+    },
   ]
 
   return (

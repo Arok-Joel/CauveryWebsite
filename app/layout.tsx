@@ -5,12 +5,13 @@ import './globals.css'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Royal Cauvery Farms',
-  description: 'Your gateway to premium plots in Sri Sai Nagar',
+  description: 'Royal Cauvery Farms - Your trusted partner in real estate',
 }
 
 export default function RootLayout({
@@ -22,9 +23,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <Navbar />
-          {children}
-          <Toaster />
+          <TooltipProvider>
+            <Navbar />
+            {children}
+            <Toaster />
+          </TooltipProvider>
         </AuthProvider>
       </body>
     </html>

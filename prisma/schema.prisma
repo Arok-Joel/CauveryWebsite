@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -49,11 +48,11 @@ model Employee {
   userId           String       @unique
   teamId           String?
   reportsToId      String?
+  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
+  subordinates     Employee[]   @relation("EmployeeReporting")
   memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadsTeam        Team?        @relation("TeamLeader")
-  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
-  subordinates     Employee[]   @relation("EmployeeReporting")
 }
 
 model Announcement {
@@ -79,7 +78,6 @@ model Layout {
 model Plot {
   id          String   @id
   plotNumber  String   @unique
-  siteName    String
   size        String
   plotAddress String
   price       Decimal
@@ -87,6 +85,7 @@ model Plot {
   facing      String
   status      String
   coordinates Json
+  images      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime
   layoutId    String?
