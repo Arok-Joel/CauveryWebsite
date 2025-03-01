@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
+import { cookies } from "next/headers";
+import { verifyAuth } from "@/lib/auth";
+import Link from "next/link";
 
 interface PageProps {
   params: {
@@ -28,8 +31,25 @@ async function getPlot(id: string) {
   return plot;
 }
 
+async function getUserRole() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+  
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const verified = await verifyAuth(token);
+    return verified?.role || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export default async function PlotPage({ params }: PageProps) {
   const plot = await getPlot(params.id);
+  const userRole = await getUserRole();
   
   // Parse images string with error handling and default empty array
   let images: PlotImage[] = [];
@@ -263,6 +283,14 @@ export default async function PlotPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-4">
+                {userRole === "EMPLOYEE" && plot.status.toLowerCase() === 'available' && (
+                  <Button className="w-full bg-green-600 hover:bg-green-700" size="lg" asChild>
+                    <Link href={`/plots/${plot.id}/book`}>
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Book Plot
+                    </Link>
+                  </Button>
+                )}
                 <Button className="w-full" size="lg">
                   <Phone className="mr-2 h-4 w-4" />
                   Contact Sales Team
