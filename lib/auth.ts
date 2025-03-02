@@ -3,7 +3,11 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 
-const secretKey = process.env.JWT_SECRET || 'fallback-secret-key';
+// Remove the fallback secret key to prevent session mixing
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey) {
+  throw new Error('JWT_SECRET environment variable is not set');
+}
 const key = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: any) {
@@ -49,6 +53,8 @@ export async function createUserSession(user: { email: string; name: string; rol
     email: user.email,
     name: user.name,
     role: user.role,
+    // Add a unique identifier to each token to prevent session mixing
+    sessionId: crypto.randomUUID(),
   });
 
   const response = new NextResponse(
@@ -65,8 +71,9 @@ export async function createUserSession(user: { email: string; name: string; rol
   response.cookies.set('auth-token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict', // Changed from 'lax' to 'strict' for better security
     maxAge: 60 * 60 * 24, // 1 day
+    path: '/', // Ensure cookie is available across the site
   });
 
   return { token, response };
@@ -99,8 +106,9 @@ export async function logout() {
   response.cookies.set('auth-token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: 0, // Expire immediately
+    path: '/',
   });
 
   return response;

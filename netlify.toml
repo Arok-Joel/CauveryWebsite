@@ -8,3 +8,18 @@ package = "@netlify/plugin-nextjs"
 [build.environment]
 BUN_VERSION = "1.0.25"
 NODE_VERSION = "20"
+# The following environment variables must be set in the Netlify dashboard:
+# DATABASE_URL = "your-database-url"
+# DIRECT_URL = "your-direct-database-url"
+# JWT_SECRET = "your-secure-random-string"
+# ADMIN_EMAIL = "admin@example.com"
+# ADMIN_PASSWORD = "your-admin-password"
+
+[context.production]
+command = "bun install && bun run build"
+
+[context.deploy-preview]
+command = "bun install && bun run build"
+
+[context.branch-deploy]
+command = "bun install && bun run build"
