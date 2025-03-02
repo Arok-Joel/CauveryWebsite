@@ -37,36 +37,38 @@ async function createSampleUsers() {
 }
 
 async function createAdminUser() {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  // Check if admin already exists to prevent duplicates
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      role: UserRole.ADMIN
+    }
+  });
 
-  if (!adminEmail || !adminPassword) {
-    console.log(
-      'Admin credentials not found in environment variables. Using default admin credentials.'
-    );
-    await prisma.user.create({
-      data: {
-        email: 'admin@cauvery.com',
-        name: 'Admin',
-        password: hashedPassword, // This will use the same password123
-        phone: '9876543210',
-        role: UserRole.ADMIN,
-      },
-    });
-    console.log('Default admin user created successfully');
+  if (existingAdmin) {
+    console.log('Admin user already exists, skipping creation');
     return;
   }
+
+  // Get admin credentials from environment variables
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@cauvery.com';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  
+  // Hash the password if provided, otherwise use a default hashed password
+  const password = adminPassword 
+    ? bcrypt.hashSync(adminPassword, 10) 
+    : bcrypt.hashSync('Admin@123', 10);
 
   await prisma.user.create({
     data: {
       email: adminEmail,
       name: 'Admin',
-      password: adminPassword,
+      password: password,
       phone: '9876543210',
       role: UserRole.ADMIN,
     },
   });
-  console.log('Admin user created with provided credentials');
+  
+  console.log(`Admin user created with email: ${adminEmail}`);
 }
 
 async function createSampleEmployees(): Promise<Employee[]> {
@@ -281,26 +283,17 @@ async function createTeamsWithHierarchy(employees: Employee[]) {
 }
 
 async function main() {
-  console.log('Start seeding...');
-
-  // Clear existing data
-  await prisma.team.deleteMany();
-  await prisma.employee.deleteMany();
-  await prisma.user.deleteMany();
-
-  await createSampleUsers();
-  await createAdminUser();
-  const employees = await createSampleEmployees();
-  await createTeamsWithHierarchy(employees);
-
-  console.log('Seeding finished');
+  console.log('Starting seed process...');
+  
+  try {
+    await createAdminUser();
+    console.log('Seed completed successfully');
+  } catch (error) {
+    console.error('Error during seed process:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .catch(e => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();
