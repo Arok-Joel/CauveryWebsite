@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { verifyAuth } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
-import { existsSync } from 'fs';
 
-// This is a simple implementation. In a production environment,
-// you would use a cloud storage service like AWS S3, Google Cloud Storage, etc.
+// Modified implementation for serverless environments like Netlify
+// Instead of saving to filesystem, we'll store the image as base64 in the database
 export async function POST(req: Request) {
   try {
     // Get auth token from cookies in headers
@@ -45,39 +41,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File size must be less than 2MB' }, { status: 400 });
     }
 
-    // Create a unique filename
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExtension}`;
+    // Convert file to base64
+    const fileBuffer = await file.arrayBuffer();
+    const base64String = `data:${file.type};base64,${Buffer.from(fileBuffer).toString('base64')}`;
     
-    // Create the public directory path
-    const publicDir = join(process.cwd(), 'public');
-    const uploadsDir = join(publicDir, 'uploads');
-    
-    // Ensure the uploads directory exists
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-    
-    try {
-      await writeFile(join(uploadsDir, fileName), Buffer.from(await file.arrayBuffer()));
-    } catch (error) {
-      console.error('Error writing file:', error);
-      return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
-    }
-
-    // Create the URL for the uploaded image
-    const imageUrl = `/uploads/${fileName}`;
-
-    // Update the user's profile image in the database
+    // Update the user's profile image in the database with the base64 string
     await db.user.update({
       where: { email: verified.email },
-      data: { profileImage: imageUrl },
+      data: { profileImage: base64String },
     });
 
     return NextResponse.json({ 
       success: true, 
       message: 'Profile image uploaded successfully',
-      imageUrl
+      imageUrl: base64String
     });
   } catch (error) {
     console.error('Profile image upload error:', error);
