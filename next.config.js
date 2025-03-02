@@ -6,11 +6,13 @@ const nextConfig = {
   },
   // Ensure static files in public directory are served
   experimental: {
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000'],
+    },
   },
   webpack(config) {
     return config;
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

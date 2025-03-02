@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import * as z from 'zod';
 
@@ -6,9 +6,13 @@ const updateReportsToSchema = z.object({
   reportsToId: z.string().min(1),
 });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const body = await req.json();
+    const params = await context.params;
+    const body = await request.json();
     const { reportsToId } = updateReportsToSchema.parse(body);
 
     // Get both employees to verify roles

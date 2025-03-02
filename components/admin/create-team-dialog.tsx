@@ -35,6 +35,7 @@ import { UserPlus } from 'lucide-react';
 interface Employee {
   id: string;
   name: string;
+  leadsTeam?: boolean | null;
 }
 
 const createTeamSchema = z.object({

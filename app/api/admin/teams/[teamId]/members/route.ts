@@ -1,38 +1,102 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import * as z from 'zod';
 
-export async function POST(req: Request, { params }: { params: { teamId: string } }) {
+const addMemberSchema = z.object({
+  employeeId: z.string().min(1),
+});
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ teamId: string }> }
+) {
   try {
-    const { teamId } = params;
-    const { employeeId } = await req.json();
+    const params = await context.params;
+    const body = await req.json();
+    const { employeeId } = addMemberSchema.parse(body);
 
-    // Add employee to team
-    await db.employee.update({
-      where: {
-        id: employeeId,
-      },
-      data: {
-        teamId,
+    // Verify the team exists
+    const team = await db.team.findUnique({
+      where: { id: params.teamId },
+      include: {
+        members: true,
       },
     });
 
-    return NextResponse.json({ message: 'Employee added to team successfully' });
+    if (!team) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    // Verify the employee exists and is not already in a team
+    const employee = await db.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        memberOfTeam: true,
+        leadsTeam: true,
+      },
+    });
+
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // Check if employee is already in a team
+    if (employee.teamId) {
+      return NextResponse.json(
+        { error: 'Employee is already a member of a team' },
+        { status: 400 }
+      );
+    }
+
+    // Check if employee is an Executive Director (they can't be team members)
+    if (employee.employeeRole === 'EXECUTIVE_DIRECTOR') {
+      return NextResponse.json(
+        { error: 'Executive Directors cannot be team members' },
+        { status: 400 }
+      );
+    }
+
+    // Add the employee to the team
+    const updatedEmployee = await db.employee.update({
+      where: { id: employeeId },
+      data: { teamId: params.teamId },
+      include: {
+        user: true,
+        memberOfTeam: {
+          include: {
+            leader: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(updatedEmployee);
   } catch (error) {
-    console.error('Error adding employee to team:', error);
-    return NextResponse.json({ error: 'Failed to add employee to team' }, { status: 500 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { teamId: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ teamId: string }> }
+) {
   try {
-    const { teamId } = params;
+    const params = await context.params;
     const { employeeId } = await req.json();
 
     // Remove employee from team and reset reporting relationship
     await db.employee.update({
       where: {
         id: employeeId,
-        teamId: teamId, // Ensure employee belongs to this team
+        teamId: params.teamId, // Ensure employee belongs to this team
       },
       data: {
         teamId: null,

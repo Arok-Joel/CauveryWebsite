@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: Request, { params }: { params: { teamId: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ teamId: string }> }) {
   try {
+    const params = await context.params;
     const { teamId } = params;
     console.log('Fetching available employees for team:', teamId);
 

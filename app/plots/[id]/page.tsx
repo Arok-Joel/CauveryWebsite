@@ -7,16 +7,34 @@ import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Shar
 import { cookies } from "next/headers";
 import { verifyAuth } from "@/lib/auth";
 import Link from "next/link";
+import { Decimal } from "@prisma/client/runtime/library";
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 interface PlotImage {
   url: string;
   caption?: string;
+}
+
+// Define a type that extends the base Plot type with the images field
+interface PlotWithImages {
+  id: string;
+  plotNumber: string;
+  size: string;
+  plotAddress: string;
+  price: Decimal;
+  dimensions: string;
+  facing: string;
+  status: string;
+  coordinates: any;
+  images: string;
+  createdAt: Date;
+  updatedAt: Date;
+  layoutId: string | null;
 }
 
 async function getPlot(id: string) {
@@ -28,7 +46,8 @@ async function getPlot(id: string) {
     notFound();
   }
 
-  return plot;
+  // Use type assertion to add the images field
+  return plot as unknown as PlotWithImages;
 }
 
 async function getUserRole() {
@@ -48,7 +67,8 @@ async function getUserRole() {
 }
 
 export default async function PlotPage({ params }: PageProps) {
-  const plot = await getPlot(params.id);
+  const resolvedParams = await params;
+  const plot = await getPlot(resolvedParams.id);
   const userRole = await getUserRole();
   
   // Parse images string with error handling and default empty array

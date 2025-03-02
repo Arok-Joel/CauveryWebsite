@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     // Create session for admin
     const { response } = await createUserSession({
       email,
+      name: 'Admin',
       role: 'ADMIN',
     });
 

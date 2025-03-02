@@ -23,7 +23,12 @@ interface Layout {
   Plot: Plot[];
 }
 
-export default function LayoutPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function LayoutPage({ params }: PageProps) {
+  const resolvedParams = await params;
   const [layout, setLayout] = useState<Layout | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -36,7 +41,7 @@ export default function LayoutPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     const fetchLayout = async () => {
       try {
-        const response = await fetch(`/api/layouts/${params.id}`);
+        const response = await fetch(`/api/layouts/${resolvedParams.id}`);
         const data = await response.json();
         setLayout(data);
       } catch (error) {
@@ -45,7 +50,7 @@ export default function LayoutPage({ params }: { params: { id: string } }) {
     };
 
     fetchLayout();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   useEffect(() => {
     if (!layout) return;

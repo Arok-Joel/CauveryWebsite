@@ -8,9 +8,10 @@ const roleUpdateSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
+    const params = await context.params;
     const body = await req.json();
     const { role } = roleUpdateSchema.parse(body);
 

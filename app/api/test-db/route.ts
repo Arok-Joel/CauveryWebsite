@@ -22,6 +22,7 @@ export async function GET() {
         facing: "North",
         status: "available",
         coordinates: [],
+        images: "[]", // String representation of an empty array
         updatedAt: new Date(),
       },
     });
@@ -38,12 +39,14 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Test failed:", error);
+    
+    // Type guard for error object
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     return NextResponse.json(
       { 
         error: "Test failed", 
-        details: error.message,
-        code: error.code,
-        meta: error.meta
+        details: errorMessage,
       },
       { status: 500 }
     );

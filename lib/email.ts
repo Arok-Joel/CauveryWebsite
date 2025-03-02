@@ -87,7 +87,7 @@ export async function sendEmployeeWelcomeEmail({
     // This is useful for non-production environments where emails might not be delivered
     await logEmailSent(emailContent);
     
-    return { success: true, id: result.id, emailContent };
+    return { success: true, id: result.data?.id, emailContent };
   } catch (error) {
     console.error('Failed to send welcome email:', error);
     
@@ -100,22 +100,7 @@ export async function sendEmployeeWelcomeEmail({
       });
     }
     
-    // In development, still log the email attempt
-    if (process.env.NODE_ENV !== 'production') {
-      await logEmailSent(emailContent, error instanceof Error ? error.message : 'Unknown error');
-      
-      // In development, we'll consider this a "success" for testing purposes
-      // but we'll include a flag indicating it was simulated
-      return { 
-        success: true, 
-        simulated: true,
-        emailContent,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-    
-    // Don't throw, just return error status
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    return { success: false, error };
   }
 }
 
