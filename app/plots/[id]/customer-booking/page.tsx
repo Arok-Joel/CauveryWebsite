@@ -31,38 +31,33 @@ interface PlotDetails {
 }
 
 const customerBookingSchema = z.object({
-  // Plot Details (non-editable)
+  plotId: z.string(),
   plotNumber: z.string(),
   size: z.string(),
   plotAddress: z.string(),
-  price: z.string().refine(
-    (val) => !isNaN(Number(val)) && Number(val) > 0,
-    "Price must be a positive number"
-  ),
+  price: z.string(),
   dimensions: z.string(),
   facing: z.string(),
   employeeName: z.string(),
-  
-  // Customer Details (editable)
-  customerName: z.string().min(1, "Name is required"),
+  customerName: z.string().min(1, "Customer name is required"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
   aadhaarNumber: z.string().min(12, "Aadhaar number must be 12 digits"),
 });
 
-type CustomerBookingFormValues = z.infer<typeof customerBookingSchema>;
+type CustomerBookingForm = z.infer<typeof customerBookingSchema>;
 
 export default function CustomerBookingPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [plotDetails, setPlotDetails] = useState<PlotDetails | null>(null);
 
-  const form = useForm<CustomerBookingFormValues>({
+  const form = useForm<CustomerBookingForm>({
     resolver: zodResolver(customerBookingSchema),
     defaultValues: {
+      plotId: "",
       plotNumber: "",
       size: "",
       plotAddress: "",
@@ -79,97 +74,58 @@ export default function CustomerBookingPage() {
   });
 
   useEffect(() => {
-    const data = searchParams.get("data");
-    if (!data) {
-      toast.error("Invalid booking link");
-      router.push("/plots");
-      return;
-    }
-
-    try {
-      const decodedData = JSON.parse(atob(data));
-      setPlotDetails(decodedData);
-      
-      // Set form values for non-editable fields
-      form.setValue("plotNumber", decodedData.plotNumber);
-      form.setValue("size", decodedData.size);
-      form.setValue("plotAddress", decodedData.plotAddress);
-      form.setValue("price", decodedData.price.toString());
-      form.setValue("dimensions", decodedData.dimensions);
-      form.setValue("facing", decodedData.facing);
-      form.setValue("employeeName", decodedData.employeeName);
-    } catch (error) {
-      toast.error("Invalid booking link data");
-      router.push("/plots");
+    const encodedData = searchParams.get("data");
+    if (encodedData) {
+      try {
+        const decodedData = JSON.parse(atob(encodedData));
+        form.reset({
+          ...decodedData,
+          customerName: "",
+          phoneNumber: "",
+          email: "",
+          address: "",
+          aadhaarNumber: "",
+        });
+      } catch (error) {
+        console.error("Error decoding data:", error);
+        toast.error("Invalid booking link");
+        router.push("/plots");
+      }
     }
   }, [searchParams, form, router]);
 
-  const onSubmit = async (data: CustomerBookingFormValues) => {
+  const onSubmit = async (data: CustomerBookingForm) => {
     try {
       setIsLoading(true);
-      
-      // Send booking request with both plot and customer details
       const response = await fetch("/api/plots/book", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          plotId: params.id,
-          ...data,
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to book plot");
+        throw new Error("Failed to book plot");
       }
 
       toast.success("Plot booked successfully!");
-      router.push(`/plots/${params.id}`);
+      router.push("/plots");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to book plot");
+      console.error("Error booking plot:", error);
+      toast.error("Failed to book plot. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!plotDetails) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              <Skeleton className="h-8 w-64" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              <div>
-                <Skeleton className="h-6 w-32 mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="space-y-2">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-10 w-full" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-8">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Book Plot {plotDetails.plotNumber}</CardTitle>
+        <CardHeader className="border-b">
+          <CardTitle className="text-2xl">Book Plot {form.getValues("plotNumber")}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Plot Details Section */}
@@ -183,8 +139,9 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Plot Number</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -195,20 +152,9 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Size</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="plotAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled />
-                        </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -219,14 +165,9 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Price (₹)</FormLabel>
                         <FormControl>
-                          <Input 
-                            {...field} 
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            disabled
-                          />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -237,8 +178,9 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Dimensions</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -249,27 +191,22 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Facing</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              </div>
-
-              {/* Employee Details Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Employee Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="employeeName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Employee Name</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -285,9 +222,9 @@ export default function CustomerBookingPage() {
                     name="customerName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Customer Name</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter your name" />
+                          <Input {...field} placeholder="Enter your full name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -300,7 +237,7 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter your phone number" />
+                          <Input {...field} type="tel" placeholder="Enter your phone number" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -313,20 +250,7 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input {...field} type="email" placeholder="Enter your email" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter your address" />
+                          <Input {...field} type="email" placeholder="Enter your email address" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -339,7 +263,20 @@ export default function CustomerBookingPage() {
                       <FormItem>
                         <FormLabel>Aadhaar Number</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter your Aadhaar number" />
+                          <Input {...field} placeholder="Enter your 12-digit Aadhaar number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your complete address" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -352,13 +289,13 @@ export default function CustomerBookingPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => router.push("/plots")}
                   disabled={isLoading}
                 >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Booking..." : "Book Plot"}
+                  {isLoading ? "Booking Plot..." : "Book Plot"}
                 </Button>
               </div>
             </form>

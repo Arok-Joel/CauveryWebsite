@@ -75,9 +75,28 @@ model Layout {
   Plot      Plot[]
 }
 
+model SoldPlot {
+  id            String   @id @default(cuid())
+  plotNumber    String
+  size          String
+  plotAddress   String
+  price         String
+  dimensions    String
+  facing        String
+  employeeName  String
+  customerName  String
+  phoneNumber   String
+  email         String
+  address       String
+  aadhaarNumber String
+  soldAt        DateTime @default(now())
+  plot          Plot     @relation(fields: [plotId], references: [id])
+  plotId        String   @unique
+}
+
 model Plot {
-  id          String   @id
-  plotNumber  String   @unique
+  id          String    @id
+  plotNumber  String    @unique
   size        String
   plotAddress String
   price       Decimal
@@ -86,10 +105,11 @@ model Plot {
   status      String
   coordinates Json
   images      String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   updatedAt   DateTime
   layoutId    String?
-  Layout      Layout?  @relation(fields: [layoutId], references: [id])
+  Layout      Layout?   @relation(fields: [layoutId], references: [id])
+  SoldPlot    SoldPlot?
 }
 
 enum UserRole {
