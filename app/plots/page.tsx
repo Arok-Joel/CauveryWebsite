@@ -95,9 +95,9 @@ export default function PlotsPage() {
   if (!selectedLayout) return null;
 
   return (
-    <div className="flex">
-      {/* Side Panel */}
-      <div className="w-64 min-h-screen bg-[#0f172a] text-white fixed left-0 top-[64px] bottom-0 z-10">
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-[#0f172a] text-white">
         <div className="p-6">
           <h2 className="text-lg font-semibold mb-4">Layout Selection</h2>
           <Select
@@ -150,90 +150,74 @@ export default function PlotsPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pl-64 pt-[64px]">
-        <div 
-          className="relative mx-2 flex items-center justify-center"
-          style={{
-            width: '100%',
-            height: 'calc(100vh - 64px)',
-          }}
-        >
-          <div
-            className="relative"
-            style={{
-              width: '100%',
-              height: '100%',
-              maxHeight: '100%',
-              maxWidth: '100%',
-            }}
+      {/* Main content */}
+      <div className="flex-1 bg-white">
+        <div className="relative w-full h-[calc(100vh-64px)]">
+          {selectedLayout.image && (
+            <Image
+              src={selectedLayout.image}
+              alt={selectedLayout.name}
+              fill
+              style={{ objectFit: 'contain' }}
+              priority
+            />
+          )}
+          
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+            preserveAspectRatio="xMidYMid meet"
           >
-            {selectedLayout.image && (
-              <Image
-                src={selectedLayout.image}
-                alt={selectedLayout.name}
-                fill
-                style={{ objectFit: 'contain' }}
-                priority
-              />
-            )}
+            <defs>
+              <filter id="hover-shadow">
+                <feDropShadow dx="2" dy="2" stdDeviation="2" floodOpacity="0.3" />
+              </filter>
+            </defs>
             
-            <svg
-              className="absolute top-0 left-0 w-full h-full"
-              viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <defs>
-                <filter id="hover-shadow">
-                  <feDropShadow dx="2" dy="2" stdDeviation="2" floodOpacity="0.3" />
-                </filter>
-              </defs>
-              
-              {selectedLayout.Plot.map((plot) => (
-                <g key={plot.id}>
-                  <polygon
-                    points={plot.coordinates.map(p => `${p.x},${p.y}`).join(' ')}
-                    fill={
-                      plot.status === "sold"
-                        ? hoveredPlotId === plot.id ? "rgba(255, 0, 0, 0.4)" : "rgba(255, 0, 0, 0.2)"
-                        : plot.status === "reserved"
-                        ? hoveredPlotId === plot.id ? "rgba(255, 165, 0, 0.4)" : "rgba(255, 165, 0, 0.2)"
-                        : hoveredPlotId === plot.id ? "rgba(0, 255, 0, 0.4)" : "rgba(0, 255, 0, 0.2)"
-                    }
-                    stroke={
-                      plot.status === "sold"
-                        ? "#ff0000"
-                        : plot.status === "reserved"
-                        ? "#ffa500"
-                        : "#00ff00"
-                    }
-                    strokeWidth={hoveredPlotId === plot.id ? "2" : "1"}
-                    style={{
-                      cursor: 'pointer',
-                      filter: hoveredPlotId === plot.id ? 'url(#hover-shadow)' : 'none',
-                      transform: hoveredPlotId === plot.id ? 'translate(-2px, -2px)' : 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={() => setHoveredPlotId(plot.id)}
-                    onMouseLeave={() => setHoveredPlotId(null)}
-                    onClick={() => handlePlotClick(plot.id)}
-                  />
-                  <text
-                    x={plot.coordinates.reduce((sum, p) => sum + p.x, 0) / plot.coordinates.length}
-                    y={plot.coordinates.reduce((sum, p) => sum + p.y, 0) / plot.coordinates.length}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="#000"
-                    fontSize={hoveredPlotId === plot.id ? "16" : "14"}
-                    pointerEvents="none"
-                    style={{ transition: 'font-size 0.2s ease' }}
-                  >
-                    {plot.plotNumber}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </div>
+            {selectedLayout.Plot.map((plot) => (
+              <g key={plot.id}>
+                <polygon
+                  points={plot.coordinates.map(p => `${p.x},${p.y}`).join(' ')}
+                  fill={
+                    plot.status === "sold"
+                      ? hoveredPlotId === plot.id ? "rgba(255, 0, 0, 0.4)" : "rgba(255, 0, 0, 0.2)"
+                      : plot.status === "reserved"
+                      ? hoveredPlotId === plot.id ? "rgba(255, 165, 0, 0.4)" : "rgba(255, 165, 0, 0.2)"
+                      : hoveredPlotId === plot.id ? "rgba(0, 255, 0, 0.4)" : "rgba(0, 255, 0, 0.2)"
+                  }
+                  stroke={
+                    plot.status === "sold"
+                      ? "#ff0000"
+                      : plot.status === "reserved"
+                      ? "#ffa500"
+                      : "#00ff00"
+                  }
+                  strokeWidth={hoveredPlotId === plot.id ? "2" : "1"}
+                  style={{
+                    cursor: 'pointer',
+                    filter: hoveredPlotId === plot.id ? 'url(#hover-shadow)' : 'none',
+                    transform: hoveredPlotId === plot.id ? 'translate(-2px, -2px)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={() => setHoveredPlotId(plot.id)}
+                  onMouseLeave={() => setHoveredPlotId(null)}
+                  onClick={() => handlePlotClick(plot.id)}
+                />
+                <text
+                  x={plot.coordinates.reduce((sum, p) => sum + p.x, 0) / plot.coordinates.length}
+                  y={plot.coordinates.reduce((sum, p) => sum + p.y, 0) / plot.coordinates.length}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#000"
+                  fontSize={hoveredPlotId === plot.id ? "16" : "14"}
+                  pointerEvents="none"
+                  style={{ transition: 'font-size 0.2s ease' }}
+                >
+                  {plot.plotNumber}
+                </text>
+              </g>
+            ))}
+          </svg>
         </div>
       </div>
     </div>
