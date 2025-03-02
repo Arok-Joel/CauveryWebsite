@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Announcement {
   id: string;
@@ -49,6 +49,32 @@ interface ReportingStructure {
   }>;
 }
 
+interface EmployeeProfile {
+  user: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    pincode: string;
+    profileImage?: string;
+  };
+  employee: {
+    guardianName: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    pancardNumber: string;
+    aadharCardNumber: string;
+    bankName: string;
+    bankBranch: string;
+    accountNumber: string;
+    ifscCode: string;
+    dateOfJoining: string;
+    employeeRole: string;
+    id: string;
+  };
+}
+
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -56,6 +82,8 @@ export default function EmployeeDashboard() {
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
   const [isLoadingReporting, setIsLoadingReporting] = useState(true);
   const [currentDate] = useState(new Date());
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   useEffect(() => {
     async function fetchAnnouncements() {
@@ -96,8 +124,30 @@ export default function EmployeeDashboard() {
       }
     }
 
+    async function fetchProfile() {
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch('/api/employee/profile', {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        console.log('Dashboard profile data:', data);
+        setProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
     fetchAnnouncements();
     fetchReportingStructure();
+    fetchProfile();
   }, []);
 
   function formatRole(role: string) {
@@ -127,20 +177,24 @@ export default function EmployeeDashboard() {
       <div className="bg-gradient-to-r from-[#3C5A3E] to-[#5A8C5E] rounded-xl p-6 text-white shadow-lg">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Welcome back, {user?.name?.split(' ')[0]}</h1>
+            <h1 className="text-2xl font-bold mb-1">Welcome back, {profile?.user?.name?.split(' ')[0] || user?.name?.split(' ')[0] || "Employee"}</h1>
             <p className="text-green-100">
               {formatDate(currentDate)}
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex items-center bg-white/10 backdrop-blur-sm rounded-lg p-3">
             <Avatar className="h-8 w-8 mr-3 bg-white/20">
-              <AvatarFallback className="text-white">
-                {user?.name ? getInitials(user.name) : "U"}
-              </AvatarFallback>
+              {profile?.user?.profileImage ? (
+                <AvatarImage src={profile.user.profileImage} alt="Profile" />
+              ) : (
+                <AvatarFallback className="text-white">
+                  {profile?.user?.name ? getInitials(profile.user.name) : user?.name ? getInitials(user.name) : "U"}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div>
-              <p className="text-sm font-medium">{reportingStructure?.self?.id || "Loading..."}</p>
-              <p className="text-xs text-green-200">{reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}</p>
+              <p className="text-sm font-medium">{profile?.employee?.id || reportingStructure?.self?.id || "Loading..."}</p>
+              <p className="text-xs text-green-200">{profile?.employee?.employeeRole ? formatRole(profile.employee.employeeRole) : reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}</p>
             </div>
           </div>
         </div>
@@ -158,27 +212,41 @@ export default function EmployeeDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center mb-4">
-                <Avatar className="h-16 w-16 mr-4 bg-[#3C5A3E]">
-                  <AvatarFallback className="text-white text-xl">
-                    {user?.name ? getInitials(user.name) : "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="overflow-hidden">
-                  <p className="font-medium text-lg truncate">{user?.name || "Loading..."}</p>
-                  <Badge className="mt-1 bg-[#3C5A3E]/10 text-[#3C5A3E] hover:bg-[#3C5A3E]/20">
-                    {reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}
-                  </Badge>
+              {isLoadingProfile ? (
+                <div className="flex items-center mb-4">
+                  <Skeleton className="h-16 w-16 rounded-full mr-4" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center mb-4">
+                  <Avatar className="h-16 w-16 mr-4 bg-[#3C5A3E]">
+                    {profile?.user?.profileImage ? (
+                      <AvatarImage src={profile.user.profileImage} alt="Profile" />
+                    ) : (
+                      <AvatarFallback className="text-white text-xl">
+                        {profile?.user?.name ? getInitials(profile.user.name) : user?.name ? getInitials(user.name) : "U"}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="overflow-hidden">
+                    <p className="font-medium text-lg truncate">{profile?.user?.name || user?.name || "Loading..."}</p>
+                    <Badge className="mt-1 bg-[#3C5A3E]/10 text-[#3C5A3E] hover:bg-[#3C5A3E]/20">
+                      {profile?.employee?.employeeRole ? formatRole(profile.employee.employeeRole) : reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Email</span>
-                  <span className="text-sm font-medium text-right truncate ml-4">{user?.email || "Loading..."}</span>
+                  <span className="text-sm font-medium text-right truncate ml-4">{profile?.user?.email || user?.email || "Loading..."}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Employee ID</span>
-                  <span className="text-sm font-medium text-right">{reportingStructure?.self?.id || "Loading..."}</span>
+                  <span className="text-sm font-medium text-right">{profile?.employee?.id || reportingStructure?.self?.id || "Loading..."}</span>
                 </div>
                 <Link href="/employee/profile" className="block">
                   <Button variant="outline" className="w-full mt-2">View Full Profile</Button>

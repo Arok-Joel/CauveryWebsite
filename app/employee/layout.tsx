@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   User, 
@@ -13,15 +13,42 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+
+interface EmployeeProfile {
+  user: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    pincode: string;
+    profileImage?: string;
+  };
+  employee: {
+    guardianName: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    pancardNumber: string;
+    aadharCardNumber: string;
+    bankName: string;
+    bankBranch: string;
+    accountNumber: string;
+    ifscCode: string;
+    dateOfJoining: string;
+    employeeRole: string;
+    id: string;
+  };
+}
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, setUser, loading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // Protect employee routes
   useEffect(() => {
@@ -29,6 +56,35 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       router.push('/auth/employee/login');
     }
   }, [user, router, loading]);
+
+  // Fetch profile data
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!user) return;
+      
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch('/api/employee/profile', {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        setProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    if (user && user.role === 'EMPLOYEE') {
+      fetchProfile();
+    }
+  }, [user]);
 
   // Show loading state
   if (loading) {
@@ -92,6 +148,11 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       .toUpperCase();
   };
 
+  // Use profile data if available, otherwise fall back to auth context
+  const displayName = profile?.user?.name || user?.name || '';
+  const displayEmail = profile?.user?.email || user?.email || '';
+  const profileImage = profile?.user?.profileImage;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile Header */}
@@ -113,13 +174,17 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
                 </div>
                 <div className="flex items-center mt-4">
                   <Avatar className="h-10 w-10 mr-3 border-2 border-white">
-                    <AvatarFallback className="bg-green-700 text-white">
-                      {user?.name ? getInitials(user.name) : 'U'}
-                    </AvatarFallback>
+                    {profileImage ? (
+                      <AvatarImage src={profileImage} alt="Profile" />
+                    ) : (
+                      <AvatarFallback className="bg-green-700 text-white">
+                        {displayName ? getInitials(displayName) : 'U'}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="overflow-hidden">
-                    <p className="font-medium truncate">{user?.name}</p>
-                    <p className="text-sm text-green-200 truncate">{user?.email}</p>
+                    <p className="font-medium truncate">{displayName}</p>
+                    <p className="text-sm text-green-200 truncate">{displayEmail}</p>
                   </div>
                 </div>
               </div>
@@ -145,9 +210,13 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <h1 className="text-lg font-bold text-[#3C5A3E]">Royal Cauvery Farms</h1>
         </div>
         <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-[#3C5A3E] text-white">
-            {user?.name ? getInitials(user.name) : 'U'}
-          </AvatarFallback>
+          {profileImage ? (
+            <AvatarImage src={profileImage} alt="Profile" />
+          ) : (
+            <AvatarFallback className="bg-[#3C5A3E] text-white">
+              {displayName ? getInitials(displayName) : 'U'}
+            </AvatarFallback>
+          )}
         </Avatar>
       </header>
 
@@ -161,13 +230,17 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <div className="px-6 py-4 border-t border-b border-gray-200">
             <div className="flex items-center">
               <Avatar className="h-10 w-10 mr-3">
-                <AvatarFallback className="bg-[#3C5A3E] text-white">
-                  {user?.name ? getInitials(user.name) : 'U'}
-                </AvatarFallback>
+                {profileImage ? (
+                  <AvatarImage src={profileImage} alt="Profile" />
+                ) : (
+                  <AvatarFallback className="bg-[#3C5A3E] text-white">
+                    {displayName ? getInitials(displayName) : 'U'}
+                  </AvatarFallback>
+                )}
               </Avatar>
               <div className="overflow-hidden">
-                <p className="font-medium truncate">{user?.name}</p>
-                <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                <p className="font-medium truncate">{displayName}</p>
+                <p className="text-sm text-gray-500 truncate">{displayEmail}</p>
               </div>
             </div>
           </div>

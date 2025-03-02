@@ -24,29 +24,8 @@ export async function GET(req: Request) {
     // Get user and employee data
     const user = await db.user.findUnique({
       where: { email: verified.email },
-      select: {
-        name: true,
-        email: true,
-        phone: true,
-        address: true,
-        pincode: true,
-        employee: {
-          select: {
-            guardianName: true,
-            dateOfBirth: true,
-            age: true,
-            gender: true,
-            pancardNumber: true,
-            aadharCardNumber: true,
-            bankName: true,
-            bankBranch: true,
-            accountNumber: true,
-            ifscCode: true,
-            dateOfJoining: true,
-            employeeRole: true,
-            id: true,
-          },
-        },
+      include: {
+        employee: true,
       },
     });
 
@@ -54,15 +33,55 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
+    // Use type assertion to handle the profileImage property
+    const userData = user as unknown as {
+      name: string;
+      email: string;
+      phone: string;
+      address: string | null;
+      pincode: string | null;
+      profileImage: string | null;
+      employee: {
+        id: string;
+        guardianName: string;
+        dateOfBirth: Date;
+        age: number;
+        gender: string;
+        pancardNumber: string;
+        aadharCardNumber: string;
+        bankName: string;
+        bankBranch: string;
+        accountNumber: string;
+        ifscCode: string;
+        dateOfJoining: Date;
+        employeeRole: string;
+      }
+    };
+
     return NextResponse.json({
       user: {
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        pincode: user.pincode,
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        address: userData.address || '',
+        pincode: userData.pincode || '',
+        profileImage: userData.profileImage,
       },
-      employee: user.employee,
+      employee: {
+        guardianName: userData.employee.guardianName,
+        dateOfBirth: userData.employee.dateOfBirth,
+        age: userData.employee.age,
+        gender: userData.employee.gender,
+        pancardNumber: userData.employee.pancardNumber,
+        aadharCardNumber: userData.employee.aadharCardNumber,
+        bankName: userData.employee.bankName,
+        bankBranch: userData.employee.bankBranch,
+        accountNumber: userData.employee.accountNumber,
+        ifscCode: userData.employee.ifscCode,
+        dateOfJoining: userData.employee.dateOfJoining,
+        employeeRole: userData.employee.employeeRole,
+        id: userData.employee.id,
+      },
     });
   } catch (error) {
     console.error('Profile fetch error:', error);

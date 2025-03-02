@@ -20,9 +20,21 @@ import {
   Briefcase,
   Edit,
   Save,
-  X
+  X,
+  Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
+import React from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface EmployeeProfile {
   user: {
@@ -31,6 +43,7 @@ interface EmployeeProfile {
     phone: string;
     address: string;
     pincode: string;
+    profileImage?: string;
   };
   employee: {
     guardianName: string;
@@ -56,6 +69,10 @@ export default function EmployeeProfile() {
   const [editMode, setEditMode] = useState<Record<string, boolean>>({});
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState<{ field: string; section: 'user' | 'employee' } | null>(null);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -69,6 +86,7 @@ export default function EmployeeProfile() {
         }
 
         const data = await response.json();
+        console.log('Profile data:', data);
         setProfile(data);
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -116,9 +134,39 @@ export default function EmployeeProfile() {
   const saveField = async (field: string, section: 'user' | 'employee') => {
     if (!profile) return;
     
+    // Add validation for specific fields
+    if (field === 'phone' && !/^\d{10}$/.test(editedValues[field])) {
+      toast.error('Phone number must be 10 digits');
+      return;
+    }
+    
+    if (field === 'pincode' && !/^\d{6}$/.test(editedValues[field])) {
+      toast.error('Pincode must be 6 digits');
+      return;
+    }
+    
+    if (field === 'pancardNumber' && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(editedValues[field])) {
+      toast.error('Invalid PAN card format. It should be like ABCDE1234F');
+      return;
+    }
+    
+    if (field === 'aadharCardNumber' && !/^\d{12}$/.test(editedValues[field])) {
+      toast.error('Aadhar card number must be 12 digits');
+      return;
+    }
+    
+    if (field === 'accountNumber' && !/^\d{9,18}$/.test(editedValues[field])) {
+      toast.error('Account number must be between 9 and 18 digits');
+      return;
+    }
+    
+    if (field === 'ifscCode' && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(editedValues[field])) {
+      toast.error('Invalid IFSC code format. It should be like SBIN0123456');
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      // In a real implementation, you would send this to your API
       const response = await fetch('/api/employee/update-profile', {
         method: 'POST',
         headers: {
@@ -132,8 +180,10 @@ export default function EmployeeProfile() {
         }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        throw new Error(data.error || 'Failed to update profile');
       }
 
       // Update the local state with the new value
@@ -161,13 +211,91 @@ export default function EmployeeProfile() {
         [field]: false
       }));
 
-      toast.success(`${field} updated successfully`);
+      toast.success(`${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} updated successfully`);
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const response = await fetch('/api/employee/upload-profile-image', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload profile image');
+      }
+
+      // Update the local state with the new image URL
+      setProfile(prev => prev ? {
+        ...prev,
+        user: {
+          ...prev.user,
+          profileImage: data.imageUrl
+        }
+      } : null);
+
+      toast.success('Profile image updated successfully');
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload profile image');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const confirmSave = (field: string, section: 'user' | 'employee') => {
+    setPendingSave({ field, section });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmedSave = async () => {
+    if (!pendingSave) return;
+    
+    const { field, section } = pendingSave;
+    setConfirmDialogOpen(false);
+    
+    // Call the existing saveField function with the pending save data
+    await saveField(field, section);
+    
+    // Reset the pending save
+    setPendingSave(null);
+  };
+
+  const cancelSave = () => {
+    setConfirmDialogOpen(false);
+    setPendingSave(null);
   };
 
   const renderEditableField = (
@@ -176,7 +304,8 @@ export default function EmployeeProfile() {
     field: string, 
     section: 'user' | 'employee',
     icon: React.ReactNode,
-    readOnly: boolean = false
+    readOnly: boolean = false,
+    placeholder: string = ''
   ) => {
     return (
       <div className="flex justify-between items-start border-b pb-3">
@@ -191,28 +320,35 @@ export default function EmployeeProfile() {
                 value={editedValues[field]}
                 onChange={(e) => handleInputChange(field, e.target.value)}
                 className="h-8 w-[180px] text-sm"
+                placeholder={placeholder}
+                disabled={isSaving}
               />
               <Button 
                 size="icon" 
                 variant="ghost" 
                 className="h-8 w-8" 
-                onClick={() => saveField(field, section)}
+                onClick={() => confirmSave(field, section)}
                 disabled={isSaving}
               >
-                <Save className="h-4 w-4 text-green-600" />
+                {isSaving ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                ) : (
+                  <Save className="h-4 w-4 text-green-600" />
+                )}
               </Button>
               <Button 
                 size="icon" 
                 variant="ghost" 
                 className="h-8 w-8" 
                 onClick={() => toggleEditMode(field, value)}
+                disabled={isSaving}
               >
                 <X className="h-4 w-4 text-red-600" />
               </Button>
             </>
           ) : (
             <>
-              <dd className="text-sm font-medium text-right">{value}</dd>
+              <dd className="text-sm font-medium text-right">{value || '-'}</dd>
               {!readOnly && (
                 <Button 
                   size="icon" 
@@ -253,11 +389,42 @@ export default function EmployeeProfile() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-[#3C5A3E] to-[#5A8C5E] p-6 text-white">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <Avatar className="h-24 w-24 border-4 border-white/30">
-              <AvatarFallback className="bg-[#3C5A3E] text-white text-2xl">
-                {getInitials(profile.user.name)}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleProfileImageUpload}
+                className="hidden"
+                accept="image/*"
+              />
+              {isUploading ? (
+                <div className="h-24 w-24 rounded-full bg-white/20 flex items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 border-4 border-white/20">
+                    {profile.user.profileImage ? (
+                      <img 
+                        src={profile.user.profileImage} 
+                        alt={profile.user.name} 
+                        className="object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-white/20 text-white text-xl">
+                        {getInitials(profile.user.name)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <button 
+                    onClick={triggerFileInput}
+                    className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Upload className="h-4 w-4 text-[#3C5A3E]" />
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="text-center md:text-left">
               <h1 className="text-2xl font-bold">{profile.user.name}</h1>
               <Badge className="mt-2 bg-white/20 hover:bg-white/30 text-white">
@@ -298,35 +465,45 @@ export default function EmployeeProfile() {
                 profile.user.name, 
                 "name", 
                 "user", 
-                <User className="mr-2 h-4 w-4 text-gray-400" />
+                <User className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter your full name"
               )}
               {renderEditableField(
                 "Email", 
                 profile.user.email, 
                 "email", 
                 "user", 
-                <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                <Mail className="mr-2 h-4 w-4 text-gray-400" />,
+                true,
+                "Email cannot be changed"
               )}
               {renderEditableField(
                 "Phone Number", 
                 profile.user.phone, 
                 "phone", 
                 "user", 
-                <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                <Phone className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "10 digit number"
               )}
               {renderEditableField(
                 "Address", 
-                profile.user.address, 
+                profile.user.address || '', 
                 "address", 
                 "user", 
-                <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                <MapPin className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter your address"
               )}
               {renderEditableField(
                 "Pincode", 
-                profile.user.pincode, 
+                profile.user.pincode || '', 
                 "pincode", 
                 "user", 
-                <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                <MapPin className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "6 digit pincode"
               )}
             </dl>
           </CardContent>
@@ -401,7 +578,9 @@ export default function EmployeeProfile() {
                 profile.employee.guardianName, 
                 "guardianName", 
                 "employee", 
-                <User className="mr-2 h-4 w-4 text-gray-400" />
+                <User className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter guardian name"
               )}
             </dl>
           </CardContent>
@@ -422,14 +601,18 @@ export default function EmployeeProfile() {
                 profile.employee.pancardNumber, 
                 "pancardNumber", 
                 "employee", 
-                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />
+                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Format: ABCDE1234F"
               )}
               {renderEditableField(
                 "Aadhar Card Number", 
                 profile.employee.aadharCardNumber, 
                 "aadharCardNumber", 
                 "employee", 
-                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />
+                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "12 digit number"
               )}
             </dl>
           </CardContent>
@@ -450,33 +633,56 @@ export default function EmployeeProfile() {
                 profile.employee.bankName, 
                 "bankName", 
                 "employee", 
-                <Building className="mr-2 h-4 w-4 text-gray-400" />
+                <Building className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter bank name"
               )}
               {renderEditableField(
                 "Branch", 
                 profile.employee.bankBranch, 
                 "bankBranch", 
                 "employee", 
-                <Building className="mr-2 h-4 w-4 text-gray-400" />
+                <Building className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter branch name"
               )}
               {renderEditableField(
                 "Account Number", 
                 profile.employee.accountNumber, 
                 "accountNumber", 
                 "employee", 
-                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />
+                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Enter account number"
               )}
               {renderEditableField(
                 "IFSC Code", 
                 profile.employee.ifscCode, 
                 "ifscCode", 
                 "employee", 
-                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />
+                <CreditCard className="mr-2 h-4 w-4 text-gray-400" />,
+                false,
+                "Format: SBIN0123456"
               )}
             </dl>
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to save these changes to your profile?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelSave}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmedSave}>Save Changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

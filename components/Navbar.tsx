@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -14,11 +14,69 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Menu, User, LogOut } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+interface EmployeeProfile {
+  user: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    pincode: string;
+    profileImage?: string;
+  };
+  employee: {
+    guardianName: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    pancardNumber: string;
+    aadharCardNumber: string;
+    bankName: string;
+    bankBranch: string;
+    accountNumber: string;
+    ifscCode: string;
+    dateOfJoining: string;
+    employeeRole: string;
+    id: string;
+  };
+}
 
 export function Navbar() {
   const router = useRouter();
   const { user, setUser, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Fetch profile data for employees
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!user || user.role !== 'EMPLOYEE') return;
+      
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch('/api/employee/profile', {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        setProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    if (user && user.role === 'EMPLOYEE') {
+      fetchProfile();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -47,6 +105,24 @@ export function Navbar() {
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
+
+  // Get display name based on role and profile data
+  const getDisplayName = () => {
+    if (user?.role === 'ADMIN') return 'Admin';
+    if (user?.role === 'EMPLOYEE' && profile?.user?.name) return profile.user.name;
+    return user?.name || '';
+  };
+
+  const displayName = getDisplayName();
+  const profileImage = profile?.user?.profileImage;
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
 
   return (
     <nav className="bg-[#3C5A3E] text-white py-4">
@@ -79,10 +155,16 @@ export function Navbar() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="bg-white/10 text-white hover:bg-white/20"
+                        className="bg-white/10 text-white hover:bg-white/20 flex items-center"
                       >
-                        <User className="mr-2 h-4 w-4" />
-                        {user.role === 'ADMIN' ? 'Admin' : user.name}
+                        {user.role === 'EMPLOYEE' && profileImage ? (
+                          <Avatar className="h-6 w-6 mr-2">
+                            <AvatarImage src={profileImage} alt="Profile" />
+                          </Avatar>
+                        ) : (
+                          <User className="mr-2 h-4 w-4" />
+                        )}
+                        {displayName}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -164,7 +246,14 @@ export function Navbar() {
                         </Link>
                       )}
                       {user.role === 'EMPLOYEE' && (
-                        <Link href="/employee/dashboard" className="text-lg">
+                        <Link href="/employee/dashboard" className="text-lg flex items-center gap-2">
+                          {profileImage ? (
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={profileImage} alt="Profile" />
+                            </Avatar>
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
                           Employee Dashboard
                         </Link>
                       )}
