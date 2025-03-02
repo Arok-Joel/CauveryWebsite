@@ -8,22 +8,3 @@ package = "@netlify/plugin-nextjs"
 [build.environment]
 BUN_VERSION = "1.0.25"
 NODE_VERSION = "20"
-# Add placeholder for DATABASE_URL - set the actual value in Netlify dashboard
-# DATABASE_URL = "postgresql://user:password@host:port/database"
-# ADMIN_EMAIL = "admin@example.com"
-# ADMIN_PASSWORD = "securepassword"
-
-# Specify the production branch as master
-[context.production]
-publish = ".next"
-command = "bun install && bun run build"
-
-# Handle preview deployments
-[context.deploy-preview]
-publish = ".next"
-command = "bun install && bun run build"
-
-# Handle branch deployments
-[context.branch-deploy]
-publish = ".next"
-command = "bun install && bun run build"
