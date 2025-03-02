@@ -49,11 +49,11 @@ model Employee {
   userId           String       @unique
   teamId           String?
   reportsToId      String?
+  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
+  subordinates     Employee[]   @relation("EmployeeReporting")
   memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   leadsTeam        Team?        @relation("TeamLeader")
-  reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
-  subordinates     Employee[]   @relation("EmployeeReporting")
 }
 
 model Announcement {
@@ -76,10 +76,28 @@ model Layout {
   Plot      Plot[]
 }
 
+model SoldPlot {
+  id            String   @id @default(cuid())
+  plotNumber    String
+  size          String
+  plotAddress   String
+  price         String
+  dimensions    String
+  facing        String
+  employeeName  String
+  customerName  String
+  phoneNumber   String
+  email         String
+  address       String
+  aadhaarNumber String
+  soldAt        DateTime @default(now())
+  plot          Plot     @relation(fields: [plotId], references: [id])
+  plotId        String   @unique
+}
+
 model Plot {
-  id          String   @id
-  plotNumber  String   @unique
-  siteName    String
+  id          String    @id
+  plotNumber  String    @unique
   size        String
   plotAddress String
   price       Decimal
@@ -87,10 +105,12 @@ model Plot {
   facing      String
   status      String
   coordinates Json
-  createdAt   DateTime @default(now())
+  images      String
+  createdAt   DateTime  @default(now())
   updatedAt   DateTime
   layoutId    String?
-  Layout      Layout?  @relation(fields: [layoutId], references: [id])
+  Layout      Layout?   @relation(fields: [layoutId], references: [id])
+  SoldPlot    SoldPlot?
 }
 
 enum UserRole {
