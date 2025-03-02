@@ -95,9 +95,9 @@ export default function PlotsPage() {
   if (!selectedLayout) return null;
 
   return (
-    <div className="flex">
+    <div className="flex h-[calc(100vh-64px)]">
       {/* Side Panel */}
-      <div className="w-64 min-h-screen bg-[#0f172a] text-white fixed left-0 top-[64px] bottom-0 z-10">
+      <div className="w-64 bg-[#0f172a] text-white h-full overflow-y-auto">
         <div className="p-6">
           <h2 className="text-lg font-semibold mb-4">Layout Selection</h2>
           <Select
@@ -151,31 +151,25 @@ export default function PlotsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 pl-64 pt-[64px]">
-        <div 
-          className="relative mx-2 flex items-center justify-center"
-          style={{
-            width: '100%',
-            height: 'calc(100vh - 64px)',
-          }}
-        >
+      <div className="flex-1 overflow-hidden bg-gray-50">
+        <div className="h-full w-full flex items-center justify-center p-4">
           <div
-            className="relative"
+            className="relative w-full h-full"
             style={{
-              width: '100%',
-              height: '100%',
               maxHeight: '100%',
               maxWidth: '100%',
             }}
           >
             {selectedLayout.image && (
-              <Image
-                src={selectedLayout.image}
-                alt={selectedLayout.name}
-                fill
-                style={{ objectFit: 'contain' }}
-                priority
-              />
+              <div className="relative w-full h-full">
+                <Image
+                  src={selectedLayout.image}
+                  alt={selectedLayout.name}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  priority
+                />
+              </div>
             )}
             
             <svg
