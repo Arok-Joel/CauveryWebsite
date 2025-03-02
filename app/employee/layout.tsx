@@ -150,7 +150,6 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
 
   // Use profile data if available, otherwise fall back to auth context
   const displayName = profile?.user?.name || user?.name || '';
-  const displayEmail = profile?.user?.email || user?.email || '';
   const profileImage = profile?.user?.profileImage;
 
   return (
@@ -171,21 +170,6 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
                   <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-white">
                     <X className="h-5 w-5" />
                   </Button>
-                </div>
-                <div className="flex items-center mt-4">
-                  <Avatar className="h-10 w-10 mr-3 border-2 border-white">
-                    {profileImage ? (
-                      <AvatarImage src={profileImage} alt="Profile" />
-                    ) : (
-                      <AvatarFallback className="bg-green-700 text-white">
-                        {displayName ? getInitials(displayName) : 'U'}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="overflow-hidden">
-                    <p className="font-medium truncate">{displayName}</p>
-                    <p className="text-sm text-green-200 truncate">{displayEmail}</p>
-                  </div>
                 </div>
               </div>
               <nav className="mt-2">
@@ -209,15 +193,6 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           </Sheet>
           <h1 className="text-lg font-bold text-[#3C5A3E]">Royal Cauvery Farms</h1>
         </div>
-        <Avatar className="h-8 w-8">
-          {profileImage ? (
-            <AvatarImage src={profileImage} alt="Profile" />
-          ) : (
-            <AvatarFallback className="bg-[#3C5A3E] text-white">
-              {displayName ? getInitials(displayName) : 'U'}
-            </AvatarFallback>
-          )}
-        </Avatar>
       </header>
 
       <div className="flex flex-1">
@@ -226,23 +201,6 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <div className="p-6">
             <h1 className="text-xl font-bold text-[#3C5A3E]">Royal Cauvery Farms</h1>
             <p className="text-sm text-gray-500 mt-1">Employee Portal</p>
-          </div>
-          <div className="px-6 py-4 border-t border-b border-gray-200">
-            <div className="flex items-center">
-              <Avatar className="h-10 w-10 mr-3">
-                {profileImage ? (
-                  <AvatarImage src={profileImage} alt="Profile" />
-                ) : (
-                  <AvatarFallback className="bg-[#3C5A3E] text-white">
-                    {displayName ? getInitials(displayName) : 'U'}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="overflow-hidden">
-                <p className="font-medium truncate">{displayName}</p>
-                <p className="text-sm text-gray-500 truncate">{displayEmail}</p>
-              </div>
-            </div>
           </div>
           <nav className="mt-6 px-3">
             {navigation.map(item => (

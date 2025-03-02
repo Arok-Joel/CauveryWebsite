@@ -183,15 +183,6 @@ export default function EmployeeDashboard() {
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex items-center bg-white/10 backdrop-blur-sm rounded-lg p-3">
-            <Avatar className="h-8 w-8 mr-3 bg-white/20">
-              {profile?.user?.profileImage ? (
-                <AvatarImage src={profile.user.profileImage} alt="Profile" />
-              ) : (
-                <AvatarFallback className="text-white">
-                  {profile?.user?.name ? getInitials(profile.user.name) : user?.name ? getInitials(user.name) : "U"}
-                </AvatarFallback>
-              )}
-            </Avatar>
             <div>
               <p className="text-sm font-medium">{profile?.employee?.id || reportingStructure?.self?.id || "Loading..."}</p>
               <p className="text-xs text-green-200">{profile?.employee?.employeeRole ? formatRole(profile.employee.employeeRole) : reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}</p>
@@ -240,10 +231,6 @@ export default function EmployeeDashboard() {
                 </div>
               )}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Email</span>
-                  <span className="text-sm font-medium text-right truncate ml-4">{profile?.user?.email || user?.email || "Loading..."}</span>
-                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Employee ID</span>
                   <span className="text-sm font-medium text-right">{profile?.employee?.id || reportingStructure?.self?.id || "Loading..."}</span>
