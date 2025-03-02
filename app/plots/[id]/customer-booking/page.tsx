@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,29 +19,19 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface Plot {
-  id: string;
+interface PlotDetails {
+  plotId: string;
   plotNumber: string;
   size: string;
   plotAddress: string;
   price: number;
   dimensions: string;
   facing: string;
-  status: string;
-  coordinates: any;
-  images: string;
-  createdAt: Date;
-  updatedAt: Date;
-  layoutId: string | null;
+  employeeName: string;
 }
 
-interface Employee {
-  id: string;
-  name: string;
-}
-
-const bookingFormSchema = z.object({
-  // Plot Details
+const customerBookingSchema = z.object({
+  // Plot Details (non-editable)
   plotNumber: z.string(),
   size: z.string(),
   plotAddress: z.string(),
@@ -51,23 +41,27 @@ const bookingFormSchema = z.object({
   ),
   dimensions: z.string(),
   facing: z.string(),
-  
-  // Employee Details
   employeeName: z.string(),
+  
+  // Customer Details (editable)
+  customerName: z.string().min(1, "Name is required"),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
+  email: z.string().email("Invalid email address"),
+  address: z.string().min(1, "Address is required"),
+  aadhaarNumber: z.string().min(12, "Aadhaar number must be 12 digits"),
 });
 
-type BookingFormValues = z.infer<typeof bookingFormSchema>;
+type CustomerBookingFormValues = z.infer<typeof customerBookingSchema>;
 
-export default function BookPlotPage() {
+export default function CustomerBookingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [plot, setPlot] = useState<Plot | null>(null);
-  const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [plotDetails, setPlotDetails] = useState<PlotDetails | null>(null);
 
-  const form = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingFormSchema),
+  const form = useForm<CustomerBookingFormValues>({
+    resolver: zodResolver(customerBookingSchema),
     defaultValues: {
       plotNumber: "",
       size: "",
@@ -76,91 +70,71 @@ export default function BookPlotPage() {
       dimensions: "",
       facing: "",
       employeeName: "",
+      customerName: "",
+      phoneNumber: "",
+      email: "",
+      address: "",
+      aadhaarNumber: "",
     },
   });
 
   useEffect(() => {
-    // Fetch plot details
-    const fetchPlot = async () => {
-      try {
-        const response = await fetch(`/api/plots/${params.id}`);
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch plot");
-        }
-        
-        // Check if plot is available
-        if (data.status.toLowerCase() !== 'available') {
-          toast.error("This plot is not available for booking");
-          router.push("/plots");
-          return;
-        }
-        
-        setPlot(data);
-        
-        // Update form with plot details
-        form.setValue("plotNumber", data.plotNumber);
-        form.setValue("size", data.size);
-        form.setValue("plotAddress", data.plotAddress);
-        form.setValue("price", data.price.toString());
-        form.setValue("dimensions", data.dimensions);
-        form.setValue("facing", data.facing);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Error fetching plot details");
-        router.push("/plots");
-      }
-    };
+    const data = searchParams.get("data");
+    if (!data) {
+      toast.error("Invalid booking link");
+      router.push("/plots");
+      return;
+    }
 
-    // Fetch employee details
-    const fetchEmployee = async () => {
-      try {
-        const response = await fetch("/api/employee/profile");
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch employee details");
-        }
-        
-        setEmployee(data);
-        
-        // Update form with employee name only
-        form.setValue("employeeName", data.user.name);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Error fetching employee details");
-        router.push("/plots");
-      }
-    };
-
-    fetchPlot();
-    fetchEmployee();
-  }, [params.id, form, router]);
-
-  const generateCustomerLink = (data: BookingFormValues) => {
     try {
-      // Create a base64 encoded string of the form data
-      const formData = {
-        plotId: params.id,
-        ...data,
-      };
-      const encodedData = btoa(JSON.stringify(formData));
+      const decodedData = JSON.parse(atob(data));
+      setPlotDetails(decodedData);
       
-      // Generate the full URL
-      const baseUrl = window.location.origin;
-      const customerLink = `${baseUrl}/plots/${params.id}/customer-booking?data=${encodedData}`;
-      
-      // Set the generated link
-      setGeneratedLink(customerLink);
-      
-      // Copy to clipboard
-      navigator.clipboard.writeText(customerLink);
-      toast.success("Link generated and copied to clipboard!");
+      // Set form values for non-editable fields
+      form.setValue("plotNumber", decodedData.plotNumber);
+      form.setValue("size", decodedData.size);
+      form.setValue("plotAddress", decodedData.plotAddress);
+      form.setValue("price", decodedData.price.toString());
+      form.setValue("dimensions", decodedData.dimensions);
+      form.setValue("facing", decodedData.facing);
+      form.setValue("employeeName", decodedData.employeeName);
     } catch (error) {
-      toast.error("Failed to generate customer link");
+      toast.error("Invalid booking link data");
+      router.push("/plots");
+    }
+  }, [searchParams, form, router]);
+
+  const onSubmit = async (data: CustomerBookingFormValues) => {
+    try {
+      setIsLoading(true);
+      
+      // Send booking request with both plot and customer details
+      const response = await fetch("/api/plots/book", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plotId: params.id,
+          ...data,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to book plot");
+      }
+
+      toast.success("Plot booked successfully!");
+      router.push(`/plots/${params.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to book plot");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (!plot || !employee) {
+  if (!plotDetails) {
     return (
       <div className="container mx-auto py-8">
         <Card>
@@ -171,7 +145,6 @@ export default function BookPlotPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {/* Plot Details Loading Skeleton */}
               <div>
                 <Skeleton className="h-6 w-32 mb-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -181,15 +154,6 @@ export default function BookPlotPage() {
                       <Skeleton className="h-10 w-full" />
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Employee Name Loading Skeleton */}
-              <div>
-                <Skeleton className="h-6 w-40 mb-4" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-10 w-full md:w-1/2" />
                 </div>
               </div>
             </div>
@@ -203,11 +167,11 @@ export default function BookPlotPage() {
     <div className="container mx-auto py-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Generate Customer Link for Plot {plot.plotNumber}</CardTitle>
+          <CardTitle className="text-2xl">Book Plot {plotDetails.plotNumber}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(generateCustomerLink)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Plot Details Section */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Plot Details</h3>
@@ -260,9 +224,9 @@ export default function BookPlotPage() {
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
+                            disabled
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -312,24 +276,77 @@ export default function BookPlotPage() {
                 </div>
               </div>
 
-              {/* Generated Link Section */}
-              {generatedLink && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Generated Customer Link</h3>
-                  <div className="flex items-center gap-4">
-                    <Input value={generatedLink} readOnly />
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedLink);
-                        toast.success("Link copied to clipboard!");
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
+              {/* Customer Details Section */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Customer Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="customerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your phone number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" placeholder="Enter your email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your address" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="aadhaarNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your Aadhaar number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              )}
+              </div>
 
               <div className="flex justify-end gap-4">
                 <Button
@@ -341,7 +358,7 @@ export default function BookPlotPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Generating..." : "Generate Customer Link"}
+                  {isLoading ? "Booking..." : "Book Plot"}
                 </Button>
               </div>
             </form>
