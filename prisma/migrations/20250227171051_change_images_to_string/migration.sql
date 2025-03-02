@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Plot" ALTER COLUMN "images" SET DATA TYPE TEXT;

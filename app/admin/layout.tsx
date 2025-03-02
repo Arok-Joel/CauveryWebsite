@@ -54,6 +54,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: 'Announcements',
       href: '/admin/announcements',
     },
+    {
+      name: "Plots",
+      href: "/admin/plots",
+    },
   ];
 
   return (

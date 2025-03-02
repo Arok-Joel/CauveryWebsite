@@ -58,8 +58,14 @@ export default function ContactPage() {
   const contactInfo = [
     {
       icon: MapPin,
-      title: 'Visit Us',
-      details: ['Sri Sai Nagar', 'Kalladai Panchayat Road', 'Trichy, Tamil Nadu'],
+      title: "Visit Us",
+      details: [
+        "117, 5th Street",
+        "Indian Bank Colony",
+        "K K Nagar",
+        "Tiruchirappalli - 620021",
+        "Tamil Nadu, India"
+      ],
     },
     {
       icon: Phone,
@@ -193,7 +199,7 @@ export default function ContactPage() {
         <Card>
           <CardContent className="p-0">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.2312404255184!2d78.6896!3d10.8225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTDCsDQ5JzIxLjAiTiA3OMKwNDEnMjIuNiJF!5e0!3m2!1sen!2sin!4v1620000000000!5m2!1sen!2sin"
+              src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3919.289703686081!2d78.6843101!3d10.807659099999999!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3baaf5f9d64c8a45%3A0xb616962dc6124094!2s117%2C%205th%20Cross%20St%2C%20Indian%20Bank%20Colony%2C%20K.K.Nagar%2C%20Tiruchirappalli%2C%20Tamil%20Nadu%20620021!5e0!3m2!1sen!2sin!4v1709699574961!5m2!1sen!2sin"
               width="100%"
               height="400"
               style={{ border: 0 }}
