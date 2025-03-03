@@ -542,25 +542,31 @@ export default function CreateLayout() {
     const imageCaptions = formData.getAll("imageCaptions[]") as string[];
     
     try {
-      // First, upload all images
+      // Convert images to base64
       const imageUploadPromises = imageFiles.map(async (file, index) => {
-        const imageFormData = new FormData();
-        imageFormData.append("file", file);
-        
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: imageFormData,
+        return new Promise<{ url: string; caption?: string }>((resolve, reject) => {
+          // Validate file type
+          if (!file.type.startsWith('image/')) {
+            reject(new Error('Please upload only image files'));
+            return;
+          }
+
+          // Validate file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            reject(new Error('Image size should be less than 5MB'));
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve({
+              url: e.target?.result as string,
+              caption: imageCaptions[index] || undefined
+            });
+          };
+          reader.onerror = () => reject(new Error('Failed to read image file'));
+          reader.readAsDataURL(file);
         });
-        
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload image");
-        }
-        
-        const { url } = await uploadResponse.json();
-        return {
-          url,
-          caption: imageCaptions[index] || undefined
-        };
       });
       
       const uploadedImages = await Promise.all(imageUploadPromises);
@@ -592,13 +598,17 @@ export default function CreateLayout() {
             facing: updatedPlot.facing,
             status: updatedPlot.status,
             coordinates: updatedPlot.points,
-            images: updatedPlot.images
+            images: uploadedImages // Send base64 images directly
           }),
         });
         
-        if (!response.ok) throw new Error("Failed to save plot details");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save plot details");
+        }
         
-        setPlots(plots.map(p => p === selectedPlot ? updatedPlot : p));
+        const savedPlot = await response.json();
+        setPlots(plots.map(p => p === selectedPlot ? { ...updatedPlot, images: savedPlot.images } : p));
         setSelectedPlot(null);
         setIsDialogOpen(false);
         toast.success("Plot details saved successfully!");
@@ -628,15 +638,18 @@ export default function CreateLayout() {
             dimensions: newPlot.dimensions,
             facing: newPlot.facing,
             status: newPlot.status,
-            coordinates: newPlot.points,
-            images: newPlot.images
+            coordinates: currentPoints,
+            images: uploadedImages // Send base64 images directly
           }),
         });
         
-        if (!response.ok) throw new Error("Failed to save plot details");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save plot details");
+        }
 
         const savedPlot = await response.json();
-        setPlots([...plots, { ...newPlot, id: savedPlot.id }]);
+        setPlots([...plots, { ...newPlot, id: savedPlot.id, images: savedPlot.images }]);
         setCurrentPoints([]);
         setIsDrawingComplete(false);
         setIsDialogOpen(false);
@@ -644,7 +657,7 @@ export default function CreateLayout() {
       }
     } catch (error) {
       console.error("Error saving plot:", error);
-      toast.error("Failed to save plot details");
+      toast.error(error instanceof Error ? error.message : "Failed to save plot details");
     }
   };
 

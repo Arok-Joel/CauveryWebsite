@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { writeFile } from "fs/promises";
+import { join } from "path";
+import { mkdir } from "fs/promises";
+import { v4 as uuidv4 } from 'uuid';
 
 // GET all plots
 export async function GET() {
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
           facing,
           status,
           coordinates,
-          images: JSON.stringify(images),
+          images: JSON.stringify(images), // Store base64 images directly
           updatedAt: new Date(),
         },
       });
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
           facing,
           status: status || "available",
           coordinates,
-          images: JSON.stringify(images),
+          images: JSON.stringify(images), // Store base64 images directly
           updatedAt: new Date(),
         },
       });
@@ -84,11 +88,17 @@ export async function POST(request: Request) {
       console.log("Created new plot:", plot);
     }
 
-    return NextResponse.json(plot);
+    // Parse the images back from JSON string for the response
+    const parsedPlot = {
+      ...plot,
+      images: JSON.parse(plot.images || '[]')
+    };
+
+    return NextResponse.json(parsedPlot);
   } catch (error) {
     console.error("Error saving plot:", error);
     return NextResponse.json(
-      { error: "Failed to save plot" },
+      { error: error instanceof Error ? error.message : "Failed to save plot" },
       { status: 500 }
     );
   }
