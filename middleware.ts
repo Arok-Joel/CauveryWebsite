@@ -1,5 +1,8 @@
+import { NextRequest } from "next/server";
+
+// This is a temporary solution until we fully implement Clerk
+// We'll keep the existing middleware functionality for now
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {

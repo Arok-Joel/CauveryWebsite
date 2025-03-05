@@ -1,17 +1,17 @@
 // app/layout.tsx
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Navbar } from '@/components/Navbar'
-import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import './globals.css'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import { Navbar } from '@/components/Navbar'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Royal Cauvery Farms',
-  description: 'Royal Cauvery Farms - Your trusted partner in real estate',
+  title: 'Cauvery Website',
+  description: 'Official website for Cauvery',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
