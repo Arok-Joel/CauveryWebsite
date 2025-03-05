@@ -21,19 +21,39 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+  const [lastChecked, setLastChecked] = useState<number>(0);
 
-  const checkAuth = async () => {
+  const checkAuth = async (force = false) => {
     try {
+      // Only check if forced or if it's been more than 30 seconds since the last check
+      const now = Date.now();
+      if (!force && lastChecked && now - lastChecked < 30000) {
+        return;
+      }
+      
       setLoading(true);
-      const response = await fetch('/api/auth/check', {
+      const timestamp = Date.now(); // Add timestamp to prevent caching
+      const response = await fetch(`/api/auth/check?t=${timestamp}`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        
+        // Only update if the user data has changed
+        if (JSON.stringify(data.user) !== JSON.stringify(user)) {
+          console.log('User data changed, updating state:', data.user);
+          setUser(data.user);
+        }
       }
+      
+      setLastChecked(now);
     } catch (error) {
       console.error('Failed to check auth status:', error);
     } finally {
@@ -45,9 +65,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Check auth on initial load
   useEffect(() => {
-    checkAuth();
+    checkAuth(true);
   }, []);
+
+  // Set up periodic auth checks every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkAuth();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [lastChecked]);
+
+  // Also check auth on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [lastChecked]);
 
   return (
     <AuthContext.Provider value={{ user, setUser, checkAuth, loading }}>
