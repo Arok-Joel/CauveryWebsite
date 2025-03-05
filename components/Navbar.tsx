@@ -178,6 +178,9 @@ export function Navbar() {
                           <Link href="/employee/dashboard">Employee Dashboard</Link>
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem asChild>
+                        <Link href="/account/sessions">Manage Sessions</Link>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
@@ -257,6 +260,9 @@ export function Navbar() {
                           Employee Dashboard
                         </Link>
                       )}
+                      <Link href="/account/sessions" className="text-lg">
+                        Manage Sessions
+                      </Link>
                       <Button
                         onClick={handleLogout}
                         disabled={isLoading}
