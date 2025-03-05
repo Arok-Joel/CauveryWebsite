@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 export async function GET(req: Request) {
   try {
-    // Get auth token from cookies in headers
-    const cookieHeader = req.headers.get('cookie');
-    const token = cookieHeader
-      ?.split(';')
-      .find((c: string) => c.trim().startsWith('auth-token='))
-      ?.split('=')[1];
+    // Get auth token from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
 
     if (!token) {
       return NextResponse.json({ user: null }, { status: 200 });

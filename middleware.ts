@@ -8,16 +8,17 @@ export async function middleware(request: NextRequest) {
   // Protect admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!token) {
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      return NextResponse.redirect(new URL('/auth/admin/login', request.url));
     }
 
     try {
       const verifiedToken = await verifyAuth(token);
       if (!verifiedToken || verifiedToken.role !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/auth/login', request.url));
+        return NextResponse.redirect(new URL('/auth/admin/login', request.url));
       }
     } catch (error) {
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      console.error('Middleware auth error:', error);
+      return NextResponse.redirect(new URL('/auth/admin/login', request.url));
     }
   }
 

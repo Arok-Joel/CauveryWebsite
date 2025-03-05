@@ -27,14 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/auth/check', {
         method: 'GET',
         credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+      } else {
+        // If auth check fails, clear the user
+        setUser(null);
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
+      // If there's an error, clear the user
+      setUser(null);
     } finally {
       // Add a small delay before setting loading to false
       // This helps prevent UI flashing by ensuring DOM updates are batched

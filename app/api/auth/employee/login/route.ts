@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import * as z from 'zod';
 import bcrypt from 'bcryptjs';
-import { createUserSession } from '@/lib/auth';
+import { createUserSession, decrypt } from '@/lib/auth';
 
 const loginSchema = z.object({
   employeeId: z.string().regex(/^RCF\d{7}$/),
@@ -47,12 +47,19 @@ export async function POST(req: Request) {
     }
 
     // Create session for employee
-    const { response } = await createUserSession({
+    const { response, token } = await createUserSession({
       email: user.email,
       name: user.name,
       role: user.role,
+      id: user.id, // Pass the user ID for session tracking
     });
 
+    // Debug: Log the token and decoded token
+    console.log('Created token:', token);
+    const decoded = await decrypt(token);
+    console.log('Decoded token:', decoded);
+
+    // Return the response directly
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {

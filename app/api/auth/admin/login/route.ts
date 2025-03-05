@@ -21,9 +21,11 @@ export async function POST(req: Request) {
     // Create session for admin
     const { response } = await createUserSession({
       email,
+      name: 'Admin',
       role: 'ADMIN',
     });
 
+    // Return the response directly without modifying it
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {

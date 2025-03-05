@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
@@ -30,7 +30,14 @@ type AdminLoginFormValues = z.infer<typeof adminLoginFormSchema>;
 export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { setUser, checkAuth, user } = useAuth();
+
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (user && user.role === 'ADMIN') {
+      router.push('/admin');
+    }
+  }, [user, router]);
 
   const form = useForm<AdminLoginFormValues>({
     resolver: zodResolver(adminLoginFormSchema),
@@ -52,17 +59,21 @@ export function AdminLoginForm() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
+        const result = await response.json();
         throw new Error(result.error || 'Invalid admin credentials');
       }
 
-      // Update auth context with the admin user data
-      setUser(result.user);
-
+      // Successfully logged in, now check auth state
+      await checkAuth();
+      
       toast.success('Admin login successful!');
-      router.push('/admin'); // Redirect to admin dashboard
+      
+      // Redirect to admin dashboard
+      router.push('/admin');
+      
+      // Force a refresh to ensure the middleware picks up the new auth state
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Invalid admin credentials');
     } finally {
