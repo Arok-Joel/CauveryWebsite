@@ -1,9 +1,12 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request, { params }: { params: { teamId: string } }) {
+export async function POST(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
     const { employeeId } = await req.json();
 
     // Add employee to team
@@ -23,9 +26,12 @@ export async function POST(req: Request, { params }: { params: { teamId: string 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { teamId: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
     const { employeeId } = await req.json();
 
     // Remove employee from team and reset reporting relationship

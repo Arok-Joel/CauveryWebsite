@@ -6,7 +6,10 @@ const updateReportsToSchema = z.object({
   reportsToId: z.string().min(1),
 });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(
+  req: Request,
+  context: { params: { id: string } }
+) {
   try {
     const body = await req.json();
     const { reportsToId } = updateReportsToSchema.parse(body);
@@ -14,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     // Get both employees to verify roles
     const [employee, manager] = await Promise.all([
       db.employee.findUnique({
-        where: { id: params.id },
+        where: { id: context.params.id },
         include: { user: true },
       }),
       db.employee.findUnique({
@@ -46,7 +49,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     // Update the reporting relationship
     const updatedEmployee = await db.employee.update({
-      where: { id: params.id },
+      where: { id: context.params.id },
       data: { reportsToId },
       include: {
         user: true,

@@ -1,9 +1,12 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, { params }: { params: { teamId: string } }) {
+export async function GET(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
 
     const team = await db.team.findUnique({
       where: {
@@ -44,9 +47,12 @@ export async function GET(req: Request, { params }: { params: { teamId: string }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { teamId: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
 
     // First, get all team members to reset their reporting relationships
     const team = await db.team.findUnique({

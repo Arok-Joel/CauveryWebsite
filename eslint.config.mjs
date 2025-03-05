@@ -7,6 +7,14 @@ export default [
     plugins: {
       next: nextPlugin,
     },
-    rules: nextPlugin.configs['core-web-vitals'].rules,
+    rules: {
+      ...nextPlugin.configs['core-web-vitals'].rules,
+    },
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
   },
 ];

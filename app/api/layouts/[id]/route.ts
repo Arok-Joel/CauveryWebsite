@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(
+  request: Request,
+  context: { params: { id: string } }
+) {
   try {
     const layout = await prisma.layout.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
       include: {
         Plot: true,
       },

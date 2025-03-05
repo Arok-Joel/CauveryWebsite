@@ -6,9 +6,12 @@ const updateTeamLeaderSchema = z.object({
   leaderId: z.string().min(1),
 });
 
-export async function PATCH(req: Request, { params }: { params: { teamId: string } }) {
+export async function PATCH(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
     const body = await req.json();
     const { leaderId } = updateTeamLeaderSchema.parse(body);
 

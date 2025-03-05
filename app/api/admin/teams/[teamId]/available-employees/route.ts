@@ -1,9 +1,12 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, { params }: { params: { teamId: string } }) {
+export async function GET(
+  req: Request,
+  context: { params: { teamId: string } }
+) {
   try {
-    const { teamId } = params;
+    const { teamId } = context.params;
     console.log('Fetching available employees for team:', teamId);
 
     // Get all employees who are not part of this team and are not executive directors
