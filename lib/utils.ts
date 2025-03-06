@@ -100,21 +100,11 @@ export function getOSFromUserAgent(userAgent: string): string {
       
       // Get the major and minor version
       const majorMinor = macVersion.split('.').slice(0, 2).join('.');
-      const osName = macOSNames[majorMinor] || '';
       
-      // Check if it's Apple Silicon - look for absence of "Intel" in newer Mac user agents
-      const isAppleSilicon = !userAgent.includes('Intel');
+      // For version 15+, use Sequoia regardless of minor version
+      const osName = parseInt(majorMinor) >= 15 ? 'Sequoia' : macOSNames[majorMinor] || '';
       
-      if (isAppleSilicon) {
-        return osName ? `macOS ${osName} (Apple Silicon)` : `macOS ${macVersion} (Apple Silicon)`;
-      } else {
-        return osName ? `macOS ${osName}` : `macOS ${macVersion}`;
-      }
-    }
-    
-    // Check if it's Apple Silicon without version info
-    if (!userAgent.includes('Intel')) {
-      return 'macOS (Apple Silicon)';
+      return osName ? `macOS ${osName}` : `macOS ${macVersion}`;
     }
     
     return 'macOS';
@@ -139,7 +129,16 @@ export function getOSFromUserAgent(userAgent: string): string {
   // Check for Android
   if (userAgent.includes('Android')) {
     const version = userAgent.match(/Android (\d+(\.\d+)*)/);
-    return version && version[1] ? `Android ${version[1]}` : 'Android';
+    
+    // If we can extract a version number
+    if (version && version[1]) {
+      // Get just the major version number
+      const majorVersion = parseInt(version[1].split('.')[0]);
+      
+      // Return the actual version from the user agent
+      return `Android ${majorVersion}`;
+    }
+    return 'Android';
   }
   
   // Check for Linux
@@ -190,10 +189,25 @@ export function getDeviceType(userAgent: string): string {
   
   // Check for Mac
   if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
-    // Check if it's Apple Silicon
-    if (!userAgent.includes('Intel')) {
+    // More accurate Apple Silicon detection
+    // Modern macOS user agents don't always explicitly mention the chip architecture
+    // For M-series chips, we need to check for absence of "Intel" and presence of newer macOS versions
+    
+    // Extract macOS version if available
+    const macVersionMatch = userAgent.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
+    let macVersion = 0;
+    
+    if (macVersionMatch && macVersionMatch[1]) {
+      const versionStr = macVersionMatch[1].replace(/_/g, '.');
+      macVersion = parseFloat(versionStr);
+    }
+    
+    // macOS 11+ is more likely to be Apple Silicon, especially 12+
+    // But we still check for Intel explicitly to be sure
+    if (!userAgent.includes('Intel') || macVersion >= 14) {
       return 'Mac (Apple Silicon)';
     }
+    
     return 'Mac (Intel)';
   }
   
