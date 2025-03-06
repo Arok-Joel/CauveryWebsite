@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Navbar />
             {children}
             <Toaster />
+            <SpeedInsights />
           </TooltipProvider>
         </AuthProvider>
       </body>

@@ -4,15 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma db push && next build",
     "start": "next start",
     "lint": "next lint",
-    "db:seed": "npx prisma db seed",
-    "setup": "node scripts/setup-db.js",
-    "vercel-build": "prisma generate && next build"
+    "db:seed": "bun prisma/seed.ts",
+    "setup": "bun scripts/setup-db.js"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "seed": "bun prisma/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",
@@ -31,6 +30,7 @@
     "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@types/uuid": "^10.0.0",
+    "@vercel/speed-insights": "^1.2.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
