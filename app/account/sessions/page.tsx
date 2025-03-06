@@ -5,8 +5,14 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogOut, Shield } from 'lucide-react';
+import { Loader2, LogOut, Shield, Smartphone, Monitor } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { 
+  getBrowserNameFromUserAgent, 
+  getOSFromUserAgent, 
+  getDeviceType,
+  isMobileDevice 
+} from '@/lib/utils';
 
 interface Session {
   id: string;
@@ -111,11 +117,15 @@ export default function SessionsPage() {
             <Card key={session.id}>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2 text-primary" />
-                  Session
+                  {isMobileDevice(session.userAgent) ? (
+                    <Smartphone className="h-5 w-5 mr-2 text-primary" />
+                  ) : (
+                    <Monitor className="h-5 w-5 mr-2 text-primary" />
+                  )}
+                  {getBrowserNameFromUserAgent(session.userAgent)}
                 </CardTitle>
                 <CardDescription>
-                  {session.userAgent?.split(' ')[0] || 'Unknown device'}
+                  {getDeviceType(session.userAgent)} • {getOSFromUserAgent(session.userAgent)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
