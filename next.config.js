@@ -2,12 +2,17 @@
 const nextConfig = {
   images: {
     domains: ['localhost'],
-    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   // Ensure static files in public directory are served
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      allowedOrigins: ['localhost:3000', 'royal-cauvery-farms.vercel.app'],
     },
   },
   typescript: {
