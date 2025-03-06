@@ -81,15 +81,12 @@ export function getOSFromUserAgent(userAgent: string): string {
   
   // Check for macOS
   if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
-    // Check if it's Apple Silicon
-    if (userAgent.includes('Mac OS X') && !userAgent.includes('Intel')) {
-      return 'macOS (Apple Silicon)';
-    }
-    
     // Try to extract macOS version
     const macVersionMatch = userAgent.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
+    let macVersion = '';
+    
     if (macVersionMatch && macVersionMatch[1]) {
-      const version = macVersionMatch[1].replace(/_/g, '.');
+      macVersion = macVersionMatch[1].replace(/_/g, '.');
       
       // Map version numbers to macOS names
       const macOSNames: Record<string, string> = {
@@ -102,10 +99,22 @@ export function getOSFromUserAgent(userAgent: string): string {
       };
       
       // Get the major and minor version
-      const majorMinor = version.split('.').slice(0, 2).join('.');
+      const majorMinor = macVersion.split('.').slice(0, 2).join('.');
       const osName = macOSNames[majorMinor] || '';
       
-      return osName ? `macOS ${osName}` : `macOS ${version}`;
+      // Check if it's Apple Silicon - look for absence of "Intel" in newer Mac user agents
+      const isAppleSilicon = !userAgent.includes('Intel');
+      
+      if (isAppleSilicon) {
+        return osName ? `macOS ${osName} (Apple Silicon)` : `macOS ${macVersion} (Apple Silicon)`;
+      } else {
+        return osName ? `macOS ${osName}` : `macOS ${macVersion}`;
+      }
+    }
+    
+    // Check if it's Apple Silicon without version info
+    if (!userAgent.includes('Intel')) {
+      return 'macOS (Apple Silicon)';
     }
     
     return 'macOS';
@@ -129,7 +138,7 @@ export function getOSFromUserAgent(userAgent: string): string {
   
   // Check for Android
   if (userAgent.includes('Android')) {
-    const version = userAgent.match(/Android (\d+(\.\d+)+)/);
+    const version = userAgent.match(/Android (\d+(\.\d+)*)/);
     return version && version[1] ? `Android ${version[1]}` : 'Android';
   }
   
@@ -164,6 +173,17 @@ export function getDeviceType(userAgent: string): string {
   
   // Check for Android devices
   if (userAgent.includes('Android')) {
+    // Look for specific Android device model in the user agent
+    const deviceMatch = userAgent.match(/Android.*?;\s*([^;)]+)(?:[;)])/);
+    if (deviceMatch && deviceMatch[1]) {
+      const deviceName = deviceMatch[1].trim();
+      // If it's a single letter like 'K', it's likely a placeholder or generic model
+      if (deviceName.length <= 2) {
+        return 'Android Phone';
+      }
+      return deviceName;
+    }
+    
     if (/Android.*?Tablet|Android.*?Tab/i.test(userAgent)) return 'Android Tablet';
     return 'Android Phone';
   }
@@ -171,10 +191,10 @@ export function getDeviceType(userAgent: string): string {
   // Check for Mac
   if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
     // Check if it's Apple Silicon
-    if (userAgent.includes('Mac OS X') && !userAgent.includes('Intel')) {
+    if (!userAgent.includes('Intel')) {
       return 'Mac (Apple Silicon)';
     }
-    return 'Mac';
+    return 'Mac (Intel)';
   }
   
   // Check for Windows

@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogOut, Shield, Smartphone, Monitor } from 'lucide-react';
+import { Loader2, LogOut, Shield, Smartphone, Monitor, Tablet, Laptop, Computer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   getBrowserNameFromUserAgent, 
@@ -117,11 +117,20 @@ export default function SessionsPage() {
             <Card key={session.id}>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  {isMobileDevice(session.userAgent) ? (
-                    <Smartphone className="h-5 w-5 mr-2 text-primary" />
-                  ) : (
-                    <Monitor className="h-5 w-5 mr-2 text-primary" />
-                  )}
+                  {(() => {
+                    const deviceType = getDeviceType(session.userAgent);
+                    if (deviceType.includes('iPhone') || deviceType.includes('Android Phone')) {
+                      return <Smartphone className="h-5 w-5 mr-2 text-primary" />;
+                    } else if (deviceType.includes('iPad') || deviceType.includes('Tablet')) {
+                      return <Tablet className="h-5 w-5 mr-2 text-primary" />;
+                    } else if (deviceType.includes('Mac')) {
+                      return <Laptop className="h-5 w-5 mr-2 text-primary" />;
+                    } else if (deviceType.includes('PC') || deviceType.includes('Linux')) {
+                      return <Computer className="h-5 w-5 mr-2 text-primary" />;
+                    } else {
+                      return <Monitor className="h-5 w-5 mr-2 text-primary" />;
+                    }
+                  })()}
                   {getBrowserNameFromUserAgent(session.userAgent)}
                 </CardTitle>
                 <CardDescription>
