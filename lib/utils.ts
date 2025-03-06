@@ -13,27 +13,44 @@ export function getBrowserNameFromUserAgent(userAgent: string): string {
   
   // Check for Firefox
   if (userAgent.includes('Firefox/')) {
-    return 'Firefox';
+    const version = userAgent.match(/Firefox\/(\d+\.\d+)/);
+    return version && version[1] ? `Firefox ${version[1]}` : 'Firefox';
   }
   
   // Check for Edge
   if (userAgent.includes('Edg/') || userAgent.includes('Edge/')) {
-    return 'Edge';
+    const version = userAgent.match(/Edg(?:e)?\/(\d+\.\d+)/);
+    return version && version[1] ? `Edge ${version[1]}` : 'Edge';
   }
   
   // Check for Chrome
-  if (userAgent.includes('Chrome/') && !userAgent.includes('Chromium/')) {
-    return 'Chrome';
+  if (userAgent.includes('Chrome/') && !userAgent.includes('Chromium/') && !userAgent.includes('Edg/')) {
+    const version = userAgent.match(/Chrome\/(\d+\.\d+)/);
+    return version && version[1] ? `Chrome ${version[1]}` : 'Chrome';
   }
   
-  // Check for Safari
+  // Check for Safari on iOS
+  if ((userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) 
+      && userAgent.includes('Safari/') && userAgent.includes('Version/')) {
+    const version = userAgent.match(/Version\/(\d+\.\d+)/);
+    return version && version[1] ? `Safari ${version[1]}` : 'Safari';
+  }
+  
+  // Check for Safari on macOS
+  if (userAgent.includes('Safari/') && userAgent.includes('Version/') && userAgent.includes('Mac OS X')) {
+    const version = userAgent.match(/Version\/(\d+\.\d+)/);
+    return version && version[1] ? `Safari ${version[1]}` : 'Safari';
+  }
+  
+  // Check for Safari (generic)
   if (userAgent.includes('Safari/') && !userAgent.includes('Chrome/') && !userAgent.includes('Chromium/')) {
     return 'Safari';
   }
   
   // Check for Opera
   if (userAgent.includes('OPR/') || userAgent.includes('Opera/')) {
-    return 'Opera';
+    const version = userAgent.match(/OPR\/(\d+\.\d+)/);
+    return version && version[1] ? `Opera ${version[1]}` : 'Opera';
   }
   
   // Check for IE
@@ -51,6 +68,49 @@ export function getBrowserNameFromUserAgent(userAgent: string): string {
 export function getOSFromUserAgent(userAgent: string): string {
   if (!userAgent) return 'Unknown';
   
+  // Check for iOS devices first (iPhone, iPad, iPod)
+  if (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) {
+    // Extract iOS version if available
+    const iosVersionMatch = userAgent.match(/OS (\d+[._]\d+[._]?\d*)/);
+    if (iosVersionMatch && iosVersionMatch[1]) {
+      const version = iosVersionMatch[1].replace(/_/g, '.');
+      return `iOS ${version}`;
+    }
+    return 'iOS';
+  }
+  
+  // Check for macOS
+  if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
+    // Check if it's Apple Silicon
+    if (userAgent.includes('Mac OS X') && !userAgent.includes('Intel')) {
+      return 'macOS (Apple Silicon)';
+    }
+    
+    // Try to extract macOS version
+    const macVersionMatch = userAgent.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
+    if (macVersionMatch && macVersionMatch[1]) {
+      const version = macVersionMatch[1].replace(/_/g, '.');
+      
+      // Map version numbers to macOS names
+      const macOSNames: Record<string, string> = {
+        '10.15': 'Catalina',
+        '11.0': 'Big Sur',
+        '12.0': 'Monterey',
+        '13.0': 'Ventura',
+        '14.0': 'Sonoma',
+        '15.0': 'Sequoia'
+      };
+      
+      // Get the major and minor version
+      const majorMinor = version.split('.').slice(0, 2).join('.');
+      const osName = macOSNames[majorMinor] || '';
+      
+      return osName ? `macOS ${osName}` : `macOS ${version}`;
+    }
+    
+    return 'macOS';
+  }
+  
   // Check for Windows
   if (userAgent.includes('Windows NT')) {
     const version = userAgent.match(/Windows NT (\d+\.\d+)/);
@@ -67,19 +127,10 @@ export function getOSFromUserAgent(userAgent: string): string {
     return `Windows ${version && version[1] ? versionMap[version[1]] || version[1] : ''}`;
   }
   
-  // Check for macOS
-  if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
-    return 'macOS';
-  }
-  
-  // Check for iOS
-  if (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) {
-    return 'iOS';
-  }
-  
   // Check for Android
   if (userAgent.includes('Android')) {
-    return 'Android';
+    const version = userAgent.match(/Android (\d+(\.\d+)+)/);
+    return version && version[1] ? `Android ${version[1]}` : 'Android';
   }
   
   // Check for Linux
@@ -106,15 +157,41 @@ export function isMobileDevice(userAgent: string): boolean {
 export function getDeviceType(userAgent: string): string {
   if (!userAgent) return 'Unknown';
   
-  if (isMobileDevice(userAgent)) {
-    if (userAgent.includes('iPad')) return 'Tablet';
-    if (userAgent.includes('iPhone')) return 'iPhone';
-    if (userAgent.includes('Android')) {
-      if (/Android.*?Tablet|Android.*?Tab/i.test(userAgent)) return 'Tablet';
-      return 'Android Phone';
-    }
-    return 'Mobile';
+  // Check for specific mobile devices
+  if (userAgent.includes('iPhone')) return 'iPhone';
+  if (userAgent.includes('iPad')) return 'iPad';
+  if (userAgent.includes('iPod')) return 'iPod';
+  
+  // Check for Android devices
+  if (userAgent.includes('Android')) {
+    if (/Android.*?Tablet|Android.*?Tab/i.test(userAgent)) return 'Android Tablet';
+    return 'Android Phone';
   }
   
+  // Check for Mac
+  if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
+    // Check if it's Apple Silicon
+    if (userAgent.includes('Mac OS X') && !userAgent.includes('Intel')) {
+      return 'Mac (Apple Silicon)';
+    }
+    return 'Mac';
+  }
+  
+  // Check for Windows
+  if (userAgent.includes('Windows')) {
+    return 'PC';
+  }
+  
+  // Check for Linux
+  if (userAgent.includes('Linux') && !userAgent.includes('Android')) {
+    return 'Linux PC';
+  }
+  
+  // Default for other mobile devices
+  if (isMobileDevice(userAgent)) {
+    return 'Mobile Device';
+  }
+  
+  // Default for other desktop devices
   return 'Desktop';
 }

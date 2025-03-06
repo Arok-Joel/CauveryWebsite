@@ -142,7 +142,7 @@ export default function SessionsPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground break-all">
                   {session.userAgent || 'Unknown user agent'}
                 </div>
               </CardFooter>
