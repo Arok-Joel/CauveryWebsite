@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -16,12 +16,13 @@ model User {
   phone         String
   address       String?
   pincode       String?
-  profileImage  String?        @db.Text
+  profileImage  String?
   role          UserRole       @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   announcements Announcement[]
   employee      Employee?
+  sessions      Session[]
 }
 
 model Team {
@@ -112,6 +113,19 @@ model Plot {
   layoutId    String?
   Layout      Layout?   @relation(fields: [layoutId], references: [id])
   SoldPlot    SoldPlot?
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isValid      Boolean  @default(true)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum UserRole {
