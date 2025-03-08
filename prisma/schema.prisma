@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -117,14 +116,14 @@ model Plot {
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
   userId       String
-  expires      DateTime
+  token        String   @unique
   userAgent    String?
   ipAddress    String?
+  lastActive   DateTime @default(now())
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  isValid      Boolean  @default(true)
+  expiresAt    DateTime
+  isRevoked    Boolean  @default(false)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

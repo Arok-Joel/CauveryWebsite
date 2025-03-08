@@ -2,26 +2,14 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { db } from '@/lib/db';
+import { UAParser } from 'ua-parser-js';
 
-// Remove the fallback secret key to prevent session mixing
-const secretKey = process.env.JWT_SECRET;
-if (!secretKey) {
-  throw new Error('JWT_SECRET environment variable is not set');
-}
-
-// Add environment-specific salt to the secret key
-const environmentSalt = process.env.NODE_ENV === 'production' ? 'prod-' : 'dev-';
-const enhancedSecretKey = `${environmentSalt}${secretKey}`;
-const key = new TextEncoder().encode(enhancedSecretKey);
+const secretKey = process.env.JWT_SECRET || 'fallback-secret-key';
+const key = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: any) {
-  // Add a unique fingerprint to each token
-  const tokenFingerprint = `${payload.email}-${Date.now()}-${crypto.randomUUID()}`;
-  
-  return await new SignJWT({
-    ...payload,
-    fingerprint: tokenFingerprint
-  })
+  return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
@@ -58,20 +46,11 @@ export async function verifyAdminCredentials(email: string, password: string) {
   return password === adminPassword;
 }
 
-export async function createUserSession(user: { email: string; name: string; role: string; id?: string }) {
-  // Generate a unique session ID
-  const sessionId = crypto.randomUUID();
-  
+export async function createUserSession(user: { email: string; name: string; role: string }, request?: Request) {
   const token = await encrypt({
     email: user.email,
     name: user.name,
     role: user.role,
-    // Include the user's ID if available
-    userId: user.id || `user-${crypto.randomUUID()}`,
-    // Add a unique identifier to each token to prevent session mixing
-    sessionId: sessionId,
-    // Add timestamp to further ensure uniqueness
-    issuedAt: Date.now(),
   });
 
   const response = new NextResponse(
@@ -85,31 +64,53 @@ export async function createUserSession(user: { email: string; name: string; rol
     })
   );
 
-  // Set SameSite to None for cross-domain usage (Netlify to Supabase)
-  // But only if in production and with secure flag
-  const sameSiteSetting = process.env.NODE_ENV === 'production' ? 'none' : 'strict';
-  const secureSetting = process.env.NODE_ENV === 'production';
-  
-  // Generate a unique cookie name for each user to prevent session mixing
-  const cookieName = `auth-token-${user.id || crypto.randomUUID().slice(0, 8)}`;
-
-  response.cookies.set(cookieName, token, {
-    httpOnly: true,
-    secure: secureSetting,
-    sameSite: sameSiteSetting,
-    maxAge: 60 * 60 * 24, // 1 day
-    path: '/', // Ensure cookie is available across the site
-  });
-  
-  // Also set the standard auth-token for backward compatibility
-  // but with a shorter expiration
+  // Set cookie
   response.cookies.set('auth-token', token, {
     httpOnly: true,
-    secure: secureSetting,
-    sameSite: sameSiteSetting,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 60 * 60 * 24, // 1 day
-    path: '/', // Ensure cookie is available across the site
   });
+
+  // Store session in database if it's not an admin
+  if (user.role !== 'ADMIN' && request) {
+    try {
+      const dbUser = await db.user.findUnique({
+        where: { email: user.email },
+        select: { id: true },
+      });
+
+      if (dbUser) {
+        // Get user agent and IP
+        const userAgent = request.headers.get('user-agent') || '';
+        const ipAddress = request.headers.get('x-forwarded-for') || 
+                          request.headers.get('x-real-ip') || 
+                          'unknown';
+        
+        // Parse user agent for better display
+        const parser = new UAParser(userAgent);
+        const browser = parser.getBrowser();
+        const os = parser.getOS();
+        const device = parser.getDevice();
+        
+        const userAgentInfo = `${browser.name || ''} ${browser.version || ''} on ${os.name || ''} ${os.version || ''} ${device.type ? `(${device.type})` : ''}`.trim();
+
+        // Create session in database
+        await db.session.create({
+          data: {
+            userId: dbUser.id,
+            token,
+            userAgent: userAgentInfo || userAgent,
+            ipAddress: typeof ipAddress === 'string' ? ipAddress : ipAddress[0],
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 day
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error creating session record:', error);
+      // Continue even if session record creation fails
+    }
+  }
 
   return { token, response };
 }
@@ -130,39 +131,104 @@ export async function login(email: string, password: string) {
   return null;
 }
 
-export async function logout() {
+export async function logout(sessionId?: string) {
   const response = new NextResponse(JSON.stringify({ message: 'Logged out successfully' }), {
     headers: {
       'Content-Type': 'application/json',
     },
   });
 
-  // Get all cookies from the request
-  const cookieHeader = response.headers.get('cookie');
-  const cookies = cookieHeader ? cookieHeader.split(';').map(c => c.trim()) : [];
-  
-  // Clear the standard auth cookie
+  // Clear the auth cookie
   response.cookies.set('auth-token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    sameSite: 'lax',
     maxAge: 0, // Expire immediately
-    path: '/',
   });
-  
-  // Clear any user-specific auth cookies
-  for (const cookie of cookies) {
-    if (cookie.startsWith('auth-token-')) {
-      const cookieName = cookie.split('=')[0];
-      response.cookies.set(cookieName, '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        maxAge: 0, // Expire immediately
-        path: '/',
+
+  // If sessionId is provided, revoke that specific session
+  if (sessionId) {
+    try {
+      await db.session.update({
+        where: { id: sessionId },
+        data: { isRevoked: true },
       });
+    } catch (error) {
+      console.error('Error revoking session:', error);
+      // Continue even if session revocation fails
     }
   }
 
   return response;
+}
+
+// New functions for session management
+
+export async function getUserSessions(userId: string) {
+  try {
+    const sessions = await db.session.findMany({
+      where: {
+        userId,
+        isRevoked: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        lastActive: 'desc',
+      },
+    });
+    
+    return sessions;
+  } catch (error) {
+    console.error('Error fetching user sessions:', error);
+    return [];
+  }
+}
+
+export async function revokeSession(sessionId: string) {
+  try {
+    await db.session.update({
+      where: { id: sessionId },
+      data: { isRevoked: true },
+    });
+    return true;
+  } catch (error) {
+    console.error('Error revoking session:', error);
+    return false;
+  }
+}
+
+export async function revokeAllSessionsExcept(userId: string, currentSessionToken: string) {
+  try {
+    await db.session.updateMany({
+      where: {
+        userId,
+        token: {
+          not: currentSessionToken,
+        },
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error('Error revoking all sessions:', error);
+    return false;
+  }
+}
+
+export async function updateSessionActivity(token: string) {
+  try {
+    await db.session.updateMany({
+      where: { token, isRevoked: false },
+      data: { lastActive: new Date() },
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating session activity:', error);
+    return false;
+  }
 }
