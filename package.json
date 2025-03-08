@@ -7,11 +7,12 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "db:seed": "bun prisma/seed.ts",
-    "setup": "bun scripts/setup-db.js"
+    "db:seed": "npx prisma db seed",
+    "setup": "node scripts/setup-db.js",
+    "vercel-build": "prisma generate && next build"
   },
   "prisma": {
-    "seed": "bun prisma/seed.ts"
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",
@@ -30,6 +31,8 @@
     "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@types/uuid": "^10.0.0",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -48,7 +51,6 @@
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
-    "ua-parser-js": "^1.0.37",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
@@ -58,7 +60,6 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/ua-parser-js": "^0.7.39",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.24.1",
     "autoprefixer": "^10.0.1",
