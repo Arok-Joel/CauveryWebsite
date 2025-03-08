@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         email,
         name: 'Admin',
         role: 'ADMIN',
-      });
+      }, req);
       return response;
     }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       email: user.email,
       name: user.name,
       role: user.role,
-    });
+    }, req);
 
     return response;
   } catch (error) {

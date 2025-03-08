@@ -13,8 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut, KeyRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SessionsManagement } from './SessionsManagement';
 
 interface EmployeeProfile {
   user: {
@@ -48,6 +49,7 @@ export function Navbar() {
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
 
   // Fetch profile data for employees
   useEffect(() => {
@@ -178,6 +180,10 @@ export function Navbar() {
                           <Link href="/employee/dashboard">Employee Dashboard</Link>
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem onClick={() => setSessionsDialogOpen(true)}>
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Manage Sessions
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
 
@@ -247,34 +253,33 @@ export function Navbar() {
                       )}
                       {user.role === 'EMPLOYEE' && (
                         <Link href="/employee/dashboard" className="text-lg flex items-center gap-2">
-                          {profileImage ? (
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={profileImage} alt="Profile" />
-                            </Avatar>
-                          ) : (
-                            <User className="h-4 w-4" />
-                          )}
                           Employee Dashboard
                         </Link>
                       )}
-                      <Button
+                      <button 
+                        onClick={() => setSessionsDialogOpen(true)}
+                        className="text-lg flex items-center gap-2"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        Manage Sessions
+                      </button>
+                      <button
                         onClick={handleLogout}
                         disabled={isLoading}
-                        variant="outline"
-                        className="w-full"
+                        className="text-lg flex items-center gap-2 text-red-500"
                       >
-                        <LogOut className="mr-2 h-4 w-4" />
+                        <LogOut className="h-4 w-4" />
                         {isLoading ? 'Logging out...' : 'Logout'}
-                      </Button>
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/auth/login">Login</Link>
-                      </Button>
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/auth/employee/register">Employee Register</Link>
-                      </Button>
+                      <Link href="/auth/login" className="text-lg">
+                        Login
+                      </Link>
+                      <Link href="/auth/employee/register" className="text-lg">
+                        Employee Register
+                      </Link>
                     </>
                   )}
                 </div>
@@ -283,6 +288,14 @@ export function Navbar() {
           </Sheet>
         </div>
       </div>
+
+      {/* Sessions Management Dialog */}
+      {user && (
+        <SessionsManagement
+          open={sessionsDialogOpen}
+          onOpenChange={setSessionsDialogOpen}
+        />
+      )}
     </nav>
   );
 }
