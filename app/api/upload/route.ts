@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import { join } from "path";
-import { mkdir } from "fs/promises";
 
 export async function POST(request: Request) {
   try {
@@ -15,28 +12,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = `data:${file.type};base64,${buffer.toString('base64')}`;
     
-    // Create unique filename
-    const uniqueFilename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-    
-    // Ensure uploads directory exists
-    const uploadDir = join(process.cwd(), "public/uploads/plots");
-    await mkdir(uploadDir, { recursive: true });
-    
-    // Save to public/uploads/plots directory
-    const path = join(uploadDir, uniqueFilename);
-    await writeFile(path, buffer);
-    
-    // Return the URL for the uploaded file
-    const url = `/uploads/plots/${uniqueFilename}`;
-    
-    return NextResponse.json({ url });
+    // Return the base64 string as the URL
+    return NextResponse.json({ url: base64 });
   } catch (error) {
-    console.error("Error uploading file:", error);
+    console.error("Error processing file:", error);
     return NextResponse.json(
-      { error: "Failed to upload file" },
+      { error: "Failed to process file" },
       { status: 500 }
     );
   }
