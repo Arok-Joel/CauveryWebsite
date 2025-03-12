@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -86,7 +85,7 @@ model SoldPlot {
   price         String
   dimensions    String
   facing        String
-  employeeName  String
+  employeeId    String
   customerName  String
   phoneNumber   String
   email         String

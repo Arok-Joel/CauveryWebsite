@@ -27,7 +27,7 @@ interface PlotDetails {
   price: number;
   dimensions: string;
   facing: string;
-  employeeName: string;
+  employeeId: string;
 }
 
 const customerBookingSchema = z.object({
@@ -38,7 +38,7 @@ const customerBookingSchema = z.object({
   price: z.string(),
   dimensions: z.string(),
   facing: z.string(),
-  employeeName: z.string(),
+  employeeId: z.string(),
   customerName: z.string().min(1, "Customer name is required"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
   email: z.string().email("Invalid email address"),
@@ -64,7 +64,7 @@ export default function CustomerBookingPage() {
       price: "",
       dimensions: "",
       facing: "",
-      employeeName: "",
+      employeeId: "",
       customerName: "",
       phoneNumber: "",
       email: "",
@@ -199,10 +199,10 @@ export default function CustomerBookingPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="employeeName"
+                    name="employeeId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Employee Name</FormLabel>
+                        <FormLabel>Employee ID</FormLabel>
                         <FormControl>
                           <Input {...field} disabled className="bg-muted/50" />
                         </FormControl>
