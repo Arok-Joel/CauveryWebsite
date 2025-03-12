@@ -134,38 +134,27 @@ export async function GET() {
     }
 
     // Format subordinates
-    const subordinates = employee.subordinates.map(sub => ({
+    const directReports = employee.subordinates.map(sub => ({
       id: sub.id,
       name: sub.user.name,
       role: sub.employeeRole,
       email: sub.user.email,
     }));
 
-    // Format response
-    return NextResponse.json({
-      employee: {
+    // Format response to match the expected ReportingStructure interface
+    const reportingStructure = {
+      self: {
         id: employee.id,
         name: employee.user.name,
-        role: employee.employeeRole,
         email: employee.user.email,
+        role: employee.employeeRole,
       },
       manager,
       managerOfManager,
-      subordinates,
-      team: employee.memberOfTeam 
-        ? {
-            id: employee.memberOfTeam.id,
-            leader: employee.memberOfTeam.leader 
-              ? {
-                  id: employee.memberOfTeam.leader.id,
-                  name: employee.memberOfTeam.leader.user.name,
-                  role: employee.memberOfTeam.leader.employeeRole,
-                  email: employee.memberOfTeam.leader.user.email,
-                }
-              : null,
-          }
-        : null,
-    });
+      directReports,
+    };
+
+    return NextResponse.json({ reportingStructure });
   } catch (error) {
     console.error('Error fetching reporting structure:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

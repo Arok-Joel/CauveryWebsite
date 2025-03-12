@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 interface Announcement {
   id: string;
@@ -116,7 +117,13 @@ export default function EmployeeDashboard() {
         }
 
         const data = await response.json();
-        setReportingStructure(data.reportingStructure);
+        
+        // Make sure we're getting the correct data structure
+        if (data.reportingStructure) {
+          setReportingStructure(data.reportingStructure);
+        } else {
+          console.error('Unexpected reporting structure format:', data);
+        }
       } catch (error) {
         console.error('Error fetching reporting structure:', error);
       } finally {
@@ -151,7 +158,37 @@ export default function EmployeeDashboard() {
   }, []);
 
   function formatRole(role: string) {
-    return role.replace(/_/g, ' ');
+    return role.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+  }
+
+  function getRoleBadgeClass(role: string) {
+    switch(role) {
+      case 'EXECUTIVE_DIRECTOR':
+        return 'bg-green-100 text-green-800 hover:bg-green-200 transition-colors';
+      case 'DIRECTOR':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors';
+      case 'JOINT_DIRECTOR':
+        return 'bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors';
+      case 'FIELD_OFFICER':
+        return 'bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors';
+      default:
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors';
+    }
+  }
+
+  // Custom Role Badge component to avoid default hover styles
+  function RoleBadge({ role, className }: { role: string, className?: string }) {
+    const baseStyles = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
+    
+    const roleStyles = getRoleBadgeClass(role);
+    
+    return (
+      <span className={cn(baseStyles, roleStyles, className)}>
+        {formatRole(role)}
+      </span>
+    );
   }
 
   const formatDate = (date: Date) => {
@@ -224,9 +261,10 @@ export default function EmployeeDashboard() {
                   </Avatar>
                   <div className="overflow-hidden">
                     <p className="font-medium text-lg truncate">{profile?.user?.name || user?.name || "Loading..."}</p>
-                    <Badge className="mt-1 bg-[#3C5A3E]/10 text-[#3C5A3E] hover:bg-[#3C5A3E]/20">
-                      {profile?.employee?.employeeRole ? formatRole(profile.employee.employeeRole) : reportingStructure?.self?.role ? formatRole(reportingStructure.self.role) : "Employee"}
-                    </Badge>
+                    <RoleBadge 
+                      role={profile?.employee?.employeeRole || reportingStructure?.self?.role || ''}
+                      className="mt-1"
+                    />
                   </div>
                 </div>
               )}
@@ -313,18 +351,21 @@ export default function EmployeeDashboard() {
                     <div>
                       <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">You Report To</h3>
                       <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <div className="flex items-center">
-                          <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                            <AvatarFallback className="text-[#3C5A3E]">
-                              {getInitials(reportingStructure.manager.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{reportingStructure.manager.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatRole(reportingStructure.manager.role)}
-                            </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
+                              <AvatarFallback className="text-[#3C5A3E]">
+                                {getInitials(reportingStructure.manager.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{reportingStructure.manager.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {reportingStructure.manager.email}
+                              </p>
+                            </div>
                           </div>
+                          <RoleBadge role={reportingStructure.manager.role} />
                         </div>
                       </div>
                       
@@ -333,18 +374,21 @@ export default function EmployeeDashboard() {
                         <div className="mt-2 ml-4 border-l-2 border-gray-200 pl-4 pt-2">
                           <p className="text-xs text-muted-foreground mb-1">Who reports to</p>
                           <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div className="flex items-center">
-                              <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                                <AvatarFallback className="text-[#3C5A3E]">
-                                  {getInitials(reportingStructure.managerOfManager.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{reportingStructure.managerOfManager.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {formatRole(reportingStructure.managerOfManager.role)}
-                                </p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
+                                  <AvatarFallback className="text-[#3C5A3E]">
+                                    {getInitials(reportingStructure.managerOfManager.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium">{reportingStructure.managerOfManager.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {reportingStructure.managerOfManager.email}
+                                  </p>
+                                </div>
                               </div>
+                              <RoleBadge role={reportingStructure.managerOfManager.role} />
                             </div>
                           </div>
                         </div>
@@ -359,16 +403,21 @@ export default function EmployeeDashboard() {
                       <div className="space-y-2">
                         {reportingStructure.directReports.map(report => (
                           <div key={report.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div className="flex items-center">
-                              <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                                <AvatarFallback className="text-[#3C5A3E]">
-                                  {getInitials(report.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{report.name}</p>
-                                <p className="text-sm text-muted-foreground">{formatRole(report.role)}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
+                                  <AvatarFallback className="text-[#3C5A3E]">
+                                    {getInitials(report.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium">{report.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {report.email}
+                                  </p>
+                                </div>
                               </div>
+                              <RoleBadge role={report.role} />
                             </div>
                           </div>
                         ))}
