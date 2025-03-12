@@ -23,6 +23,15 @@ interface Announcement {
   createdAt: string;
 }
 
+// Team member node for hierarchy display
+interface TeamMemberNode {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  children: TeamMemberNode[];
+}
+
 interface ReportingStructure {
   self: {
     id: string;
@@ -48,6 +57,7 @@ interface ReportingStructure {
     email: string;
     role: string;
   }>;
+  teamHierarchy: TeamMemberNode | null;
 }
 
 interface EmployeeProfile {
@@ -191,6 +201,71 @@ export default function EmployeeDashboard() {
     );
   }
 
+  // Component to recursively render the team hierarchy
+  function TeamHierarchyNode({ node, level = 0, currentEmployeeId }: { 
+    node: TeamMemberNode; 
+    level?: number; 
+    currentEmployeeId: string;
+  }) {
+    const isCurrentEmployee = node.id === currentEmployeeId;
+    
+    return (
+      <div className="relative">
+        {level > 0 && (
+          <div className="absolute border-l-2 border-gray-200" style={{
+            left: '-1rem',
+            top: '-0.5rem',
+            height: 'calc(100% + 0.5rem)',
+          }} />
+        )}
+        
+        <div className={`relative ${level > 0 ? 'ml-6 mt-2' : ''}`}>
+          {level > 0 && (
+            <div className="absolute border-t-2 border-gray-200" style={{
+              left: '-1rem',
+              width: '1rem',
+              top: '1.5rem',
+            }} />
+          )}
+          
+          <div className={`bg-gray-50 p-3 rounded-lg border ${isCurrentEmployee ? 'border-green-300 bg-green-50' : 'border-gray-100'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Avatar className={`h-8 w-8 mr-3 ${isCurrentEmployee ? 'bg-green-100' : 'bg-[#3C5A3E]/10'}`}>
+                  <AvatarFallback className={`${isCurrentEmployee ? 'text-green-800' : 'text-[#3C5A3E]'}`}>
+                    {getInitials(node.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className={`font-medium ${isCurrentEmployee ? 'text-green-800' : ''}`}>
+                    {node.name} {isCurrentEmployee && '(You)'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {node.email}
+                  </p>
+                </div>
+              </div>
+              <RoleBadge role={node.role} />
+            </div>
+          </div>
+          
+          {node.children && node.children.length > 0 && (
+            <div className="mt-2">
+              {node.children.map(child => (
+                <TeamHierarchyNode 
+                  key={child.id} 
+                  node={child} 
+                  level={level + 1}
+                  currentEmployeeId={currentEmployeeId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
@@ -329,7 +404,7 @@ export default function EmployeeDashboard() {
         {/* Sidebar - Right Column (1/3 width on desktop) */}
         <div className="space-y-6">
           {/* Reporting Structure Card */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Network className="mr-2 h-5 w-5 text-[#3C5A3E]" />
@@ -337,7 +412,7 @@ export default function EmployeeDashboard() {
               </CardTitle>
               <CardDescription>Your team hierarchy</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[600px] overflow-y-auto pr-2">
               {isLoadingReporting ? (
                 <div className="space-y-4">
                   <Skeleton className="h-16 w-full" />
@@ -425,8 +500,23 @@ export default function EmployeeDashboard() {
                     </div>
                   )}
 
+                  {/* Team Hierarchy Section */}
+                  {reportingStructure.teamHierarchy && (
+                    <div className="mt-6">
+                      <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">Team Hierarchy</h3>
+                      <div className="overflow-auto max-h-[500px] pr-2">
+                        <TeamHierarchyNode 
+                          node={reportingStructure.teamHierarchy} 
+                          currentEmployeeId={reportingStructure.self.id}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* No Manager or Reports */}
-                  {!reportingStructure.manager && reportingStructure.directReports.length === 0 && (
+                  {!reportingStructure.manager && 
+                   reportingStructure.directReports.length === 0 && 
+                   !reportingStructure.teamHierarchy && (
                     <div className="text-center py-6">
                       <Network className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">No reporting structure defined</p>
