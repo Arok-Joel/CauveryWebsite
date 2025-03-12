@@ -421,88 +421,9 @@ export default function EmployeeDashboard() {
                 </div>
               ) : reportingStructure ? (
                 <div className="space-y-6">
-                  {/* Manager Section */}
-                  {reportingStructure.manager && (
-                    <div>
-                      <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">You Report To</h3>
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                              <AvatarFallback className="text-[#3C5A3E]">
-                                {getInitials(reportingStructure.manager.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{reportingStructure.manager.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {reportingStructure.manager.email}
-                              </p>
-                            </div>
-                          </div>
-                          <RoleBadge role={reportingStructure.manager.role} />
-                        </div>
-                      </div>
-                      
-                      {/* Manager's Manager (if exists) */}
-                      {reportingStructure.managerOfManager && (
-                        <div className="mt-2 ml-4 border-l-2 border-gray-200 pl-4 pt-2">
-                          <p className="text-xs text-muted-foreground mb-1">Who reports to</p>
-                          <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                                  <AvatarFallback className="text-[#3C5A3E]">
-                                    {getInitials(reportingStructure.managerOfManager.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">{reportingStructure.managerOfManager.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {reportingStructure.managerOfManager.email}
-                                  </p>
-                                </div>
-                              </div>
-                              <RoleBadge role={reportingStructure.managerOfManager.role} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Direct Reports Section */}
-                  {reportingStructure.directReports.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">Reports To You</h3>
-                      <div className="space-y-2">
-                        {reportingStructure.directReports.map(report => (
-                          <div key={report.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <Avatar className="h-8 w-8 mr-3 bg-[#3C5A3E]/10">
-                                  <AvatarFallback className="text-[#3C5A3E]">
-                                    {getInitials(report.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">{report.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {report.email}
-                                  </p>
-                                </div>
-                              </div>
-                              <RoleBadge role={report.role} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Team Hierarchy Section */}
                   {reportingStructure.teamHierarchy && (
-                    <div className="mt-6">
+                    <div>
                       <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">Team Hierarchy</h3>
                       <div className="overflow-auto max-h-[500px] pr-2">
                         <TeamHierarchyNode 
@@ -513,10 +434,8 @@ export default function EmployeeDashboard() {
                     </div>
                   )}
 
-                  {/* No Manager or Reports */}
-                  {!reportingStructure.manager && 
-                   reportingStructure.directReports.length === 0 && 
-                   !reportingStructure.teamHierarchy && (
+                  {/* No Team Hierarchy */}
+                  {!reportingStructure.teamHierarchy && (
                     <div className="text-center py-6">
                       <Network className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">No reporting structure defined</p>
