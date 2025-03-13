@@ -15,7 +15,7 @@ model User {
   phone         String
   address       String?
   pincode       String?
-  profileImage  String?
+  profileImage  String?        @db.Text
   role          UserRole       @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt

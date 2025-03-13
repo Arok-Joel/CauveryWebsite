@@ -253,7 +253,7 @@ export default function EmployeeProfile() {
         throw new Error(data.error || 'Failed to upload profile image');
       }
 
-      // Update the local state with the new image URL
+      // Update the local state with the new image URL (base64 data)
       setProfile(prev => prev ? {
         ...prev,
         user: {
@@ -408,7 +408,7 @@ export default function EmployeeProfile() {
                       <img 
                         src={profile.user.profileImage} 
                         alt={profile.user.name} 
-                        className="object-cover"
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       <AvatarFallback className="bg-white/20 text-white text-xl">
