@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       price,
       dimensions,
       facing,
-      employeeName,
+      employeeId, // This will be used as employeeName
       customerName,
       phoneNumber,
       email,
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     // Validate that all required fields are present
     if (!plotId || !plotNumber || !size || !plotAddress || !price || !dimensions || 
-        !facing || !employeeName || !customerName || !phoneNumber || !email || 
+        !facing || !employeeId || !customerName || !phoneNumber || !email || 
         !address || !aadhaarNumber) {
       return NextResponse.json(
         { error: "All fields are required" },
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           price,
           dimensions,
           facing,
-          employeeName,
+          employeeName: employeeId, // Store the employee ID in the employeeName field
           customerName,
           phoneNumber,
           email,

@@ -38,6 +38,7 @@ interface Plot {
 interface Employee {
   id: string;
   name: string;
+  employeeId: string;
 }
 
 const bookingFormSchema = z.object({
@@ -53,7 +54,7 @@ const bookingFormSchema = z.object({
   facing: z.string(),
   
   // Employee Details
-  employeeName: z.string(),
+  employeeId: z.string(),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -75,7 +76,7 @@ export default function BookPlotPage() {
       price: "",
       dimensions: "",
       facing: "",
-      employeeName: "",
+      employeeId: "",
     },
   });
 
@@ -124,8 +125,8 @@ export default function BookPlotPage() {
         
         setEmployee(data);
         
-        // Update form with employee name only
-        form.setValue("employeeName", data.user.name);
+        // Update form with employee ID
+        form.setValue("employeeId", data.employee.id);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Error fetching employee details");
         router.push("/plots");
@@ -299,10 +300,10 @@ export default function BookPlotPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="employeeName"
+                    name="employeeId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Employee ID</FormLabel>
                         <FormControl>
                           <Input {...field} disabled />
                         </FormControl>
