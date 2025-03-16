@@ -230,6 +230,10 @@ function calculateCommissions(
   console.log("Calculating commissions for role:", role);
   console.log("Team hierarchy:", teamHierarchy);
 
+  // Define the role hierarchy in ascending order
+  const roleHierarchy: EmployeeRole[] = ['FIELD_OFFICER', 'JOINT_DIRECTOR', 'DIRECTOR', 'EXECUTIVE_DIRECTOR'];
+  const sellerRoleIndex = roleHierarchy.indexOf(role);
+
   if (role !== 'FIELD_OFFICER' && specialRates[role]) {
     // Higher-level employee making the sale - they get the special consolidated rate
     commissions.push({
@@ -239,11 +243,24 @@ function calculateCommissions(
       employeeRole: role,
       createdAt: new Date()
     });
+    
+    // Also give 5% to any roles above the seller
+    for (let i = sellerRoleIndex + 1; i < roleHierarchy.length; i++) {
+      const higherRole = roleHierarchy[i];
+      const higherRoleEmployeeId = teamHierarchy[higherRole];
+      
+      if (higherRoleEmployeeId) {
+        commissions.push({
+          amount: saleAmount * baseRates[higherRole],
+          percentage: baseRates[higherRole],
+          employeeId: higherRoleEmployeeId,
+          employeeRole: higherRole,
+          createdAt: new Date()
+        });
+      }
+    }
   } else {
     // Standard commission distribution for all roles
-    // Define the role hierarchy in ascending order
-    const roleHierarchy: EmployeeRole[] = ['FIELD_OFFICER', 'JOINT_DIRECTOR', 'DIRECTOR', 'EXECUTIVE_DIRECTOR'];
-    
     // For each role in the hierarchy, add a commission if we have an employee for that role
     roleHierarchy.forEach(currentRole => {
       const percentage = baseRates[currentRole];
