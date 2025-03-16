@@ -94,6 +94,7 @@ model SoldPlot {
   soldAt        DateTime @default(now())
   plot          Plot     @relation(fields: [plotId], references: [id])
   plotId        String   @unique
+  commissions   Commission[]
 }
 
 model Plot {
@@ -125,6 +126,18 @@ model Session {
   updatedAt    DateTime @updatedAt
   isValid      Boolean  @default(true)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Commission {
+  id            String   @id @default(cuid())
+  amount        Decimal
+  percentage    Decimal
+  employeeId    String
+  employeeRole  EmployeeRole
+  soldPlotId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  soldPlot      SoldPlot @relation(fields: [soldPlotId], references: [id])
 }
 
 enum UserRole {

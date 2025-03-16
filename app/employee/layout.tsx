@@ -11,7 +11,8 @@ import {
   User, 
   Bell, 
   Menu,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -118,6 +119,11 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       name: 'Announcements',
       href: '/employee/announcements',
       icon: Bell,
+    },
+    {
+      name: 'Commissions',
+      href: '/employee/commissions',
+      icon: DollarSign,
     },
   ];
 
