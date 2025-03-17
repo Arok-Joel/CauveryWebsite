@@ -12,7 +12,8 @@ import {
   Bell, 
   Menu,
   X,
-  DollarSign
+  DollarSign,
+  Network
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';

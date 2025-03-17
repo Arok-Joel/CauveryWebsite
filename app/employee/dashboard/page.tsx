@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { GitStyleOrgChart } from '@/app/components/GitStyleOrgChart';
 
 interface Announcement {
   id: string;
@@ -201,67 +202,61 @@ export default function EmployeeDashboard() {
     );
   }
 
-  // Component to recursively render the team hierarchy
-  function TeamHierarchyNode({ node, level = 0, currentEmployeeId }: { 
+  // Improved team hierarchy node component with git-style layout
+  function TeamHierarchyNode({ node, currentEmployeeId }: { 
     node: TeamMemberNode; 
-    level?: number; 
     currentEmployeeId: string;
   }) {
-    const isCurrentEmployee = node.id === currentEmployeeId;
+    const isCurrentUser = node.id === currentEmployeeId;
+    const initials = getInitials(node.name);
+    
+    const getRoleBadgeColor = (role: string) => {
+      switch (role) {
+        case 'EXECUTIVE_DIRECTOR':
+          return 'bg-green-100 text-green-800';
+        case 'DIRECTOR':
+          return 'bg-blue-100 text-blue-800';
+        case 'JOINT_DIRECTOR':
+          return 'bg-purple-100 text-purple-800';
+        case 'FIELD_OFFICER':
+          return 'bg-amber-100 text-amber-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
     
     return (
-      <div className="relative">
-        {level > 0 && (
-          <div className="absolute border-l-2 border-gray-200" style={{
-            left: '-1rem',
-            top: '-0.5rem',
-            height: 'calc(100% + 0.5rem)',
-          }} />
-        )}
-        
-        <div className={`relative ${level > 0 ? 'ml-6 mt-2' : ''}`}>
-          {level > 0 && (
-            <div className="absolute border-t-2 border-gray-200" style={{
-              left: '-1rem',
-              width: '1rem',
-              top: '1.5rem',
-            }} />
-          )}
-          
-          <div className={`bg-gray-50 p-3 rounded-lg border ${isCurrentEmployee ? 'border-green-300 bg-green-50' : 'border-gray-100'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Avatar className={`h-8 w-8 mr-3 ${isCurrentEmployee ? 'bg-green-100' : 'bg-[#3C5A3E]/10'}`}>
-                  <AvatarFallback className={`${isCurrentEmployee ? 'text-green-800' : 'text-[#3C5A3E]'}`}>
-                    {getInitials(node.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className={`font-medium ${isCurrentEmployee ? 'text-green-800' : ''}`}>
-                    {node.name} {isCurrentEmployee && '(You)'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {node.email}
-                  </p>
-                </div>
+      <div className="org-chart-node">
+        <div className={`org-chart-content ${isCurrentUser ? 'current-user' : ''}`}>
+          <div className="flex items-center gap-2">
+            <Avatar className={`h-8 w-8 ${isCurrentUser ? 'bg-green-100' : 'bg-gray-100'}`}>
+              <AvatarFallback className={isCurrentUser ? 'text-green-800' : 'text-gray-800'}>
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="font-medium text-sm">
+                {node.name} {isCurrentUser && '(You)'}
               </div>
-              <RoleBadge role={node.role} />
+              <div className="text-xs text-muted-foreground">{node.email}</div>
             </div>
           </div>
-          
-          {node.children && node.children.length > 0 && (
-            <div className="mt-2">
-              {node.children.map(child => (
-                <TeamHierarchyNode 
-                  key={child.id} 
-                  node={child} 
-                  level={level + 1}
-                  currentEmployeeId={currentEmployeeId}
-                />
-              ))}
-            </div>
-          )}
+          <div className={`role-badge ${getRoleBadgeColor(node.role)}`}>
+            {formatRole(node.role)}
+          </div>
         </div>
+        
+        {node.children && node.children.length > 0 && (
+          <div className="org-chart-children">
+            {node.children.map(child => (
+              <TeamHierarchyNode 
+                key={child.id} 
+                node={child} 
+                currentEmployeeId={currentEmployeeId}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -412,7 +407,7 @@ export default function EmployeeDashboard() {
               </CardTitle>
               <CardDescription>Your team hierarchy</CardDescription>
             </CardHeader>
-            <CardContent className="max-h-[600px] overflow-y-auto pr-2">
+            <CardContent>
               {isLoadingReporting ? (
                 <div className="space-y-4">
                   <Skeleton className="h-16 w-full" />
@@ -420,17 +415,15 @@ export default function EmployeeDashboard() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : reportingStructure ? (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Team Hierarchy Section */}
                   {reportingStructure.teamHierarchy && (
                     <div>
                       <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">Team Hierarchy</h3>
-                      <div className="overflow-auto max-h-[500px] pr-2">
-                        <TeamHierarchyNode 
-                          node={reportingStructure.teamHierarchy} 
-                          currentEmployeeId={reportingStructure.self.id}
-                        />
-                      </div>
+                      <GitStyleOrgChart 
+                        data={reportingStructure.teamHierarchy}
+                        currentUserId={reportingStructure.self.id}
+                      />
                     </div>
                   )}
 

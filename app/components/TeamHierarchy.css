@@ -1,0 +1,78 @@
+.org-chart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.org-chart-node {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.org-chart-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.org-chart-content:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.org-chart-content.current-user {
+  border: 2px solid #3C5A3E;
+  background-color: #f0f9f0;
+}
+
+.org-chart-children {
+  position: relative;
+  padding-left: 2rem;
+  margin-top: 0.5rem;
+}
+
+/* Vertical line from parent to children */
+.org-chart-children::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1rem;
+  width: 2px;
+  height: 100%;
+  background-color: #e5e7eb;
+  z-index: 1;
+}
+
+/* Horizontal line to each child */
+.org-chart-node::before {
+  content: '';
+  position: absolute;
+  top: 1.25rem;
+  left: -0.75rem;
+  width: 0.75rem;
+  height: 2px;
+  background-color: #e5e7eb;
+  z-index: 1;
+}
+
+/* Remove the horizontal line for the root node */
+.org-chart > .org-chart-node::before {
+  display: none;
+}
+
+.role-badge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap;
+} 
