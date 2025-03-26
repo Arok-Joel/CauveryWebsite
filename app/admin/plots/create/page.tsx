@@ -814,20 +814,22 @@ export default function CreateLayout() {
       </div>
 
       <div className="grid grid-cols-12 gap-4">
-        <Card className="col-span-9 border rounded-md shadow-sm">
-          <CardContent className="p-4">
-            <canvas
-              ref={canvasRef}
-              width={1200}
-              height={800}
-              className="border border-gray-200 w-full h-auto"
-              onClick={handleCanvasClick}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onWheel={handleMouseWheel}
-            />
+        <Card className="col-span-9 border rounded-md shadow-sm overflow-hidden">
+          <CardContent className="p-4 relative">
+            <div className="w-full h-full overflow-hidden">
+              <canvas
+                ref={canvasRef}
+                width={1200}
+                height={800}
+                className="border border-gray-200 w-full h-auto max-w-full"
+                onClick={handleCanvasClick}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onWheel={handleMouseWheel}
+              />
+            </div>
             
             <div className="mt-4 flex flex-wrap gap-2">
               {currentPoints.length > 0 && (

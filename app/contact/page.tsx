@@ -44,11 +44,22 @@ export default function ContactPage() {
   async function onSubmit(data: ContactFormValues) {
     try {
       setIsLoading(true);
-      // Here you would typically send the data to your API
-      console.log(data);
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
       toast.success('Message sent successfully!');
       form.reset();
     } catch (error) {
+      console.error('Error sending message:', error);
       toast.error('Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);

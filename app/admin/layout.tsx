@@ -58,6 +58,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: "Plots",
       href: "/admin/plots",
     },
+    {
+      name: "Messages",
+      href: "/admin/messages",
+    },
   ];
 
   return (

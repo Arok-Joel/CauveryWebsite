@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -47,15 +47,16 @@ export function Navbar() {
   const { user, setUser, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  // Fetch profile data for employees
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!user || user.role !== 'EMPLOYEE') return;
-      
-      try {
-        setIsLoadingProfile(true);
+  // Define fetchProfile function
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoadingProfile(true);
+      if (user.role === 'EMPLOYEE') {
         const response = await fetch('/api/employee/profile', {
           credentials: 'include',
         });
@@ -66,17 +67,42 @@ export function Navbar() {
 
         const data = await response.json();
         setProfile(data);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    }
+      } else if (user.role === 'USER') {
+        const response = await fetch('/api/user/profile', {
+          credentials: 'include',
+        });
 
-    if (user && user.role === 'EMPLOYEE') {
-      fetchProfile();
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
     }
   }, [user]);
+
+  // Fetch profile data for employees and users
+  useEffect(() => {
+    if (user && (user.role === 'EMPLOYEE' || user.role === 'USER')) {
+      fetchProfile();
+    }
+  }, [user, fetchProfile]);
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      console.log('Profile update event received');
+      fetchProfile();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, [fetchProfile]);
 
   const handleLogout = async () => {
     try {
@@ -110,11 +136,12 @@ export function Navbar() {
   const getDisplayName = () => {
     if (user?.role === 'ADMIN') return 'Admin';
     if (user?.role === 'EMPLOYEE' && profile?.user?.name) return profile.user.name;
+    if (user?.role === 'USER' && userProfile?.user?.name) return userProfile.user.name;
     return user?.name || '';
   };
 
   const displayName = getDisplayName();
-  const profileImage = profile?.user?.profileImage;
+  const profileImage = user?.role === 'EMPLOYEE' ? profile?.user?.profileImage : userProfile?.user?.profileImage;
 
   const getInitials = (name: string) => {
     return name
@@ -153,18 +180,29 @@ export function Navbar() {
                 <div className="flex items-center gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="bg-white/10 text-white hover:bg-white/20 flex items-center"
-                      >
-                        {user.role === 'EMPLOYEE' && profileImage ? (
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarImage src={profileImage} alt="Profile" />
-                          </Avatar>
-                        ) : (
-                          <User className="mr-2 h-4 w-4" />
-                        )}
-                        {displayName}
+                      <Button variant="outline" className="relative flex items-center gap-2 bg-white/10 text-white hover:bg-white/20 h-9 px-3">
+                        <Avatar className="h-6 w-6">
+                          {user.role === 'EMPLOYEE' && profile?.user.profileImage ? (
+                            <img 
+                              src={profile.user.profileImage} 
+                              alt={profile.user.name} 
+                              className="h-full w-full object-cover rounded-full"
+                            />
+                          ) : user.role === 'USER' && userProfile?.user.profileImage ? (
+                            <img 
+                              src={userProfile.user.profileImage} 
+                              alt={userProfile.user.name} 
+                              className="h-full w-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-[#3C5A3E] text-white text-xs">
+                              {user.name ? user.name[0].toUpperCase() : 'U'}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <span className="text-sm font-medium">
+                          {user.role === 'EMPLOYEE' ? profile?.user.name : userProfile?.user.name}
+                        </span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -176,6 +214,11 @@ export function Navbar() {
                       {user.role === 'EMPLOYEE' && (
                         <DropdownMenuItem asChild>
                           <Link href="/employee/dashboard">Employee Dashboard</Link>
+                        </DropdownMenuItem>
+                      )}
+                      {user.role === 'USER' && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/user/profile">My Profile</Link>
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem asChild>
@@ -253,11 +296,25 @@ export function Navbar() {
                           {profileImage ? (
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={profileImage} alt="Profile" />
+                              <AvatarFallback>{displayName[0]?.toUpperCase()}</AvatarFallback>
                             </Avatar>
                           ) : (
                             <User className="h-4 w-4" />
                           )}
                           Employee Dashboard
+                        </Link>
+                      )}
+                      {user.role === 'USER' && (
+                        <Link href="/user/profile" className="text-lg flex items-center gap-2">
+                          {profileImage ? (
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={profileImage} alt="Profile" />
+                              <AvatarFallback>{displayName[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
+                          My Profile
                         </Link>
                       )}
                       <Link href="/account/sessions" className="text-lg">

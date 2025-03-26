@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DIRECT_URL")
 }
 
 model User {
@@ -138,6 +138,16 @@ model Commission {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   soldPlot      SoldPlot @relation(fields: [soldPlotId], references: [id])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 enum UserRole {

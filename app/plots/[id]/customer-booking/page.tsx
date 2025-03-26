@@ -109,11 +109,40 @@ export default function CustomerBookingPage() {
         throw new Error("Failed to book plot");
       }
 
+      const result = await response.json();
       toast.success("Plot booked successfully!");
-      router.push("/plots");
+      
+      // Get employee details from the response
+      const employeeResponse = await fetch(`/api/employee/${data.employeeId}`);
+      if (!employeeResponse.ok) {
+        throw new Error("Failed to fetch employee details");
+      }
+      
+      const employee = await employeeResponse.json();
+      console.log('Fetched employee details:', employee);
+      
+      if (!employee.name || !employee.employeeRole) {
+        throw new Error("Incomplete employee details received");
+      }
+      
+      // Redirect to thank you page with booking details
+      const searchParams = new URLSearchParams({
+        plotNumber: data.plotNumber,
+        customerName: data.customerName,
+        price: data.price,
+        size: data.size,
+        phoneNumber: data.phoneNumber,
+        email: data.email,
+        employeeId: data.employeeId,
+        employeeName: employee.name,
+        employeeRole: employee.employeeRole,
+      });
+      
+      console.log('Redirecting with params:', Object.fromEntries(searchParams.entries()));
+      router.push(`/thank-you?${searchParams.toString()}`);
     } catch (error) {
       console.error("Error booking plot:", error);
-      toast.error("Failed to book plot. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to book plot. Please try again.");
     } finally {
       setIsLoading(false);
     }
