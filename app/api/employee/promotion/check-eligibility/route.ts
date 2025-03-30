@@ -39,9 +39,14 @@ async function hasEligibleSubordinates(employeeId: string, role: EmployeeRole): 
     }
   });
 
+  console.log(`Found ${subordinates.length} field officers reporting to Joint Director ${employeeId}`);
+  
   // Edge case: If there are fewer than 2 field officers under them, this condition is nullified
+  // BUT this doesn't automatically make them eligible - it just makes this requirement not applicable
+  // They still need to meet the primary requirement of 50 plots
   if (subordinates.length < 2) {
-    return true; // Condition is nullified, so it's "met"
+    console.log(`Fewer than 2 field officers found - condition about promoted subordinates is nullified`);
+    return false; // Changed from true to false - not having enough subordinates doesn't make you eligible
   }
 
   // If there are at least 2 subordinates, check promotion history
@@ -57,6 +62,8 @@ async function hasEligibleSubordinates(employeeId: string, role: EmployeeRole): 
     }
   });
 
+  console.log(`Found ${promotedSubordinates} promoted field officers under Joint Director ${employeeId}`);
+  
   return promotedSubordinates >= 2;
 }
 
@@ -138,17 +145,17 @@ export async function GET() {
       });
     }
 
-    // Check promotion criteria based on role
-    let eligible = false;
-    let conditionMet = '';
-    let plotsRequired = 0;
-
     // Count sold plots
     const soldPlots = await db.commission.count({
       where: {
         employeeId: employee.id,
       },
     });
+
+    // Check promotion criteria based on role
+    let eligible = false;
+    let conditionMet = '';
+    let plotsRequired = 0;
 
     switch (currentRole) {
       case EmployeeRole.FIELD_OFFICER:
@@ -161,14 +168,21 @@ export async function GET() {
 
       case EmployeeRole.JOINT_DIRECTOR:
         plotsRequired = 50;
-        const hasPromotedSubordinates = await hasEligibleSubordinates(employee.id, currentRole);
         
+        // Primary condition: 50 plots sold
         if (soldPlots >= plotsRequired) {
           eligible = true;
           conditionMet = `Sold ${soldPlots} plots (minimum ${plotsRequired} required)`;
-        } else if (hasPromotedSubordinates) {
-          eligible = true;
-          conditionMet = 'Has 2 promoted Field Officers OR condition nullified due to fewer than 2 Field Officers';
+        } else {
+          // Alternative condition: 2 promoted Field Officers
+          const hasPromotedSubordinates = await hasEligibleSubordinates(employee.id, currentRole);
+          
+          if (hasPromotedSubordinates) {
+            eligible = true;
+            conditionMet = 'Has 2 promoted Field Officers';
+          } else {
+            eligible = false;
+          }
         }
         break;
 
@@ -204,4 +218,11 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+// Helper function to format role name for display
+function formatRole(role: string) {
+  return role.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
 } 

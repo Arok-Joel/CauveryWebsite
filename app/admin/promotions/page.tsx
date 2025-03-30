@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Milestone, Check, X, Calendar, ArrowUp } from 'lucide-react';
+import { Milestone, Check, X, Calendar, ArrowUp, Network } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -49,6 +49,7 @@ export default function AdminPromotionsPage() {
   const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
+  const [isFixingReporting, setIsFixingReporting] = useState(false);
 
   useEffect(() => {
     fetchPromotionRequests();
@@ -109,6 +110,30 @@ export default function AdminPromotionsPage() {
     }
   }
 
+  async function handleFixReportingStructure() {
+    try {
+      setIsFixingReporting(true);
+      const response = await fetch('/api/admin/reporting-structure/fix', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fix reporting structure');
+      }
+
+      const data = await response.json();
+      toast.success('Reporting structure fixed successfully');
+      console.log('Updates applied:', data.updates);
+    } catch (error) {
+      console.error('Error fixing reporting structure:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to fix reporting structure');
+    } finally {
+      setIsFixingReporting(false);
+    }
+  }
+
   function formatRole(role: string) {
     return role.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
@@ -150,13 +175,27 @@ export default function AdminPromotionsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Milestone className="mr-2 h-5 w-5" />
-            Promotion Requests
-          </CardTitle>
-          <CardDescription>
-            Manage employee promotion requests
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <Milestone className="mr-2 h-5 w-5" />
+                Promotion Requests
+              </CardTitle>
+              <CardDescription>
+                Manage employee promotion requests
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFixReportingStructure}
+              disabled={isFixingReporting}
+              className="flex items-center gap-1"
+            >
+              <Network className="h-4 w-4" />
+              {isFixingReporting ? 'Fixing...' : 'Fix Reporting Structure'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
