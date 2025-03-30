@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { GitStyleOrgChart } from '@/app/components/GitStyleOrgChart';
+import { PromotionCard } from '@/app/components/PromotionCard';
 
 interface Announcement {
   id: string;
@@ -349,6 +350,9 @@ export default function EmployeeDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Promotion Card - Add after profile card */}
+          <PromotionCard />
 
           {/* Announcements Card - Moved below profile */}
           <Card>

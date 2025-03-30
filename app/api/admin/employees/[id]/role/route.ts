@@ -45,22 +45,20 @@ export async function PATCH(
       }
     }
 
-    // If changing to Executive Director, check if they're already in a team as a member
-    if (role === 'EXECUTIVE_DIRECTOR') {
-      const teamMembership = await db.employee.findUnique({
-        where: { id: params.id },
-        select: { teamId: true },
-      });
+    // Check if the employee is a member of a team (not leading it)
+    const teamMembership = await db.employee.findUnique({
+      where: { id: params.id },
+      select: { teamId: true },
+    });
 
-      if (teamMembership?.teamId) {
-        return NextResponse.json(
-          {
-            error:
-              'Cannot promote to Executive Director: Employee is currently a member of a team. Please remove them from the team first.',
-          },
-          { status: 400 }
-        );
-      }
+    if (teamMembership?.teamId) {
+      return NextResponse.json(
+        {
+          error:
+            `Cannot update role: Employee is currently a member of a team. Please remove them from the team first.`,
+        },
+        { status: 400 }
+      );
     }
 
     const updatedEmployee = await db.employee.update({
