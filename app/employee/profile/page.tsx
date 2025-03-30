@@ -521,7 +521,7 @@ export default function EmployeeProfile() {
             <dl className="space-y-4">
               {renderEditableField(
                 "Date of Birth", 
-                new Date(profile.employee.dateOfBirth).toLocaleDateString(), 
+                new Date(profile.employee.dateOfBirth).toLocaleDateString('en-US'), 
                 "dateOfBirth", 
                 "employee", 
                 <Calendar className="mr-2 h-4 w-4 text-gray-400" />,

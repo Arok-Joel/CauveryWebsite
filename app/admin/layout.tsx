@@ -90,13 +90,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main content */}
       <div className="flex-1 bg-gray-100">
-        <header className="bg-white shadow">
-          <div className="px-4 py-6">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {navigation.find(item => item.href === pathname)?.name || 'Admin'}
-            </h2>
-          </div>
-        </header>
+        {!pathname.includes('/employees/') && (
+          <header className="bg-white shadow">
+            <div className="px-4 py-6">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {navigation.find(item => item.href === pathname)?.name}
+              </h2>
+            </div>
+          </header>
+        )}
         <main className="p-6">{children}</main>
       </div>
     </div>
