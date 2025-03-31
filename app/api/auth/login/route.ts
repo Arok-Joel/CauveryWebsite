@@ -17,10 +17,38 @@ export async function POST(req: Request) {
     // First, try admin login
     const isAdmin = await verifyAdminCredentials(email, password);
     if (isAdmin) {
+      // Check if admin exists in database
+      let adminUser = await db.user.findUnique({
+        where: { email }
+      });
+
+      // If admin doesn't exist in database, create one
+      if (!adminUser) {
+        try {
+          // Generate a random password hash - we don't need the actual password
+          const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
+          
+          adminUser = await db.user.create({
+            data: {
+              email,
+              name: 'Admin',
+              password: hashedPassword,
+              phone: '0000000000', // Placeholder
+              role: 'ADMIN',
+            },
+          });
+          console.log('Created admin user in database:', adminUser.id);
+        } catch (error) {
+          console.error('Error creating admin user in database:', error);
+          // Continue even if we couldn't create the user
+        }
+      }
+
       const { response } = await createUserSession({
         email,
         name: 'Admin',
         role: 'ADMIN',
+        id: adminUser?.id, // Use the ID if we have it
       });
       return response;
     }

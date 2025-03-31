@@ -27,16 +27,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get admin user from database
-    const admin = await db.user.findFirst({
+    // First, try to find the admin user
+    let admin = await db.user.findFirst({
       where: {
         email: verified.email,
         role: 'ADMIN',
       },
     });
 
+    // If admin doesn't exist in database, create one
     if (!admin) {
-      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+      admin = await db.user.create({
+        data: {
+          email: verified.email,
+          name: verified.name || 'Admin',
+          password: 'hashed_placeholder_password', // We don't need the actual password
+          phone: '0000000000', // Placeholder
+          role: 'ADMIN',
+        },
+      });
+      
+      console.log('Created admin user in database:', admin.id);
     }
 
     const body = await req.json();

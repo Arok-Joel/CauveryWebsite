@@ -147,11 +147,40 @@ export async function login(email: string, password: string) {
   const isValidAdmin = await verifyAdminCredentials(email, password);
 
   if (isValidAdmin) {
-    // For admin, we don't have a user ID in the database
+    // Check if admin exists in database
+    let adminUser = await db.user.findUnique({
+      where: { email }
+    });
+
+    // If admin doesn't exist in database, create one
+    if (!adminUser) {
+      try {
+        // Generate a random password hash - we don't need the actual password since
+        // we authenticate admin using environment variables
+        const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        
+        adminUser = await db.user.create({
+          data: {
+            email,
+            name: 'Admin',
+            password: hashedPassword,
+            phone: '0000000000', // Placeholder
+            role: 'ADMIN',
+          },
+        });
+        console.log('Created admin user in database:', adminUser.id);
+      } catch (error) {
+        console.error('Error creating admin user in database:', error);
+        // Continue even if we couldn't create the user
+      }
+    }
+
+    // For admin, we create a session without requiring a user ID in the database
     const { token } = await createUserSession({
       email,
       name: 'Admin',
       role: 'ADMIN',
+      id: adminUser?.id, // Use the ID if we have it
     });
     return token;
   }
