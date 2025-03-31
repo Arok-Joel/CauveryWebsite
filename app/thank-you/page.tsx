@@ -3,13 +3,46 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { generatePDF } from "@/lib/pdf-generator";
 import { CheckCircle2, Download, Home, Receipt, Calendar, Phone, Mail, Ruler, IndianRupee } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
-export default function ThankYouPage() {
+// Loading placeholder component
+function LoadingThankYou() {
+  return (
+    <div className="h-[calc(100vh-64px)] bg-gradient-to-b from-green-50 to-white flex items-center">
+      <div className="container max-w-4xl mx-auto px-4">
+        <Card className="shadow-xl border-0 overflow-hidden">
+          <div className="bg-[#3C5A3E] text-white px-6 py-8 text-center relative">
+            <div className="absolute inset-0 bg-[url('/texture.png')] opacity-10" />
+            <div className="relative">
+              <div className="mx-auto w-14 h-14 bg-white rounded-full flex items-center justify-center mb-3">
+                <div className="h-8 w-8 animate-pulse bg-gray-200 rounded-full" />
+              </div>
+              <h1 className="text-2xl font-bold mb-1">Loading...</h1>
+              <p className="text-green-50">
+                Please wait while we prepare your booking details
+              </p>
+            </div>
+          </div>
+          <CardContent className="p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// Main component wrapped with params
+function ThankYouContent() {
   const searchParams = useSearchParams();
   const [bookingDetails, setBookingDetails] = useState<any>(null);
 
@@ -159,5 +192,14 @@ export default function ThankYouPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Export the page wrapped in Suspense
+export default function ThankYouPage() {
+  return (
+    <Suspense fallback={<LoadingThankYou />}>
+      <ThankYouContent />
+    </Suspense>
   );
 } 
