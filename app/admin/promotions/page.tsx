@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistance } from 'date-fns';
+import { ReassignSubordinatesModal } from '@/app/components/ReassignSubordinatesModal';
 
 interface Employee {
   id: string;
@@ -50,6 +51,9 @@ export default function AdminPromotionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
   const [isFixingReporting, setIsFixingReporting] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [currentPromotionId, setCurrentPromotionId] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<{id: string, status: 'APPROVED' | 'REJECTED'} | null>(null);
 
   useEffect(() => {
     fetchPromotionRequests();
@@ -77,6 +81,24 @@ export default function AdminPromotionsPage() {
   }
 
   async function handleProcessRequest(id: string, status: 'APPROVED' | 'REJECTED') {
+    if (status === 'APPROVED') {
+      // Get the request details to check for subordinates
+      const request = promotionRequests.find(req => req.id === id);
+      
+      if (request && request.currentRole === 'JOINT_DIRECTOR' && request.targetRole === 'DIRECTOR') {
+        // Store the pending approval and show reassignment modal
+        setPendingApproval({ id, status });
+        setCurrentPromotionId(id);
+        setShowReassignModal(true);
+        return;
+      }
+    }
+    
+    // For rejections or other role promotions, process immediately
+    processPromotionRequest(id, status);
+  }
+
+  async function processPromotionRequest(id: string, status: 'APPROVED' | 'REJECTED') {
     try {
       setProcessingRequest(id);
       const response = await fetch(`/api/admin/promotions/${id}/process`, {
@@ -107,6 +129,14 @@ export default function AdminPromotionsPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to process promotion request');
     } finally {
       setProcessingRequest(null);
+      setPendingApproval(null);
+    }
+  }
+
+  function handleReassignComplete() {
+    // After reassignment is complete, process the promotion
+    if (pendingApproval) {
+      processPromotionRequest(pendingApproval.id, pendingApproval.status);
     }
   }
 
@@ -298,6 +328,17 @@ export default function AdminPromotionsPage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Reassignment Modal */}
+      <ReassignSubordinatesModal
+        isOpen={showReassignModal}
+        onClose={() => {
+          setShowReassignModal(false);
+          setPendingApproval(null);
+        }}
+        promotionRequestId={currentPromotionId || ''}
+        onReassignComplete={handleReassignComplete}
+      />
     </div>
   );
 } 
