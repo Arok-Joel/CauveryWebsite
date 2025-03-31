@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Move } from "lucide-react";
@@ -23,7 +23,8 @@ interface Layout {
   Plot: Plot[];
 }
 
-export default function LayoutPage({ params }: { params: { id: string } }) {
+export default function LayoutPage() {
+  const params = useParams();
   const [layout, setLayout] = useState<Layout | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -44,7 +45,9 @@ export default function LayoutPage({ params }: { params: { id: string } }) {
       }
     };
 
-    fetchLayout();
+    if (params.id) {
+      fetchLayout();
+    }
   }, [params.id]);
 
   useEffect(() => {

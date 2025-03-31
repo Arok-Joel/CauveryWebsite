@@ -13,6 +13,7 @@ CREATE TABLE "User" (
     "phone" TEXT NOT NULL,
     "address" TEXT,
     "pincode" TEXT,
+    "profileImage" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -77,6 +78,27 @@ CREATE TABLE "Layout" (
 );
 
 -- CreateTable
+CREATE TABLE "SoldPlot" (
+    "id" TEXT NOT NULL,
+    "plotNumber" TEXT NOT NULL,
+    "size" TEXT NOT NULL,
+    "plotAddress" TEXT NOT NULL,
+    "price" TEXT NOT NULL,
+    "dimensions" TEXT NOT NULL,
+    "facing" TEXT NOT NULL,
+    "employeeName" TEXT NOT NULL,
+    "customerName" TEXT NOT NULL,
+    "phoneNumber" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "aadhaarNumber" TEXT NOT NULL,
+    "soldAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "plotId" TEXT NOT NULL,
+
+    CONSTRAINT "SoldPlot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Plot" (
     "id" TEXT NOT NULL,
     "plotNumber" TEXT NOT NULL,
@@ -87,11 +109,41 @@ CREATE TABLE "Plot" (
     "facing" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "coordinates" JSONB NOT NULL,
+    "images" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "layoutId" TEXT,
 
     CONSTRAINT "Plot_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Session" (
+    "id" TEXT NOT NULL,
+    "sessionToken" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL,
+    "userAgent" TEXT,
+    "ipAddress" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isValid" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Commission" (
+    "id" TEXT NOT NULL,
+    "amount" DECIMAL(65,30) NOT NULL,
+    "percentage" DECIMAL(65,30) NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "employeeRole" "EmployeeRole" NOT NULL,
+    "soldPlotId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Commission_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -110,10 +162,19 @@ CREATE UNIQUE INDEX "Employee_aadharCardNumber_key" ON "Employee"("aadharCardNum
 CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "SoldPlot_plotId_key" ON "SoldPlot"("plotId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Plot_plotNumber_key" ON "Plot"("plotNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
 
 -- AddForeignKey
 ALTER TABLE "Team" ADD CONSTRAINT "Team_leaderId_fkey" FOREIGN KEY ("leaderId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Employee" ADD CONSTRAINT "Employee_reportsToId_fkey" FOREIGN KEY ("reportsToId") REFERENCES "Employee"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Employee" ADD CONSTRAINT "Employee_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -122,10 +183,16 @@ ALTER TABLE "Employee" ADD CONSTRAINT "Employee_teamId_fkey" FOREIGN KEY ("teamI
 ALTER TABLE "Employee" ADD CONSTRAINT "Employee_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Employee" ADD CONSTRAINT "Employee_reportsToId_fkey" FOREIGN KEY ("reportsToId") REFERENCES "Employee"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Announcement" ADD CONSTRAINT "Announcement_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "SoldPlot" ADD CONSTRAINT "SoldPlot_plotId_fkey" FOREIGN KEY ("plotId") REFERENCES "Plot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Plot" ADD CONSTRAINT "Plot_layoutId_fkey" FOREIGN KEY ("layoutId") REFERENCES "Layout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Commission" ADD CONSTRAINT "Commission_soldPlotId_fkey" FOREIGN KEY ("soldPlotId") REFERENCES "SoldPlot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

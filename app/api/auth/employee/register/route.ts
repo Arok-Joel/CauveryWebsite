@@ -4,6 +4,7 @@ import * as z from 'zod';
 import bcrypt from 'bcryptjs';
 import { generateEmployeeId } from '@/lib/employee-id';
 import { sendEmployeeWelcomeEmail } from '@/lib/email';
+import { revalidatePath } from 'next/cache';
 
 const employeeRegisterSchema = z.object({
   name: z.string().min(2),
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Calculate age
-    const dob = new Date(data.dateOfBirth);
+    const dob = new Date(data.dateOfBirth + 'T00:00:00');
     const today = new Date();
     const age = today.getFullYear() - dob.getFullYear();
 
@@ -75,13 +76,13 @@ export async function POST(req: Request) {
       // Generate employee ID
       const employeeId = await generateEmployeeId();
 
-      // Create employee
+      // Create employee with the date in local timezone
       const employee = await tx.employee.create({
         data: {
           id: employeeId,
           userId: user.id,
           guardianName: data.guardianName,
-          dateOfBirth: dob,
+          dateOfBirth: new Date(dob.getFullYear(), dob.getMonth(), dob.getDate()),
           age: age,
           gender: data.gender,
           pancardNumber: data.pancardNumber,
@@ -111,6 +112,9 @@ export async function POST(req: Request) {
       console.error('Failed to send welcome email:', emailError);
       // Continue with registration response even if email fails
     }
+
+    // Revalidate the admin dashboard cache
+    revalidatePath('/admin');
 
     return NextResponse.json({
       message: 'Employee registered successfully',

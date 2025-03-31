@@ -4,8 +4,6 @@ import { verifyAuth } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
-
-  // Protect admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!token) {
       return NextResponse.redirect(new URL('/auth/admin/login', request.url));
