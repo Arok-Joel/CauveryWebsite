@@ -3,13 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { generatePDF } from "@/lib/pdf-generator";
 import { CheckCircle2, Download, Home, Receipt, Calendar, Phone, Mail, Ruler, IndianRupee } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 
-export default function ThankYouPage() {
+function ThankYouContent() {
   const searchParams = useSearchParams();
   const [bookingDetails, setBookingDetails] = useState<any>(null);
 
@@ -159,5 +159,13 @@ export default function ThankYouPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ThankYouPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ThankYouContent />
+    </Suspense>
   );
 } 

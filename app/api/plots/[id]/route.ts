@@ -7,9 +7,7 @@ export async function GET(
 ) {
   try {
     const plot = await prisma.plot.findUnique({
-      where: {
-        id: params.id,
-      },
+      where: { id: params.id },
     });
 
     if (!plot) {

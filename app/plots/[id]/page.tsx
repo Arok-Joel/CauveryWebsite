@@ -1,17 +1,25 @@
-import { notFound } from "next/navigation";
-import prisma from "@/lib/prisma";
+"use client";
+
+import { useState, useEffect } from "react";
+import { notFound, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
-import { cookies } from "next/headers";
-import { verifyAuth } from "@/lib/auth";
 import Link from "next/link";
+import { ContactSalesDialog } from "@/components/ContactSalesDialog";
 
-interface PageProps {
-  params: {
-    id: string;
-  };
+interface PlotData {
+  id: string;
+  plotNumber: string;
+  size: string;
+  plotAddress: string;
+  price: number;
+  dimensions: string;
+  facing: string;
+  status: string;
+  coordinates: any;
+  images: string;
 }
 
 interface PlotImage {
@@ -19,38 +27,58 @@ interface PlotImage {
   caption?: string;
 }
 
-async function getPlot(id: string) {
-  const plot = await prisma.plot.findUnique({
-    where: { id },
-  });
+interface PageProps {
+  params: {
+    id: string;
+  };
+}
+
+export default function PlotPage({ params }: PageProps) {
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [plot, setPlot] = useState<PlotData | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch plot data
+        const plotResponse = await fetch(`/api/plots/${params.id}`);
+        if (!plotResponse.ok) {
+          if (plotResponse.status === 404) {
+            router.push('/404');
+            return;
+          }
+          throw new Error("Failed to fetch plot");
+        }
+        const plotData = await plotResponse.json();
+        setPlot(plotData);
+
+        // Fetch user role
+        const roleResponse = await fetch("/api/auth/role");
+        if (roleResponse.ok) {
+          const { role } = await roleResponse.json();
+          setUserRole(role);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [params.id, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   if (!plot) {
-    notFound();
+    return notFound();
   }
 
-  return plot;
-}
-
-async function getUserRole() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-  
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const verified = await verifyAuth(token);
-    return verified?.role || null;
-  } catch (error) {
-    return null;
-  }
-}
-
-export default async function PlotPage({ params }: PageProps) {
-  const plot = await getPlot(params.id);
-  const userRole = await getUserRole();
-  
   // Parse images string with error handling and default empty array
   let images: PlotImage[] = [];
   try {
@@ -291,10 +319,14 @@ export default async function PlotPage({ params }: PageProps) {
                     </Link>
                   </Button>
                 )}
-                <Button className="w-full" size="lg">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Contact Sales Team
-                </Button>
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => setIsContactDialogOpen(true)}
+                    className="w-full md:w-auto"
+                  >
+                    Contact Sales Team
+                  </Button>
+                </div>
                 <Button variant="outline" className="w-full" size="lg">
                   <Mail className="mr-2 h-4 w-4" />
                   Request Details
@@ -325,6 +357,13 @@ export default async function PlotPage({ params }: PageProps) {
           </Card>
         </div>
       </div>
+      
+      <ContactSalesDialog
+        isOpen={isContactDialogOpen}
+        onClose={() => setIsContactDialogOpen(false)}
+        plotId={params.id}
+        plotNumber={plot.plotNumber}
+      />
     </div>
   );
 } 
