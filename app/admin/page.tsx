@@ -9,13 +9,13 @@ interface DashboardMetrics {
   overall: {
     totalUsers: number;
     totalSales: number;
-    conversionRate: number;
+    conversionRate: string;
     totalRevenue: number;
   };
   monthly: {
     newUsers: number;
     sales: number;
-    conversionRate: number;
+    conversionRate: string;
     revenue: number;
   };
 }
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{metrics?.overall?.conversionRate || 0}</div>
+                <div className="text-2xl font-bold">{metrics?.overall?.conversionRate || '0'}%</div>
                 <p className="text-xs text-muted-foreground">User to sales conversion</p>
               </>
             )}
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{metrics?.monthly?.conversionRate || 0}</div>
+                <div className="text-2xl font-bold">{metrics?.monthly?.conversionRate || '0'}%</div>
                 <p className="text-xs text-muted-foreground">Monthly user to sales conversion</p>
               </>
             )}
