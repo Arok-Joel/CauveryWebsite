@@ -74,6 +74,17 @@ async function main() {
     data: { teamId: team.id }
   });
   */
+
+  // Update all existing employees with correct hierarchy levels
+  const employees = await prisma.employee.findMany();
+  for (const employee of employees) {
+    await prisma.employee.update({
+      where: { id: employee.id },
+      data: { 
+        hierarchyLevel: ROLE_HIERARCHY_LEVELS[employee.employeeRole]
+      }
+    });
+  }
 }
 
 main()

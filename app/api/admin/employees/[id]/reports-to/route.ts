@@ -14,7 +14,7 @@ export async function PATCH(
     const body = await req.json();
     const { reportsToId } = updateReportsToSchema.parse(body);
 
-    // Get both employees to verify roles
+    // Get both employees to verify hierarchy levels
     const [employee, manager] = await Promise.all([
       db.employee.findUnique({
         where: { id: context.params.id },
@@ -30,18 +30,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Employee or manager not found' }, { status: 404 });
     }
 
-    // Verify role hierarchy
-    const roleHierarchy = {
-      EXECUTIVE_DIRECTOR: 0,
-      DIRECTOR: 1,
-      JOINT_DIRECTOR: 2,
-      FIELD_OFFICER: 3,
-    };
-
-    if (roleHierarchy[manager.employeeRole] >= roleHierarchy[employee.employeeRole]) {
+    // Verify hierarchy levels
+    // A lower hierarchy level number means a higher position in the organization
+    if (manager.hierarchyLevel >= employee.hierarchyLevel) {
       return NextResponse.json(
         {
-          error: "Invalid reporting structure. Manager's role must be higher than employee's role.",
+          error: `Invalid reporting structure. Manager's hierarchy level (${manager.hierarchyLevel}) must be lower than employee's hierarchy level (${employee.hierarchyLevel}).`,
         },
         { status: 400 }
       );

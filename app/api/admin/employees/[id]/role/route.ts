@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import * as z from 'zod';
+import { getHierarchyLevelForRole } from '@/lib/employee-roles';
 
 const roleUpdateSchema = z.object({
   role: z.enum(['EXECUTIVE_DIRECTOR', 'DIRECTOR', 'JOINT_DIRECTOR', 'FIELD_OFFICER']),
@@ -61,9 +62,13 @@ export async function PATCH(
       );
     }
 
+    // Update employee with new role and corresponding hierarchy level
     const updatedEmployee = await db.employee.update({
       where: { id: params.id },
-      data: { employeeRole: role },
+      data: { 
+        employeeRole: role,
+        hierarchyLevel: getHierarchyLevelForRole(role)
+      },
       include: {
         user: true,
         leadsTeam: true,
