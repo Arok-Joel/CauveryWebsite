@@ -85,4 +85,47 @@
   font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0; /* Prevent badge from shrinking */
+}
+
+.org-hierarchy-chart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-size: 13px;
+}
+
+.team-hierarchy-member {
+  margin-bottom: 0.5rem;
+}
+
+/* Org chart levels indentation */
+.team-hierarchy-member .team-hierarchy-member {
+  margin-left: 1rem;
+}
+
+/* Connecting lines styling */
+.team-hierarchy-member .border-l {
+  border-left-width: 1px;
+}
+
+/* Make horizontal lines thinner */
+.team-hierarchy-member .absolute {
+  height: 1px;
+}
+
+/* Colors for different roles */
+.bg-green-50 {
+  background-color: rgba(240, 253, 244, 1);
+}
+
+.bg-blue-50 {
+  background-color: rgba(239, 246, 255, 1);
+}
+
+.bg-violet-50 {
+  background-color: rgba(245, 243, 255, 1);
+}
+
+.bg-orange-50 {
+  background-color: rgba(255, 247, 237, 1);
 } 

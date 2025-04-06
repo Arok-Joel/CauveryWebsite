@@ -202,138 +202,220 @@ export async function GET() {
       const fieldOfficers = employee.leadsTeam.members.filter(m => 
         m.employeeRole === 'FIELD_OFFICER'
       );
-      
-      // Build joint director nodes
-      const jdNodes = directors.flatMap(director => {
-        const directorJDs = jointDirectors.filter(jd => 
-          jd.reportsTo && jd.reportsTo.id === director.id
-        );
-        
-        return directorJDs.map(jd => {
-          const jdFOs = fieldOfficers.filter(fo => 
-            fo.reportsTo && fo.reportsTo.id === jd.id
-          );
-          
-          // Build field officer nodes
-          const foNodes = jdFOs.map(fo => ({
-            id: fo.id,
-            name: fo.user.name,
-            email: fo.user.email,
-            role: fo.employeeRole,
-            children: [] as TeamMemberNode[]
-          })) as TeamMemberNode[];
-          
-          return {
-            id: jd.id,
-            name: jd.user.name,
-            email: jd.user.email,
-            role: jd.employeeRole,
-            children: foNodes
-          } as TeamMemberNode;
-        });
-      }) as TeamMemberNode[];
-      
-      // Build director nodes
-      const directorNodes = directors.map(director => {
-        // Get joint directors that report to this director
-        const directorJointDirectors = jdNodes.filter(jd => {
-          // Find the original joint director object to check the reporting relationship
-          const originalJd = jointDirectors.find(original => original.id === jd.id);
-          return originalJd && originalJd.reportsTo && originalJd.reportsTo.id === director.id;
-        });
-        
-        return {
+
+      // Add directors as direct children of the team leader
+      directors.forEach(director => {
+        const directorNode = {
           id: director.id,
           name: director.user.name,
           email: director.user.email,
           role: director.employeeRole,
-          children: directorJointDirectors
-        } as TeamMemberNode;
-      }) as TeamMemberNode[];
-      
-      // Add directors as children of the team leader
-      teamHierarchy.children = directorNodes as TeamMemberNode[];
-    }
-    // If not a team leader but part of a team
-    else if (employee.memberOfTeam) {
-      // Get the team leader (Executive Director)
-      const leader = employee.memberOfTeam.leader;
-      
-      if (leader) {
-        // Create the team hierarchy starting with the leader
-        teamHierarchy = {
-          id: leader.id,
-          name: leader.user.name,
-          email: leader.user.email,
-          role: leader.employeeRole,
           children: [] as TeamMemberNode[]
         };
         
-        // Group team members by role
-        const directors = employee.memberOfTeam.members.filter(m => 
-          m.employeeRole === 'DIRECTOR' && m.id !== leader.id
-        );
-        
-        const jointDirectors = employee.memberOfTeam.members.filter(m => 
-          m.employeeRole === 'JOINT_DIRECTOR'
-        );
-        
-        const fieldOfficers = employee.memberOfTeam.members.filter(m => 
-          m.employeeRole === 'FIELD_OFFICER'
-        );
-        
-        // Use the same logic to build the hierarchy
-        // Build joint director nodes
-        const jdNodes = directors.flatMap(director => {
-          const directorJDs = jointDirectors.filter(jd => 
-            jd.reportsTo && jd.reportsTo.id === director.id
-          );
-          
-          return directorJDs.map(jd => {
-            const jdFOs = fieldOfficers.filter(fo => 
-              fo.reportsTo && fo.reportsTo.id === jd.id
-            );
-            
-            // Build field officer nodes
-            const foNodes = jdFOs.map(fo => ({
-              id: fo.id,
-              name: fo.user.name,
-              email: fo.user.email,
-              role: fo.employeeRole,
-              children: [] as TeamMemberNode[]
-            })) as TeamMemberNode[];
-            
-            return {
+        // Add joint directors that report to this director
+        jointDirectors
+          .filter(jd => jd.reportsToId === director.id)
+          .forEach(jd => {
+            const jdNode = {
               id: jd.id,
               name: jd.user.name,
               email: jd.user.email,
               role: jd.employeeRole,
-              children: foNodes
-            } as TeamMemberNode;
-          });
-        }) as TeamMemberNode[];
-        
-        // Build director nodes
-        const directorNodes = directors.map(director => {
-          // Get joint directors that report to this director
-          const directorJointDirectors = jdNodes.filter(jd => {
-            // Find the original joint director object to check the reporting relationship
-            const originalJd = jointDirectors.find(original => original.id === jd.id);
-            return originalJd && originalJd.reportsTo && originalJd.reportsTo.id === director.id;
+              children: [] as TeamMemberNode[]
+            };
+            
+            // Add field officers that report to this joint director
+            fieldOfficers
+              .filter(fo => fo.reportsToId === jd.id)
+              .forEach(fo => {
+                jdNode.children.push({
+                  id: fo.id,
+                  name: fo.user.name,
+                  email: fo.user.email,
+                  role: fo.employeeRole,
+                  children: []
+                });
+              });
+              
+            directorNode.children.push(jdNode);
           });
           
-          return {
-            id: director.id,
-            name: director.user.name,
-            email: director.user.email,
-            role: director.employeeRole,
-            children: directorJointDirectors
-          } as TeamMemberNode;
-        }) as TeamMemberNode[];
+        // Add field officers that report directly to this director
+        fieldOfficers
+          .filter(fo => fo.reportsToId === director.id)
+          .forEach(fo => {
+            directorNode.children.push({
+              id: fo.id,
+              name: fo.user.name,
+              email: fo.user.email,
+              role: fo.employeeRole,
+              children: []
+            });
+          });
+          
+        teamHierarchy.children.push(directorNode);
+      });
+      
+      // Add joint directors that report directly to the team leader
+      jointDirectors
+        .filter(jd => jd.reportsToId === employee.id)
+        .forEach(jd => {
+          const jdNode = {
+            id: jd.id,
+            name: jd.user.name,
+            email: jd.user.email,
+            role: jd.employeeRole,
+            children: [] as TeamMemberNode[]
+          };
+          
+          // Add field officers that report to this joint director
+          fieldOfficers
+            .filter(fo => fo.reportsToId === jd.id)
+            .forEach(fo => {
+              jdNode.children.push({
+                id: fo.id,
+                name: fo.user.name,
+                email: fo.user.email,
+                role: fo.employeeRole,
+                children: []
+              });
+            });
+            
+          teamHierarchy.children.push(jdNode);
+        });
         
-        // Add directors as children of the team leader
-        teamHierarchy.children = directorNodes as TeamMemberNode[];
-      }
+      // Add field officers that report directly to the team leader
+      fieldOfficers
+        .filter(fo => fo.reportsToId === employee.id)
+        .forEach(fo => {
+          teamHierarchy.children.push({
+            id: fo.id,
+            name: fo.user.name,
+            email: fo.user.email,
+            role: fo.employeeRole,
+            children: []
+          });
+        });
+    }
+    // If employee is a member of a team but not the leader
+    else if (employee.memberOfTeam) {
+      // Start with the team leader
+      teamHierarchy = {
+        id: employee.memberOfTeam.leader.id,
+        name: employee.memberOfTeam.leader.user.name,
+        email: employee.memberOfTeam.leader.user.email,
+        role: employee.memberOfTeam.leader.employeeRole,
+        children: [] as TeamMemberNode[]
+      };
+      
+      // Group team members by role
+      const directors = employee.memberOfTeam.members.filter(m => 
+        m.employeeRole === 'DIRECTOR' && m.id !== employee.memberOfTeam.leader.id
+      );
+      
+      const jointDirectors = employee.memberOfTeam.members.filter(m => 
+        m.employeeRole === 'JOINT_DIRECTOR'
+      );
+      
+      const fieldOfficers = employee.memberOfTeam.members.filter(m => 
+        m.employeeRole === 'FIELD_OFFICER'
+      );
+      
+      // Add directors as direct children of the team leader
+      directors.forEach(director => {
+        const directorNode = {
+          id: director.id,
+          name: director.user.name,
+          email: director.user.email,
+          role: director.employeeRole,
+          children: [] as TeamMemberNode[]
+        };
+        
+        // Add joint directors that report to this director
+        jointDirectors
+          .filter(jd => jd.reportsToId === director.id)
+          .forEach(jd => {
+            const jdNode = {
+              id: jd.id,
+              name: jd.user.name,
+              email: jd.user.email,
+              role: jd.employeeRole,
+              children: [] as TeamMemberNode[]
+            };
+            
+            // Add field officers that report to this joint director
+            fieldOfficers
+              .filter(fo => fo.reportsToId === jd.id)
+              .forEach(fo => {
+                jdNode.children.push({
+                  id: fo.id,
+                  name: fo.user.name,
+                  email: fo.user.email,
+                  role: fo.employeeRole,
+                  children: []
+                });
+              });
+              
+            directorNode.children.push(jdNode);
+          });
+          
+        // Add field officers that report directly to this director
+        fieldOfficers
+          .filter(fo => fo.reportsToId === director.id)
+          .forEach(fo => {
+            directorNode.children.push({
+              id: fo.id,
+              name: fo.user.name,
+              email: fo.user.email,
+              role: fo.employeeRole,
+              children: []
+            });
+          });
+          
+        teamHierarchy.children.push(directorNode);
+      });
+      
+      // Add joint directors that report directly to the team leader
+      jointDirectors
+        .filter(jd => jd.reportsToId === employee.memberOfTeam.leader.id)
+        .forEach(jd => {
+          const jdNode = {
+            id: jd.id,
+            name: jd.user.name,
+            email: jd.user.email,
+            role: jd.employeeRole,
+            children: [] as TeamMemberNode[]
+          };
+          
+          // Add field officers that report to this joint director
+          fieldOfficers
+            .filter(fo => fo.reportsToId === jd.id)
+            .forEach(fo => {
+              jdNode.children.push({
+                id: fo.id,
+                name: fo.user.name,
+                email: fo.user.email,
+                role: fo.employeeRole,
+                children: []
+              });
+            });
+            
+          teamHierarchy.children.push(jdNode);
+        });
+        
+      // Add field officers that report directly to the team leader
+      fieldOfficers
+        .filter(fo => fo.reportsToId === employee.memberOfTeam.leader.id)
+        .forEach(fo => {
+          teamHierarchy.children.push({
+            id: fo.id,
+            name: fo.user.name,
+            email: fo.user.email,
+            role: fo.employeeRole,
+            children: []
+          });
+        });
     }
 
     // Format response to match the expected ReportingStructure interface
