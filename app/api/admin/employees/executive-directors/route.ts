@@ -3,15 +3,15 @@ import { db } from '@/lib/db';
 
 export async function GET() {
   try {
+    console.log('Fetching executive directors...');
     const executiveDirectors = await db.employee.findMany({
       where: {
-        AND: [
-          { employeeRole: 'EXECUTIVE_DIRECTOR' },
-          { leadsTeam: null }, // Only get those who don't lead any team
-          { memberOfTeam: null }, // And are not members of any team
-        ],
+        employeeRole: 'EXECUTIVE_DIRECTOR',
       },
-      include: {
+      select: {
+        id: true,
+        employeeRole: true,
+        hierarchyLevel: true,
         user: {
           select: {
             name: true,
@@ -20,10 +20,14 @@ export async function GET() {
       },
     });
 
+    console.log('Found executive directors:', executiveDirectors.length, executiveDirectors);
+
     return NextResponse.json({
       executiveDirectors: executiveDirectors.map(director => ({
         id: director.id,
         name: director.user.name,
+        role: director.employeeRole,
+        hierarchyLevel: director.hierarchyLevel,
       })),
     });
   } catch (error) {

@@ -6,7 +6,10 @@ export const getTeamsWithDetails = cache(async () => {
   const teams = await db.team.findMany({
     include: {
       leader: {
-        include: {
+        select: {
+          id: true,
+          employeeRole: true,
+          hierarchyLevel: true,
           user: {
             select: {
               name: true,
@@ -16,7 +19,11 @@ export const getTeamsWithDetails = cache(async () => {
         }
       },
       members: {
-        include: {
+        select: {
+          id: true,
+          employeeRole: true,
+          hierarchyLevel: true,
+          reportsToId: true,
           user: {
             select: {
               name: true,
@@ -26,14 +33,14 @@ export const getTeamsWithDetails = cache(async () => {
           reportsTo: {
             select: {
               id: true,
-              employeeRole: true
+              employeeRole: true,
+              hierarchyLevel: true
             }
           }
         }
       }
     }
   });
-
 
   return teams;
 });

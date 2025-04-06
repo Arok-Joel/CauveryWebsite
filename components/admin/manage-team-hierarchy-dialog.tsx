@@ -98,7 +98,7 @@ export function ManageTeamHierarchyDialog({
         m.id !== employee.id && 
         // Higher position (lower hierarchy level number)
         typeof m.hierarchyLevel === 'number' && 
-        m.hierarchyLevel < employee.hierarchyLevel
+        m.hierarchyLevel < (employee.hierarchyLevel as number)
       );
     } 
     // Fallback to role-based filtering if hierarchyLevel is not available
@@ -170,6 +170,30 @@ export function ManageTeamHierarchyDialog({
           Members count: {members.length} | ED: {executiveDirectors.length} | Dir: {directors.length} | JD: {jointDirectors.length} | FO: {fieldOfficers.length}
         </div>
 
+        {/* Improved Debug Info */}
+        <div className="my-2 p-2 bg-gray-100 rounded text-xs font-mono">
+          <p>Raw Members Data:</p>
+          <pre className="overflow-auto max-h-20">
+            {JSON.stringify(members.map(m => ({
+              id: m.id,
+              name: m.user.name,
+              role: m.employeeRole,
+              level: m.hierarchyLevel
+            })), null, 2)}
+          </pre>
+        </div>
+
+        {/* Check if we have any executive directors */}
+        {executiveDirectors.length === 0 && (
+          <div className="p-3 mb-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+            <p className="font-medium">No Executive Director Found</p>
+            <p className="text-sm mt-1">
+              Try clicking the "Fix Hierarchy Levels" button below to repair the employee hierarchy levels.
+              Then refresh the page.
+            </p>
+          </div>
+        )}
+
         {/* Executive Directors Section */}
         {executiveDirectors.length > 0 && (
           <div className="space-y-4">
@@ -182,6 +206,7 @@ export function ManageTeamHierarchyDialog({
                 <div>
                   <p className="font-medium">{executiveDirector.user.name}</p>
                   <p className="text-sm text-gray-500">{executiveDirector.user.email}</p>
+                  <p className="text-xs text-gray-400">Level: {executiveDirector.hierarchyLevel ?? 'not set'}</p>
                 </div>
                 <span className="text-sm text-green-700 font-medium">Team Leader</span>
               </div>
