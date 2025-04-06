@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +20,13 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Network } from 'lucide-react';
+import { useTeamHierarchy } from '@/lib/hooks/use-team-hierarchy';
 
 interface TeamMember {
   id: string;
   employeeRole: string;
   reportsToId: string | null;
+  hierarchyLevel: number;
   user: {
     name: string;
     email: string;
@@ -46,7 +48,10 @@ export function ManageTeamHierarchyDialog({
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Group members by role for easier management
+  // Use the new team hierarchy hook to get potential managers based on hierarchy levels
+  const { getPotentialManagers } = useTeamHierarchy({ employees: members });
+
+  // Group members by role for easier display management
   const directors = members.filter(m => m.employeeRole === 'DIRECTOR');
   const jointDirectors = members.filter(m => m.employeeRole === 'JOINT_DIRECTOR');
   const fieldOfficers = members.filter(m => m.employeeRole === 'FIELD_OFFICER');
@@ -76,6 +81,16 @@ export function ManageTeamHierarchyDialog({
     }
   };
 
+  // Helper to get potential managers for an employee based on hierarchy level
+  const getPotentialManagersForEmployee = (employee: TeamMember) => {
+    return members.filter(m => 
+      // Different employee
+      m.id !== employee.id && 
+      // Higher position (lower hierarchy level number)
+      m.hierarchyLevel < employee.hierarchyLevel
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -90,6 +105,10 @@ export function ManageTeamHierarchyDialog({
           <DialogDescription>
             Set up who reports to whom within Team. Directors report to the Executive Director,
             Joint Directors report to Directors, and Field Officers report to Joint Directors.
+            <div className="mt-2 text-amber-600">
+              Note: With the new flexible hierarchy system, employees can report to anyone with a higher 
+              position (lower hierarchy level number), even if they skip a role.
+            </div>
           </DialogDescription>
         </DialogHeader>
 
@@ -115,33 +134,37 @@ export function ManageTeamHierarchyDialog({
         {jointDirectors.length > 0 && (
           <div className="space-y-4">
             <h3 className="font-medium">Joint Directors</h3>
-            {jointDirectors.map(jointDirector => (
-              <div
-                key={jointDirector.id}
-                className="flex items-center justify-between p-4 bg-violet-50 rounded-lg"
-              >
-                <div>
-                  <p className="font-medium">{jointDirector.user.name}</p>
-                  <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
-                </div>
-                <Select
-                  value={jointDirector.reportsToId || ''}
-                  onValueChange={value => updateReporting(jointDirector.id, value)}
-                  disabled={isLoading}
+            {jointDirectors.map(jointDirector => {
+              const potentialManagers = getPotentialManagersForEmployee(jointDirector);
+              
+              return (
+                <div
+                  key={jointDirector.id}
+                  className="flex items-center justify-between p-4 bg-violet-50 rounded-lg"
                 >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Reports to..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {directors.map(director => (
-                      <SelectItem key={director.id} value={director.id}>
-                        {director.user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-medium">{jointDirector.user.name}</p>
+                    <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
+                  </div>
+                  <Select
+                    value={jointDirector.reportsToId || ''}
+                    onValueChange={value => updateReporting(jointDirector.id, value)}
+                    disabled={isLoading || potentialManagers.length === 0}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Reports to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {potentialManagers.map(manager => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.user.name} ({manager.employeeRole})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -149,33 +172,37 @@ export function ManageTeamHierarchyDialog({
         {fieldOfficers.length > 0 && (
           <div className="space-y-4">
             <h3 className="font-medium">Field Officers</h3>
-            {fieldOfficers.map(fieldOfficer => (
-              <div
-                key={fieldOfficer.id}
-                className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
-              >
-                <div>
-                  <p className="font-medium">{fieldOfficer.user.name}</p>
-                  <p className="text-sm text-gray-500">{fieldOfficer.user.email}</p>
-                </div>
-                <Select
-                  value={fieldOfficer.reportsToId || ''}
-                  onValueChange={value => updateReporting(fieldOfficer.id, value)}
-                  disabled={isLoading}
+            {fieldOfficers.map(fieldOfficer => {
+              const potentialManagers = getPotentialManagersForEmployee(fieldOfficer);
+              
+              return (
+                <div
+                  key={fieldOfficer.id}
+                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
                 >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Reports to..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {jointDirectors.map(jointDirector => (
-                      <SelectItem key={jointDirector.id} value={jointDirector.id}>
-                        {jointDirector.user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-medium">{fieldOfficer.user.name}</p>
+                    <p className="text-sm text-gray-500">{fieldOfficer.user.email}</p>
+                  </div>
+                  <Select
+                    value={fieldOfficer.reportsToId || ''}
+                    onValueChange={value => updateReporting(fieldOfficer.id, value)}
+                    disabled={isLoading || potentialManagers.length === 0}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Reports to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {potentialManagers.map(manager => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.user.name} ({manager.employeeRole})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
           </div>
         )}
       </DialogContent>
