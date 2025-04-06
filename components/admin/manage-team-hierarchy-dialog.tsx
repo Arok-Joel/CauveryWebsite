@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -19,13 +20,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Network } from 'lucide-react';
+import { Network, RefreshCw } from 'lucide-react';
 
 interface TeamMember {
   id: string;
   employeeRole: string;
   reportsToId: string | null;
-  hierarchyLevel: number;
+  hierarchyLevel?: number; // Make optional since it might not be available
   user: {
     name: string;
     email: string;
@@ -45,7 +46,17 @@ export function ManageTeamHierarchyDialog({
 }: ManageTeamHierarchyDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdatingLevels, setIsUpdatingLevels] = useState(false);
   const router = useRouter();
+
+  // Add debugging when dialog opens
+  useEffect(() => {
+    if (open) {
+      console.log('Team members:', members);
+      console.log('Executive Directors:', executiveDirectors);
+      console.log('Directors:', directors);
+    }
+  }, [open, members]);
 
   // Group members by role for easier display management
   const executiveDirectors = members.filter(m => m.employeeRole === 'EXECUTIVE_DIRECTOR');
@@ -78,14 +89,59 @@ export function ManageTeamHierarchyDialog({
     }
   };
 
-  // Helper to get potential managers for an employee based on hierarchy level
+  // Helper to get potential managers for an employee based on hierarchy level or role
   const getPotentialManagersForEmployee = (employee: TeamMember) => {
-    return members.filter(m => 
-      // Different employee
-      m.id !== employee.id && 
-      // Higher position (lower hierarchy level number)
-      m.hierarchyLevel < employee.hierarchyLevel
-    );
+    // If hierarchyLevel is available, use it
+    if (typeof employee.hierarchyLevel === 'number') {
+      return members.filter(m => 
+        // Different employee
+        m.id !== employee.id && 
+        // Higher position (lower hierarchy level number)
+        typeof m.hierarchyLevel === 'number' && 
+        m.hierarchyLevel < employee.hierarchyLevel
+      );
+    } 
+    // Fallback to role-based filtering if hierarchyLevel is not available
+    else {
+      const roleHierarchy = {
+        'EXECUTIVE_DIRECTOR': 0,
+        'DIRECTOR': 1,
+        'JOINT_DIRECTOR': 2,
+        'FIELD_OFFICER': 3
+      };
+      
+      return members.filter(m => 
+        m.id !== employee.id && 
+        roleHierarchy[m.employeeRole as keyof typeof roleHierarchy] < 
+        roleHierarchy[employee.employeeRole as keyof typeof roleHierarchy]
+      );
+    }
+  };
+
+  // Function to update hierarchy levels
+  const updateHierarchyLevels = async () => {
+    try {
+      setIsUpdatingLevels(true);
+      const response = await fetch('/api/admin/update-hierarchy-levels', {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update hierarchy levels');
+      }
+
+      const result = await response.json();
+      console.log('Hierarchy levels updated:', result);
+      
+      toast.success(`Updated ${result.updatedCount} of ${result.totalCount} employees`);
+      router.refresh();
+    } catch (error) {
+      console.error('Error updating hierarchy levels:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update hierarchy levels');
+    } finally {
+      setIsUpdatingLevels(false);
+    }
   };
 
   return (
@@ -108,6 +164,11 @@ export function ManageTeamHierarchyDialog({
             position (lower hierarchy level number), even if they skip a role.
           </p>
         </DialogHeader>
+
+        {/* Debug Info (remove in production) */}
+        <div className="text-xs text-gray-500 mb-2">
+          Members count: {members.length} | ED: {executiveDirectors.length} | Dir: {directors.length} | JD: {jointDirectors.length} | FO: {fieldOfficers.length}
+        </div>
 
         {/* Executive Directors Section */}
         {executiveDirectors.length > 0 && (
@@ -133,7 +194,10 @@ export function ManageTeamHierarchyDialog({
           <div className="space-y-4 mt-4">
             <h3 className="font-medium">Directors</h3>
             {directors.map(director => {
-              const potentialManagers = getPotentialManagersForEmployee(director);
+              // For Directors, we specifically want them to report to EDs
+              const potentialManagers = executiveDirectors.length > 0 ? 
+                executiveDirectors : 
+                getPotentialManagersForEmployee(director);
               
               return (
                 <div
@@ -143,6 +207,7 @@ export function ManageTeamHierarchyDialog({
                   <div>
                     <p className="font-medium">{director.user.name}</p>
                     <p className="text-sm text-gray-500">{director.user.email}</p>
+                    <p className="text-xs text-gray-400">Level: {director.hierarchyLevel ?? 'not set'}</p>
                   </div>
                   <Select
                     value={director.reportsToId || ''}
@@ -241,6 +306,28 @@ export function ManageTeamHierarchyDialog({
             })}
           </div>
         )}
+
+        {/* Add a DialogFooter with the update hierarchy levels button */}
+        <DialogFooter className="mt-6">
+          <Button 
+            variant="outline" 
+            onClick={updateHierarchyLevels} 
+            disabled={isUpdatingLevels}
+            className="ml-auto"
+          >
+            {isUpdatingLevels ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Updating Levels...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Fix Hierarchy Levels
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
