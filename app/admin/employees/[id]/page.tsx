@@ -536,7 +536,7 @@ export default async function EmployeePage({ params }: PageProps) {
                 {employee.reportsTo ? (
                   <Link 
                     href={`/admin/employees/${employee.reportsTo.id}`}
-                    className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                    className="flex items-center gap-3 p-4 bg-white border border-muted rounded-lg hover:bg-muted/10 transition-colors"
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary/10">
@@ -551,7 +551,7 @@ export default async function EmployeePage({ params }: PageProps) {
                     </div>
                   </Link>
                 ) : (
-                  <div className="p-4 bg-muted/50 rounded-lg">
+                  <div className="p-4 bg-white border border-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">No direct reporting manager</p>
                   </div>
                 )}
@@ -566,7 +566,7 @@ export default async function EmployeePage({ params }: PageProps) {
                       <Link
                         key={`direct-report-${subordinate.id}-${index}`}
                         href={`/admin/employees/${subordinate.id}`}
-                        className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                        className="flex items-center gap-3 p-4 bg-white border border-muted rounded-lg hover:bg-muted/10 transition-colors"
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarFallback className="bg-primary/10">
@@ -583,7 +583,7 @@ export default async function EmployeePage({ params }: PageProps) {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 bg-muted/50 rounded-lg">
+                  <div className="p-4 bg-white border border-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">No direct reports</p>
                   </div>
                 )}
@@ -593,117 +593,188 @@ export default async function EmployeePage({ params }: PageProps) {
               {(employee.memberOfTeam || employee.leadsTeam) && (
                 <div>
                   <h3 className="text-sm font-medium mb-4">Team Structure</h3>
-                  <div className="space-y-4">
-                    {employee.leadsTeam ? (
-                      <>
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <p className="font-medium text-sm text-muted-foreground mb-2">Team Leader</p>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-primary/10">
-                                {employee.user.name.split(' ').map((n: string) => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{employee.user.name}</p>
-                              <Badge className={`mt-1 ${getRoleBadgeClass(employee.employeeRole)}`}>
-                                {formatRole(employee.employeeRole)}
-                              </Badge>
-                            </div>
+                  
+                  {/* Border container for the entire team structure */}
+                  <div className="border rounded-lg p-4 space-y-6">
+                    {/* Team Leader Row */}
+                    <div>
+                      <p className="font-medium text-sm text-muted-foreground mb-2">Team Leader</p>
+                      {employee.leadsTeam ? (
+                        // Current employee is the team leader
+                        <div className="flex items-center gap-3 p-4 bg-white border border-muted rounded-lg">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary/10">
+                              {employee.user.name.split(' ').map((n: string) => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {employee.user.name}
+                              <span className="ml-2 text-sm text-primary font-normal">(You)</span>
+                            </p>
+                            <Badge className={`mt-1 ${getRoleBadgeClass(employee.employeeRole)}`}>
+                              {formatRole(employee.employeeRole)}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="pl-6 border-l-2 border-muted space-y-4">
-                          {employee.leadsTeam.members
-                            // Only filter out the current employee if they're the team leader (to avoid duplication)
-                            .filter(member => member.id !== employee.id)
-                            // Make sure we don't show duplicates
-                            .filter((member, index, self) => 
-                              index === self.findIndex(m => m.id === member.id)
-                            )
-                            .map((member, index) => (
-                              <Link
-                                key={`team-lead-member-${member.id}-${index}`}
-                                href={`/admin/employees/${member.id}`}
-                                className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                              >
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback className="bg-primary/10">
-                                    {member.user.name.split(' ').map((n: string) => n[0]).join('')}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">{member.user.name}</p>
-                                  <Badge className={`mt-1 ${getRoleBadgeClass(member.employeeRole)}`}>
-                                    {formatRole(member.employeeRole)}
-                                  </Badge>
-                                  {'reportsTo' in member && member.reportsTo && 'user' in member.reportsTo && (
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                      Reports to: {member.reportsTo.user.name}
-                                    </p>
-                                  )}
-                                </div>
-                              </Link>
-                          ))}
-                        </div>
-                      </>
-                    ) : employee.memberOfTeam && (
-                      <>
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <p className="font-medium text-sm text-muted-foreground mb-2">Team Leader</p>
-                          <Link
-                            href={`/admin/employees/${employee.memberOfTeam.leader.id}`}
-                            className="flex items-center gap-3"
-                          >
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-primary/10">
-                                {employee.memberOfTeam.leader.user.name.split(' ').map((n: string) => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{employee.memberOfTeam.leader.user.name}</p>
-                              <Badge className={`mt-1 ${getRoleBadgeClass(employee.memberOfTeam.leader.employeeRole)}`}>
-                                {formatRole(employee.memberOfTeam.leader.employeeRole)}
-                              </Badge>
-                            </div>
-                          </Link>
-                        </div>
-                        <div className="pl-6 border-l-2 border-muted space-y-4">
-                          {employee.memberOfTeam.members
-                            // Only filter out the team leader to avoid duplication
-                            .filter(member => member.id !== employee.memberOfTeam?.leader.id)
-                            // Make sure we don't show duplicates
-                            .filter((member, index, self) => 
-                              index === self.findIndex(m => m.id === member.id)
-                            )
-                            .map((member, index) => (
-                              <Link
-                                key={`team-member-${member.id}-${index}`}
-                                href={`/admin/employees/${member.id}`}
-                                className={`flex items-center gap-3 p-4 rounded-lg hover:bg-muted/70 transition-colors ${
-                                  member.id === employee.id 
-                                    ? 'bg-primary/10 border border-primary/20' // Highlight current employee
-                                    : 'bg-muted/50'
-                                }`}
-                              >
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback className={member.id === employee.id ? "bg-primary/20" : "bg-primary/10"}>
-                                    {member.user.name.split(' ').map((n: string) => n[0]).join('')}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">
-                                    {member.user.name}
-                                    {member.id === employee.id && <span className="ml-2 text-sm text-primary font-normal">(You)</span>}
-                                  </p>
-                                  <Badge className={`mt-1 ${getRoleBadgeClass(member.employeeRole)}`}>
-                                    {formatRole(member.employeeRole)}
-                                  </Badge>
-                                </div>
-                              </Link>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                      ) : employee.memberOfTeam && (
+                        // Current employee is a team member
+                        <Link
+                          href={`/admin/employees/${employee.memberOfTeam.leader.id}`}
+                          className="flex items-center gap-3 p-4 bg-white border border-muted rounded-lg hover:bg-muted/10 transition-colors"
+                        >
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary/10">
+                              {employee.memberOfTeam.leader.user.name.split(' ').map((n: string) => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {employee.memberOfTeam.leader.user.name}
+                              {employee.memberOfTeam.leader.id === employee.id && 
+                                <span className="ml-2 text-sm text-primary font-normal">(You)</span>
+                              }
+                            </p>
+                            <Badge className={`mt-1 ${getRoleBadgeClass(employee.memberOfTeam.leader.employeeRole)}`}>
+                              {formatRole(employee.memberOfTeam.leader.employeeRole)}
+                            </Badge>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
+                    
+                    {/* Team Members */}
+                    <div className="ml-6 border-l-2 border-muted pl-4 space-y-3">
+                      <p className="font-medium text-sm text-muted-foreground mb-2 -ml-4">Team Members</p>
+                      
+                      {/* Get all team members and group by role */}
+                      {(() => {
+                        // Get members
+                        const members = employee.leadsTeam?.members || employee.memberOfTeam?.members || [];
+                        
+                        // Exclude the team leader
+                        const filteredMembers = members.filter(member => {
+                          if (employee.leadsTeam) {
+                            return member.id !== employee.id;
+                          } else if (employee.memberOfTeam) {
+                            return member.id !== employee.memberOfTeam.leader.id;
+                          }
+                          return false;
+                        });
+                        
+                        // Group members by role
+                        const directors = filteredMembers.filter(m => m.employeeRole === 'DIRECTOR');
+                        const jointDirectors = filteredMembers.filter(m => m.employeeRole === 'JOINT_DIRECTOR');
+                        const fieldOfficers = filteredMembers.filter(m => m.employeeRole === 'FIELD_OFFICER');
+                        
+                        // Render members by role groups
+                        return (
+                          <>
+                            {/* Directors */}
+                            {directors.length > 0 && (
+                              <div className="space-y-2">
+                                {directors.map((director, index) => (
+                                  <Link
+                                    key={`director-${director.id}`}
+                                    href={`/admin/employees/${director.id}`}
+                                    className={`flex items-center gap-3 p-4 rounded-lg transition-colors ${
+                                      director.id === employee.id
+                                        ? 'bg-muted/30 border border-muted/50'
+                                        : 'bg-white border border-muted hover:bg-muted/10'
+                                    }`}
+                                  >
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-primary/10">
+                                        {director.user.name.split(' ').map((n: string) => n[0]).join('')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium">
+                                        {director.user.name}
+                                        {director.id === employee.id && 
+                                          <span className="ml-2 text-sm text-primary font-normal">(You)</span>
+                                        }
+                                      </p>
+                                      <Badge className={`mt-1 ${getRoleBadgeClass(director.employeeRole)}`}>
+                                        {formatRole(director.employeeRole)}
+                                      </Badge>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Joint Directors - indented under Directors */}
+                            {jointDirectors.length > 0 && (
+                              <div className="space-y-2 ml-4">
+                                {jointDirectors.map((jointDirector, index) => (
+                                  <Link
+                                    key={`joint-director-${jointDirector.id}`}
+                                    href={`/admin/employees/${jointDirector.id}`}
+                                    className={`flex items-center gap-3 p-4 rounded-lg transition-colors ${
+                                      jointDirector.id === employee.id
+                                        ? 'bg-muted/30 border border-muted/50'
+                                        : 'bg-white border border-muted hover:bg-muted/10'
+                                    }`}
+                                  >
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-primary/10">
+                                        {jointDirector.user.name.split(' ').map((n: string) => n[0]).join('')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium">
+                                        {jointDirector.user.name}
+                                        {jointDirector.id === employee.id && 
+                                          <span className="ml-2 text-sm text-primary font-normal">(You)</span>
+                                        }
+                                      </p>
+                                      <Badge className={`mt-1 ${getRoleBadgeClass(jointDirector.employeeRole)}`}>
+                                        {formatRole(jointDirector.employeeRole)}
+                                      </Badge>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Field Officers - indented under Joint Directors */}
+                            {fieldOfficers.length > 0 && (
+                              <div className="space-y-2 ml-8">
+                                {fieldOfficers.map((fieldOfficer, index) => (
+                                  <Link
+                                    key={`field-officer-${fieldOfficer.id}`}
+                                    href={`/admin/employees/${fieldOfficer.id}`}
+                                    className={`flex items-center gap-3 p-4 rounded-lg transition-colors ${
+                                      fieldOfficer.id === employee.id
+                                        ? 'bg-muted/30 border border-muted/50'
+                                        : 'bg-white border border-muted hover:bg-muted/10'
+                                    }`}
+                                  >
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback className="bg-primary/10">
+                                        {fieldOfficer.user.name.split(' ').map((n: string) => n[0]).join('')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium">
+                                        {fieldOfficer.user.name}
+                                        {fieldOfficer.id === employee.id && 
+                                          <span className="ml-2 text-sm text-primary font-normal">(You)</span>
+                                        }
+                                      </p>
+                                      <Badge className={`mt-1 ${getRoleBadgeClass(fieldOfficer.employeeRole)}`}>
+                                        {formatRole(fieldOfficer.employeeRole)}
+                                      </Badge>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}
