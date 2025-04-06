@@ -6,7 +6,7 @@ export async function POST(
   context: { params: { teamId: string } }
 ) {
   try {
-    const { teamId } = context.params;
+    const teamId = context.params.teamId;
     const { employeeId } = await req.json();
 
     // Add employee to team

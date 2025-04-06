@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Network } from 'lucide-react';
-import { useTeamHierarchy } from '@/lib/hooks/use-team-hierarchy';
 
 interface TeamMember {
   id: string;
@@ -47,9 +46,6 @@ export function ManageTeamHierarchyDialog({
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
-  // Use the new team hierarchy hook to get potential managers based on hierarchy levels
-  const { getPotentialManagers } = useTeamHierarchy({ employees: members });
 
   // Group members by role for easier display management
   const directors = members.filter(m => m.employeeRole === 'DIRECTOR');
@@ -105,11 +101,11 @@ export function ManageTeamHierarchyDialog({
           <DialogDescription>
             Set up who reports to whom within Team. Directors report to the Executive Director,
             Joint Directors report to Directors, and Field Officers report to Joint Directors.
-            <div className="mt-2 text-amber-600">
-              Note: With the new flexible hierarchy system, employees can report to anyone with a higher 
-              position (lower hierarchy level number), even if they skip a role.
-            </div>
           </DialogDescription>
+          <p className="mt-2 text-sm text-amber-600">
+            Note: With the new flexible hierarchy system, employees can report to anyone with a higher 
+            position (lower hierarchy level number), even if they skip a role.
+          </p>
         </DialogHeader>
 
         {/* Directors Section */}
