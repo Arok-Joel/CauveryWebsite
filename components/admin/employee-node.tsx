@@ -60,16 +60,27 @@ export function EmployeeNodeComponent({
   employee,
   level = 0,
   showTeamBadge = false,
+  parentId = '',
 }: {
   employee: EmployeeNode;
   level?: number;
   showTeamBadge?: boolean;
+  parentId?: string;
 }) {
   const styles = getRoleStyles(employee.employeeRole);
   const router = useRouter();
 
+  // Create a unique key for this instance of the employee
+  const nodeKey = parentId ? `${employee.id}-child-of-${parentId}` : employee.id;
+
   const handleClick = () => {
-    router.push(`/admin/employees/${employee.id}`);
+    console.log('Navigating to employee:', employee.id);
+    try {
+      // Use window.location for direct navigation as a fallback
+      window.location.href = `/admin/employees/${employee.id}`;
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   return (
@@ -137,8 +148,13 @@ export function EmployeeNodeComponent({
         <div className="mt-2">
           {employee.children
             .sort((a, b) => roleOrder[a.employeeRole] - roleOrder[b.employeeRole])
-            .map(child => (
-              <EmployeeNodeComponent key={child.id} employee={child} level={level + 1} />
+            .map((child, index) => (
+              <EmployeeNodeComponent 
+                key={`${child.id}-child-of-${employee.id}-${index}`}
+                employee={child} 
+                level={level + 1}
+                parentId={employee.id}
+              />
             ))}
         </div>
       )}

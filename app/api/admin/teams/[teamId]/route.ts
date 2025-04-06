@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   req: Request,
-  context: { params: { teamId: string } }
+  { params }: { params: { teamId: string } }
 ) {
   try {
-    const { teamId } = context.params;
+    const teamId = params.teamId;
 
     const team = await db.team.findUnique({
       where: {
@@ -49,10 +49,10 @@ export async function GET(
 
 export async function DELETE(
   req: Request,
-  context: { params: { teamId: string } }
+  { params }: { params: { teamId: string } }
 ) {
   try {
-    const { teamId } = context.params;
+    const teamId = params.teamId;
 
     // First, get all team members to reset their reporting relationships
     const team = await db.team.findUnique({

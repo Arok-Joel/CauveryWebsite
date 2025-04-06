@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   req: Request,
-  context: { params: { teamId: string } }
+  { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = context.params.teamId;
+    const teamId = params.teamId;
     console.log('Fetching available employees for team:', teamId);
 
     // Get all employees who are not part of this team and are not executive directors

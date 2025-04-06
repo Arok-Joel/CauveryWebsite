@@ -177,8 +177,13 @@ export default async function EmployeesPage() {
 
         <CardContent className="p-6">
           <div className="space-y-8">
-            {executives.map(executive => (
-              <EmployeeNodeComponent key={executive.id} employee={executive} showTeamBadge={true} />
+            {executives.map((executive, index) => (
+              <EmployeeNodeComponent 
+                key={`exec-${executive.id}-${index}`} 
+                employee={executive} 
+                showTeamBadge={true}
+                parentId={`executive-section`}
+              />
             ))}
           </div>
         </CardContent>
@@ -193,8 +198,12 @@ export default async function EmployeesPage() {
 
           <CardContent className="p-6">
             <div className="space-y-4">
-              {unassigned.map(employee => (
-                <EmployeeNodeComponent key={employee.id} employee={employee} />
+              {unassigned.map((employee, index) => (
+                <EmployeeNodeComponent 
+                  key={`unassigned-${employee.id}-${index}`} 
+                  employee={employee}
+                  parentId={`unassigned-section`} 
+                />
               ))}
             </div>
           </CardContent>

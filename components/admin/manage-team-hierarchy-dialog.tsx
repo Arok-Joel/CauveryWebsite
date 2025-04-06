@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Network, RefreshCw } from 'lucide-react';
+import { Network, RefreshCw, Loader2 } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -47,22 +47,56 @@ export function ManageTeamHierarchyDialog({
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingLevels, setIsUpdatingLevels] = useState(false);
+  const [teamData, setTeamData] = useState<TeamMember[]>([]);
+  const [isLoadingTeamData, setIsLoadingTeamData] = useState(false);
   const router = useRouter();
 
-  // Add debugging when dialog opens
+  // Fetch full team data when dialog opens
   useEffect(() => {
-    if (open) {
-      console.log('Team members:', members);
-      console.log('Executive Directors:', executiveDirectors);
-      console.log('Directors:', directors);
-    }
-  }, [open, members]);
+    const fetchTeamWithLeader = async () => {
+      if (open) {
+        try {
+          setIsLoadingTeamData(true);
+          const response = await fetch(`/api/admin/teams/${teamId}`);
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Combine leader with members
+            const allTeamMembers = [
+              // Add leader with EXECUTIVE_DIRECTOR role
+              {
+                id: data.leader.id,
+                employeeRole: 'EXECUTIVE_DIRECTOR',
+                reportsToId: null,
+                hierarchyLevel: 0, // Executive Director is highest level (0)
+                user: {
+                  name: data.leader.user.name,
+                  email: data.leader.user.email
+                }
+              },
+              ...members
+            ];
+            
+            setTeamData(allTeamMembers);
+            console.log('Team with leader:', allTeamMembers);
+          }
+        } catch (error) {
+          console.error('Error fetching team data:', error);
+          toast.error('Failed to load team data');
+        } finally {
+          setIsLoadingTeamData(false);
+        }
+      }
+    };
+    
+    fetchTeamWithLeader();
+  }, [open, teamId, members]);
 
   // Group members by role for easier display management
-  const executiveDirectors = members.filter(m => m.employeeRole === 'EXECUTIVE_DIRECTOR');
-  const directors = members.filter(m => m.employeeRole === 'DIRECTOR');
-  const jointDirectors = members.filter(m => m.employeeRole === 'JOINT_DIRECTOR');
-  const fieldOfficers = members.filter(m => m.employeeRole === 'FIELD_OFFICER');
+  const executiveDirectors = teamData.filter(m => m.employeeRole === 'EXECUTIVE_DIRECTOR');
+  const directors = teamData.filter(m => m.employeeRole === 'DIRECTOR');
+  const jointDirectors = teamData.filter(m => m.employeeRole === 'JOINT_DIRECTOR');
+  const fieldOfficers = teamData.filter(m => m.employeeRole === 'FIELD_OFFICER');
 
   const updateReporting = async (employeeId: string, reportsToId: string | null) => {
     try {
@@ -93,7 +127,7 @@ export function ManageTeamHierarchyDialog({
   const getPotentialManagersForEmployee = (employee: TeamMember) => {
     // If hierarchyLevel is available, use it
     if (typeof employee.hierarchyLevel === 'number') {
-      return members.filter(m => 
+      return teamData.filter(m => 
         // Different employee
         m.id !== employee.id && 
         // Higher position (lower hierarchy level number)
@@ -110,7 +144,7 @@ export function ManageTeamHierarchyDialog({
         'FIELD_OFFICER': 3
       };
       
-      return members.filter(m => 
+      return teamData.filter(m => 
         m.id !== employee.id && 
         roleHierarchy[m.employeeRole as keyof typeof roleHierarchy] < 
         roleHierarchy[employee.employeeRole as keyof typeof roleHierarchy]
@@ -165,171 +199,162 @@ export function ManageTeamHierarchyDialog({
           </p>
         </DialogHeader>
 
-        {/* Debug Info (remove in production) */}
-        <div className="text-xs text-gray-500 mb-2">
-          Members count: {members.length} | ED: {executiveDirectors.length} | Dir: {directors.length} | JD: {jointDirectors.length} | FO: {fieldOfficers.length}
-        </div>
-
-        {/* Improved Debug Info */}
-        <div className="my-2 p-2 bg-gray-100 rounded text-xs font-mono">
-          <p>Raw Members Data:</p>
-          <pre className="overflow-auto max-h-20">
-            {JSON.stringify(members.map(m => ({
-              id: m.id,
-              name: m.user.name,
-              role: m.employeeRole,
-              level: m.hierarchyLevel
-            })), null, 2)}
-          </pre>
-        </div>
-
-        {/* Check if we have any executive directors */}
-        {executiveDirectors.length === 0 && (
-          <div className="p-3 mb-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
-            <p className="font-medium">No Executive Director Found</p>
-            <p className="text-sm mt-1">
-              Try clicking the "Fix Hierarchy Levels" button below to repair the employee hierarchy levels.
-              Then refresh the page.
-            </p>
+        {isLoadingTeamData ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="mt-2 text-sm text-muted-foreground">Loading team hierarchy...</p>
           </div>
-        )}
-
-        {/* Executive Directors Section */}
-        {executiveDirectors.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="font-medium">Executive Directors</h3>
-            {executiveDirectors.map(executiveDirector => (
-              <div
-                key={executiveDirector.id}
-                className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
-              >
-                <div>
-                  <p className="font-medium">{executiveDirector.user.name}</p>
-                  <p className="text-sm text-gray-500">{executiveDirector.user.email}</p>
-                  <p className="text-xs text-gray-400">Level: {executiveDirector.hierarchyLevel ?? 'not set'}</p>
-                </div>
-                <span className="text-sm text-green-700 font-medium">Team Leader</span>
+        ) : (
+          <>
+            {/* Check if we have any executive directors */}
+            {executiveDirectors.length === 0 && (
+              <div className="p-3 mb-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                <p className="font-medium">No Executive Director Found</p>
+                <p className="text-sm mt-1">
+                  Try clicking the "Fix Hierarchy Levels" button below to repair the employee hierarchy levels.
+                  Then refresh the page.
+                </p>
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* Directors Section */}
-        {directors.length > 0 && (
-          <div className="space-y-4 mt-4">
-            <h3 className="font-medium">Directors</h3>
-            {directors.map(director => {
-              // For Directors, we specifically want them to report to EDs
-              const potentialManagers = executiveDirectors.length > 0 ? 
-                executiveDirectors : 
-                getPotentialManagersForEmployee(director);
-              
-              return (
-                <div
-                  key={director.id}
-                  className="flex items-center justify-between p-4 bg-sky-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{director.user.name}</p>
-                    <p className="text-sm text-gray-500">{director.user.email}</p>
-                    <p className="text-xs text-gray-400">Level: {director.hierarchyLevel ?? 'not set'}</p>
-                  </div>
-                  <Select
-                    value={director.reportsToId || ''}
-                    onValueChange={value => updateReporting(director.id, value)}
-                    disabled={isLoading || potentialManagers.length === 0}
+            {/* Executive Directors Section */}
+            {executiveDirectors.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-medium">Executive Directors</h3>
+                {executiveDirectors.map(executiveDirector => (
+                  <div
+                    key={executiveDirector.id}
+                    className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
                   >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Reports to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {potentialManagers.map(manager => (
-                        <SelectItem key={manager.id} value={manager.id}>
-                          {manager.user.name} ({manager.employeeRole})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    <div>
+                      <p className="font-medium">{executiveDirector.user.name}</p>
+                      <p className="text-sm text-gray-500">{executiveDirector.user.email}</p>
+                      <p className="text-xs text-gray-400">Level: {executiveDirector.hierarchyLevel ?? 'not set'}</p>
+                    </div>
+                    <span className="text-sm text-green-700 font-medium">Team Leader</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {/* Joint Directors Section */}
-        {jointDirectors.length > 0 && (
-          <div className="space-y-4 mt-4">
-            <h3 className="font-medium">Joint Directors</h3>
-            {jointDirectors.map(jointDirector => {
-              const potentialManagers = getPotentialManagersForEmployee(jointDirector);
-              
-              return (
-                <div
-                  key={jointDirector.id}
-                  className="flex items-center justify-between p-4 bg-violet-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{jointDirector.user.name}</p>
-                    <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
-                  </div>
-                  <Select
-                    value={jointDirector.reportsToId || ''}
-                    onValueChange={value => updateReporting(jointDirector.id, value)}
-                    disabled={isLoading || potentialManagers.length === 0}
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Reports to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {potentialManagers.map(manager => (
-                        <SelectItem key={manager.id} value={manager.id}>
-                          {manager.user.name} ({manager.employeeRole})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
-        )}
+            {/* Directors Section */}
+            {directors.length > 0 && (
+              <div className="space-y-4 mt-4">
+                <h3 className="font-medium">Directors</h3>
+                {directors.map(director => {
+                  // For Directors, we specifically want them to report to EDs
+                  const potentialManagers = executiveDirectors.length > 0 ? 
+                    executiveDirectors : 
+                    getPotentialManagersForEmployee(director);
+                  
+                  return (
+                    <div
+                      key={director.id}
+                      className="flex items-center justify-between p-4 bg-sky-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{director.user.name}</p>
+                        <p className="text-sm text-gray-500">{director.user.email}</p>
+                        <p className="text-xs text-gray-400">Level: {director.hierarchyLevel ?? 'not set'}</p>
+                      </div>
+                      <Select
+                        value={director.reportsToId || ''}
+                        onValueChange={value => updateReporting(director.id, value)}
+                        disabled={isLoading || potentialManagers.length === 0}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Reports to..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {potentialManagers.map(manager => (
+                            <SelectItem key={manager.id} value={manager.id}>
+                              {manager.user.name} ({manager.employeeRole})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-        {/* Field Officers Section */}
-        {fieldOfficers.length > 0 && (
-          <div className="space-y-4 mt-4">
-            <h3 className="font-medium">Field Officers</h3>
-            {fieldOfficers.map(fieldOfficer => {
-              const potentialManagers = getPotentialManagersForEmployee(fieldOfficer);
-              
-              return (
-                <div
-                  key={fieldOfficer.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{fieldOfficer.user.name}</p>
-                    <p className="text-sm text-gray-500">{fieldOfficer.user.email}</p>
-                  </div>
-                  <Select
-                    value={fieldOfficer.reportsToId || ''}
-                    onValueChange={value => updateReporting(fieldOfficer.id, value)}
-                    disabled={isLoading || potentialManagers.length === 0}
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Reports to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {potentialManagers.map(manager => (
-                        <SelectItem key={manager.id} value={manager.id}>
-                          {manager.user.name} ({manager.employeeRole})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
+            {/* Joint Directors Section */}
+            {jointDirectors.length > 0 && (
+              <div className="space-y-4 mt-4">
+                <h3 className="font-medium">Joint Directors</h3>
+                {jointDirectors.map(jointDirector => {
+                  const potentialManagers = getPotentialManagersForEmployee(jointDirector);
+                  
+                  return (
+                    <div
+                      key={jointDirector.id}
+                      className="flex items-center justify-between p-4 bg-violet-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{jointDirector.user.name}</p>
+                        <p className="text-sm text-gray-500">{jointDirector.user.email}</p>
+                      </div>
+                      <Select
+                        value={jointDirector.reportsToId || ''}
+                        onValueChange={value => updateReporting(jointDirector.id, value)}
+                        disabled={isLoading || potentialManagers.length === 0}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Reports to..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {potentialManagers.map(manager => (
+                            <SelectItem key={manager.id} value={manager.id}>
+                              {manager.user.name} ({manager.employeeRole})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Field Officers Section */}
+            {fieldOfficers.length > 0 && (
+              <div className="space-y-4 mt-4">
+                <h3 className="font-medium">Field Officers</h3>
+                {fieldOfficers.map(fieldOfficer => {
+                  const potentialManagers = getPotentialManagersForEmployee(fieldOfficer);
+                  
+                  return (
+                    <div
+                      key={fieldOfficer.id}
+                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{fieldOfficer.user.name}</p>
+                        <p className="text-sm text-gray-500">{fieldOfficer.user.email}</p>
+                      </div>
+                      <Select
+                        value={fieldOfficer.reportsToId || ''}
+                        onValueChange={value => updateReporting(fieldOfficer.id, value)}
+                        disabled={isLoading || potentialManagers.length === 0}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Reports to..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {potentialManagers.map(manager => (
+                            <SelectItem key={manager.id} value={manager.id}>
+                              {manager.user.name} ({manager.employeeRole})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         {/* Add a DialogFooter with the update hierarchy levels button */}

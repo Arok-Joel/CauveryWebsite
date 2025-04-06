@@ -206,6 +206,22 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
     notFound();
   }
 
+  // Create a Set to track unique subordinates by ID
+  const uniqueSubordinatesIds = new Set<string>();
+  let uniqueSubordinates: (Employee & {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  })[] = [];
+
+  // Add existing direct subordinates to the Set
+  employee.subordinates.forEach(sub => {
+    uniqueSubordinatesIds.add(sub.id);
+    uniqueSubordinates.push(sub);
+  });
+
   // If employee is part of a team but doesn't have a direct reportsTo relationship,
   // use the team leader as their reporting manager
   if (!employee.reportsTo && employee.memberOfTeam) {
@@ -215,9 +231,15 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
   // If employee is a team leader, add team members as subordinates if they don't have other reporting relationships
   if (employee.leadsTeam) {
     const teamSubordinates = employee.leadsTeam.members.filter(
-      member => member.id !== employee.id && (!member.reportsTo || member.reportsTo.id === employee.id)
+      member => member.id !== employee.id && 
+                (!member.reportsTo || member.reportsTo.id === employee.id) &&
+                !uniqueSubordinatesIds.has(member.id)
     );
-    employee.subordinates = [...employee.subordinates, ...teamSubordinates];
+    
+    teamSubordinates.forEach(sub => {
+      uniqueSubordinatesIds.add(sub.id);
+      uniqueSubordinates.push(sub);
+    });
   }
 
   // If employee is part of a team and has a role that should have subordinates,
@@ -236,12 +258,19 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
       return (
         member.id !== employee.id &&
         memberRoleLevel > employeeRoleLevel &&
-        (!member.reportsTo || member.reportsTo.id === employee.id)
+        (!member.reportsTo || member.reportsTo.id === employee.id) &&
+        !uniqueSubordinatesIds.has(member.id)
       );
     });
 
-    employee.subordinates = [...employee.subordinates, ...teamSubordinates];
+    teamSubordinates.forEach(sub => {
+      uniqueSubordinatesIds.add(sub.id);
+      uniqueSubordinates.push(sub);
+    });
   }
+
+  // Replace the original subordinates array with our deduplicated list
+  employee.subordinates = uniqueSubordinates;
 
   return employee as EmployeeWithRelations;
 }
@@ -533,9 +562,9 @@ export default async function EmployeePage({ params }: PageProps) {
                 <h3 className="text-sm font-medium mb-4">Direct Reports</h3>
                 {employee.subordinates.length > 0 ? (
                   <div className="space-y-3">
-                    {employee.subordinates.map((subordinate) => (
+                    {employee.subordinates.map((subordinate, index) => (
                       <Link
-                        key={subordinate.id}
+                        key={`direct-report-${subordinate.id}-${index}`}
                         href={`/admin/employees/${subordinate.id}`}
                         className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
                       >
@@ -585,10 +614,15 @@ export default async function EmployeePage({ params }: PageProps) {
                         </div>
                         <div className="pl-6 border-l-2 border-muted space-y-4">
                           {employee.leadsTeam.members
-                            .filter((member) => member.id !== employee.id)
-                            .map((member) => (
+                            // Only filter out the current employee if they're the team leader (to avoid duplication)
+                            .filter(member => member.id !== employee.id)
+                            // Make sure we don't show duplicates
+                            .filter((member, index, self) => 
+                              index === self.findIndex(m => m.id === member.id)
+                            )
+                            .map((member, index) => (
                               <Link
-                                key={member.id}
+                                key={`team-lead-member-${member.id}-${index}`}
                                 href={`/admin/employees/${member.id}`}
                                 className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
                               >
@@ -602,7 +636,7 @@ export default async function EmployeePage({ params }: PageProps) {
                                   <Badge className={`mt-1 ${getRoleBadgeClass(member.employeeRole)}`}>
                                     {formatRole(member.employeeRole)}
                                   </Badge>
-                                  {member.reportsTo && member.reportsTo.user && (
+                                  {'reportsTo' in member && member.reportsTo && 'user' in member.reportsTo && (
                                     <p className="text-sm text-muted-foreground mt-1">
                                       Reports to: {member.reportsTo.user.name}
                                     </p>
@@ -635,20 +669,32 @@ export default async function EmployeePage({ params }: PageProps) {
                         </div>
                         <div className="pl-6 border-l-2 border-muted space-y-4">
                           {employee.memberOfTeam.members
-                            .filter((member) => member.id !== employee.memberOfTeam?.leader.id)
-                            .map((member) => (
+                            // Only filter out the team leader to avoid duplication
+                            .filter(member => member.id !== employee.memberOfTeam?.leader.id)
+                            // Make sure we don't show duplicates
+                            .filter((member, index, self) => 
+                              index === self.findIndex(m => m.id === member.id)
+                            )
+                            .map((member, index) => (
                               <Link
-                                key={member.id}
+                                key={`team-member-${member.id}-${index}`}
                                 href={`/admin/employees/${member.id}`}
-                                className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                                className={`flex items-center gap-3 p-4 rounded-lg hover:bg-muted/70 transition-colors ${
+                                  member.id === employee.id 
+                                    ? 'bg-primary/10 border border-primary/20' // Highlight current employee
+                                    : 'bg-muted/50'
+                                }`}
                               >
                                 <Avatar className="h-10 w-10">
-                                  <AvatarFallback className="bg-primary/10">
+                                  <AvatarFallback className={member.id === employee.id ? "bg-primary/20" : "bg-primary/10"}>
                                     {member.user.name.split(' ').map((n: string) => n[0]).join('')}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium">{member.user.name}</p>
+                                  <p className="font-medium">
+                                    {member.user.name}
+                                    {member.id === employee.id && <span className="ml-2 text-sm text-primary font-normal">(You)</span>}
+                                  </p>
                                   <Badge className={`mt-1 ${getRoleBadgeClass(member.employeeRole)}`}>
                                     {formatRole(member.employeeRole)}
                                   </Badge>

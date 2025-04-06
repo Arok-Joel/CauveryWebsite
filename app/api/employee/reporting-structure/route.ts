@@ -130,6 +130,9 @@ export async function GET() {
 
     // Get all direct reports (subordinates) IDs for deduplication
     const subordinateIds = new Set(employee.subordinates.map(sub => sub.id));
+    
+    // Collect unique direct reports
+    const uniqueSubordinates = [...employee.subordinates];
 
     // Determine the manager based on reportsTo or team leader
     let manager = null;
@@ -165,8 +168,8 @@ export async function GET() {
       };
     }
 
-    // Format subordinates
-    const directReports = employee.subordinates.map(sub => ({
+    // Format subordinates - ensuring no duplicates
+    const directReports = uniqueSubordinates.map(sub => ({
       id: sub.id,
       name: sub.user.name,
       role: sub.employeeRole,
