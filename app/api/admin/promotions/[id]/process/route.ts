@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { verifyAuth } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import * as z from 'zod';
+import { getHierarchyLevelForRole } from '@/lib/employee-roles';
 
 // Validate the promotion processing request
 const processSchema = z.object({
@@ -80,46 +81,40 @@ export async function POST(
       const updatedRequest = await tx.promotionRequest.update({
         where: { id },
         data: {
-          status,
+          status: status as any,
           reviewedAt: new Date(),
-          reviewedById: null,
+          reviewedById: verified.userId,
         },
       });
 
       // If approved, update the employee's role and reporting structure
       if (status === 'APPROVED') {
-        let newReportsToId = null;
+        let newReportsToId = employee.reportsToId;
         
         // Handle updating reporting structure based on role changes
         if (employee.employeeRole === 'FIELD_OFFICER' && promotionRequest.targetRole === 'JOINT_DIRECTOR') {
           // Scenario: Field Officer -> Joint Director
-          // New Joint Director should report to the same Director that their previous manager (Joint Director) reported to
-          if (employee.reportsTo) {
-            // Get their current manager's manager (who should be a Director)
-            const currentManagersManager = await tx.employee.findUnique({
-              where: { id: employee.reportsTo.reportsToId || '' },
-              select: { id: true, employeeRole: true }
+          // New Joint Director should report to a Director
+          // First check if their current manager is a Director
+          if (employee.reportsTo && employee.reportsTo.employeeRole === 'DIRECTOR') {
+            // Keep the same manager
+            newReportsToId = employee.reportsToId;
+          } else {
+            // Find a Director in the same team
+            const director = await tx.employee.findFirst({
+              where: { 
+                teamId: employee.teamId,
+                employeeRole: 'DIRECTOR' 
+              }
             });
             
-            if (currentManagersManager && currentManagersManager.employeeRole === 'DIRECTOR') {
-              newReportsToId = currentManagersManager.id;
-            } else {
-              // Fallback: find a Director in the same team
-              const director = await tx.employee.findFirst({
-                where: { 
-                  teamId: employee.teamId,
-                  employeeRole: 'DIRECTOR' 
-                }
-              });
-              
-              if (director) {
-                newReportsToId = director.id;
-              }
+            if (director) {
+              newReportsToId = director.id;
             }
           }
           
-          // Now any field officers reporting to this employee should continue to report to them
-          // No changes needed for their subordinates
+          // Field Officers who reported to this employee should keep reporting to them
+          // No changes needed for reporting structure of subordinates
         } 
         else if (employee.employeeRole === 'JOINT_DIRECTOR' && promotionRequest.targetRole === 'DIRECTOR') {
           // Scenario: Joint Director -> Director
@@ -164,11 +159,12 @@ export async function POST(
           }
         }
 
-        // Update the employee's role and reporting relationship
+        // Update the employee's role, reporting relationship, and hierarchy level
         const updatedEmployee = await tx.employee.update({
           where: { id: employee.id },
           data: {
             employeeRole: promotionRequest.targetRole,
+            hierarchyLevel: getHierarchyLevelForRole(promotionRequest.targetRole),
             reportsToId: newReportsToId,
           },
         });
@@ -182,7 +178,8 @@ export async function POST(
     // Return success response
     return NextResponse.json({
       message: `Promotion request ${status.toLowerCase()}`,
-      promotionRequest: result.updatedRequest,
+      request: result.updatedRequest,
+      ...(result.updatedEmployee && { employee: result.updatedEmployee }),
     });
     
   } catch (error) {

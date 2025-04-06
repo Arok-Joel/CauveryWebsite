@@ -49,6 +49,7 @@ model Employee {
   ifscCode         String
   dateOfJoining    DateTime
   employeeRole     EmployeeRole
+  hierarchyLevel   Int          @default(0)  // 0 is highest level, increasing numbers = lower levels
   userId           String       @unique
   teamId           String?
   reportsToId      String?
