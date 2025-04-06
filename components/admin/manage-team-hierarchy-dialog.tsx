@@ -48,6 +48,7 @@ export function ManageTeamHierarchyDialog({
   const router = useRouter();
 
   // Group members by role for easier display management
+  const executiveDirectors = members.filter(m => m.employeeRole === 'EXECUTIVE_DIRECTOR');
   const directors = members.filter(m => m.employeeRole === 'DIRECTOR');
   const jointDirectors = members.filter(m => m.employeeRole === 'JOINT_DIRECTOR');
   const fieldOfficers = members.filter(m => m.employeeRole === 'FIELD_OFFICER');
@@ -108,27 +109,66 @@ export function ManageTeamHierarchyDialog({
           </p>
         </DialogHeader>
 
-        {/* Directors Section */}
-        {directors.length > 0 && (
+        {/* Executive Directors Section */}
+        {executiveDirectors.length > 0 && (
           <div className="space-y-4">
-            <h3 className="font-medium">Directors</h3>
-            {directors.map(director => (
+            <h3 className="font-medium">Executive Directors</h3>
+            {executiveDirectors.map(executiveDirector => (
               <div
-                key={director.id}
-                className="flex items-center justify-between p-4 bg-sky-50 rounded-lg"
+                key={executiveDirector.id}
+                className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
               >
                 <div>
-                  <p className="font-medium">{director.user.name}</p>
-                  <p className="text-sm text-gray-500">{director.user.email}</p>
+                  <p className="font-medium">{executiveDirector.user.name}</p>
+                  <p className="text-sm text-gray-500">{executiveDirector.user.email}</p>
                 </div>
+                <span className="text-sm text-green-700 font-medium">Team Leader</span>
               </div>
             ))}
           </div>
         )}
 
+        {/* Directors Section */}
+        {directors.length > 0 && (
+          <div className="space-y-4 mt-4">
+            <h3 className="font-medium">Directors</h3>
+            {directors.map(director => {
+              const potentialManagers = executiveDirectors;
+              
+              return (
+                <div
+                  key={director.id}
+                  className="flex items-center justify-between p-4 bg-sky-50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{director.user.name}</p>
+                    <p className="text-sm text-gray-500">{director.user.email}</p>
+                  </div>
+                  <Select
+                    value={director.reportsToId || ''}
+                    onValueChange={value => updateReporting(director.id, value)}
+                    disabled={isLoading || potentialManagers.length === 0}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Reports to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {potentialManagers.map(manager => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.user.name} ({manager.employeeRole})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Joint Directors Section */}
         {jointDirectors.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-4">
             <h3 className="font-medium">Joint Directors</h3>
             {jointDirectors.map(jointDirector => {
               const potentialManagers = getPotentialManagersForEmployee(jointDirector);
@@ -166,7 +206,7 @@ export function ManageTeamHierarchyDialog({
 
         {/* Field Officers Section */}
         {fieldOfficers.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-4">
             <h3 className="font-medium">Field Officers</h3>
             {fieldOfficers.map(fieldOfficer => {
               const potentialManagers = getPotentialManagersForEmployee(fieldOfficer);

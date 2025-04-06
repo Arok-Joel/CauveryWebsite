@@ -7,6 +7,7 @@ interface EmployeeNode {
   id: string;
   user: User;
   employeeRole: EmployeeRole;
+  hierarchyLevel?: number;
   reportsTo?: string | null;
   children: EmployeeNode[];
 }
@@ -35,6 +36,7 @@ async function getEmployees() {
           user: member.user,
           employeeRole: member.employeeRole,
           reportsTo: member.reportsTo?.id,
+          hierarchyLevel: member.hierarchyLevel,
           children: [],
         };
 
@@ -51,29 +53,70 @@ async function getEmployees() {
         }
       });
 
-      // Build the hierarchy
-      // Field Officers report to Joint Directors
+      // Build the hierarchy based on reporting relationships
+      // First, check each Field Officer
       fieldOfficers.forEach(fo => {
-        const reportingJD = jointDirectors.find(jd => fo.reportsTo === jd.id);
-        if (reportingJD) {
-          reportingJD.children.push(fo);
+        if (fo.reportsTo) {
+          // Check if reports to a Joint Director
+          const reportingJD = jointDirectors.find(jd => fo.reportsTo === jd.id);
+          if (reportingJD) {
+            reportingJD.children.push(fo);
+            return; // Skip to next Field Officer
+          }
+          
+          // Check if reports to a Director (skipping Joint Director)
+          const reportingDirector = directors.find(d => fo.reportsTo === d.id);
+          if (reportingDirector) {
+            reportingDirector.children.push(fo);
+            return; // Skip to next Field Officer
+          }
         }
+        
+        // Field Officer with no reporting relationship stays at root level
+        // This will be handled later
       });
 
-      // Joint Directors report to Directors
+      // Check each Joint Director
       jointDirectors.forEach(jd => {
-        const reportingDirector = directors.find(d => jd.reportsTo === d.id);
-        if (reportingDirector) {
-          reportingDirector.children.push(jd);
+        if (jd.reportsTo) {
+          // Check if reports to a Director
+          const reportingDirector = directors.find(d => jd.reportsTo === d.id);
+          if (reportingDirector) {
+            reportingDirector.children.push(jd);
+            return; // Skip to next Joint Director
+          }
+          
+          // Check if reports directly to Executive Director (not common, but possible)
+          if (jd.reportsTo === team.leader.id) {
+            // Will be added directly to executive's children later
+            return;
+          }
         }
+        
+        // Joint Director with no reporting relationship
+        // Will be added directly to executive's children later
       });
 
-      // Directors report to Executive Director
+      // Get "orphaned" employees (not added to anyone's children yet)
+      const orphanedJDs = jointDirectors.filter(jd => 
+        !directors.some(d => d.children.some(child => child.id === jd.id))
+      );
+      
+      const orphanedFOs = fieldOfficers.filter(fo => 
+        !jointDirectors.some(jd => jd.children.some(child => child.id === fo.id)) &&
+        !directors.some(d => d.children.some(child => child.id === fo.id))
+      );
+
+      // Add Directors and orphaned employees directly to Executive Director
       return {
         id: team.leader.id,
         user: team.leader.user,
         employeeRole: team.leader.employeeRole,
-        children: directors,
+        children: [
+          ...directors, 
+          ...orphanedJDs,
+          ...orphanedFOs
+        ],
       };
     });
 
@@ -97,6 +140,7 @@ async function getEmployees() {
       user: emp.user,
       employeeRole: emp.employeeRole,
       reportsTo: emp.reportsTo?.id,
+      hierarchyLevel: emp.hierarchyLevel,
       children: [],
     }));
 
