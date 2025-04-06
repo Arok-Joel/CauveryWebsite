@@ -133,7 +133,7 @@ export function ManageTeamHierarchyDialog({
           <div className="space-y-4 mt-4">
             <h3 className="font-medium">Directors</h3>
             {directors.map(director => {
-              const potentialManagers = executiveDirectors;
+              const potentialManagers = getPotentialManagersForEmployee(director);
               
               return (
                 <div

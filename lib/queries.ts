@@ -44,17 +44,27 @@ export const getEmployeeHierarchy = cache(async () => {
     const teams = await db.team.findMany({
       include: {
         leader: {
-          include: {
+          select: {
+            id: true,
+            employeeRole: true,
+            hierarchyLevel: true,
+            userId: true,
             user: true
           }
         },
         members: {
-          include: {
+          select: {
+            id: true,
+            employeeRole: true,
+            hierarchyLevel: true,
+            reportsToId: true,
+            userId: true,
             user: true,
             reportsTo: {
               select: {
                 id: true,
-                employeeRole: true
+                employeeRole: true,
+                hierarchyLevel: true
               }
             }
           }
@@ -70,12 +80,18 @@ export const getEmployeeHierarchy = cache(async () => {
           { leadsTeam: null }
         ]
       },
-      include: {
+      select: {
+        id: true,
+        employeeRole: true,
+        hierarchyLevel: true,
+        reportsToId: true,
+        userId: true,
         user: true,
         reportsTo: {
           select: {
             id: true,
-            employeeRole: true
+            employeeRole: true,
+            hierarchyLevel: true
           }
         }
       }
