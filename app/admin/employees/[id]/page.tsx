@@ -25,7 +25,8 @@ import {
 import Link from "next/link";
 import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { format } from 'date-fns';
-import { Employee, Plot, Commission, SoldPlot, Team } from '@prisma/client';
+import { Employee, Plot, Commission, SoldPlot, Team, User as PrismaUser } from '@prisma/client';
+import { use } from 'react';
 
 interface PageProps {
   params: {
@@ -34,58 +35,26 @@ interface PageProps {
 }
 
 interface EmployeeWithRelations extends Employee {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    address?: string | null;
-  };
+  user: PrismaUser;
   reportsTo: (Employee & {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-    };
+    user: PrismaUser;
   }) | null;
   subordinates: (Employee & {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-    };
+    user: PrismaUser;
   })[];
-  memberOfTeam: (Team & {
-    leader: Employee & {
-      user: {
-        id: string;
-        name: string;
-        email: string;
-      };
-    };
-    members: (Employee & {
-      user: {
-        id: string;
-        name: string;
-        email: string;
-      };
-    })[];
-  }) | null;
   leadsTeam: (Team & {
     members: (Employee & {
-      user: {
-        id: string;
-        name: string;
-        email: string;
-      };
-      reportsTo: (Employee & {
-        user: {
-          id: string;
-          name: string;
-        };
-      }) | null;
+      user: PrismaUser;
     })[];
   }) | null;
+  memberOfTeam: (Team & {
+    leader: Employee & {
+      user: PrismaUser;
+    };
+  }) | null;
+  commissions: (Commission & {
+    soldPlot: SoldPlot;
+  })[];
 }
 
 async function getEmployee(id: string): Promise<EmployeeWithRelations> {
@@ -301,14 +270,51 @@ function formatRole(role: string) {
 
 function formatDate(date: string | Date) {
   const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
-  return format(d, 'PPP');
+  return format(d, 'MMMM d, yyyy');
 }
 
 export default async function EmployeePage({ params }: PageProps) {
-  const employee = await getEmployee(params.id);
-  const commissions = await getEmployeeCommissions(params.id);
+  const { id } = params;
+  
+  // Fetch employee data
+  const employee = await db.employee.findUnique({
+    where: { id },
+    include: {
+      user: true,
+      leadsTeam: {
+        include: {
+          members: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      },
+      memberOfTeam: {
+        include: {
+          leader: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      },
+      commissions: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          soldPlot: true,
+        },
+      },
+    },
+  });
 
-  const totalCommission = commissions.reduce((sum, commission) => 
+  if (!employee) {
+    return notFound();
+  }
+
+  const totalCommission = employee.commissions.reduce((sum: number, commission: Commission) => 
     sum + parseFloat(commission.amount.toString()), 0
   );
 
@@ -674,11 +680,11 @@ export default async function EmployeePage({ params }: PageProps) {
               <LayoutGrid className="h-5 w-5 text-muted-foreground" />
               <CardTitle>Sold Plots</CardTitle>
             </div>
-            {commissions.length > 0 && (
+            {employee.commissions.length > 0 && (
               <div className="flex items-center gap-12">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Sales</p>
-                  <p className="text-xl font-bold">{commissions.length} plots</p>
+                  <p className="text-xl font-bold">{employee.commissions.length} plots</p>
                 </div>
                 <div className="border-l pl-12">
                   <p className="text-sm text-muted-foreground">Total Commission</p>
@@ -689,7 +695,7 @@ export default async function EmployeePage({ params }: PageProps) {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          {commissions.length > 0 ? (
+          {employee.commissions.length > 0 ? (
             <div className="space-y-2">
               <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 border-b">
                 <div className="pb-2 text-sm font-medium text-muted-foreground">Plot Number</div>
@@ -699,7 +705,7 @@ export default async function EmployeePage({ params }: PageProps) {
                 <div className="pb-2"></div>
               </div>
 
-              {commissions.map(commission => (
+              {employee.commissions.map(commission => (
                 <Collapsible key={commission.id}>
                   <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-3 group">
                     <div className="font-medium">{commission.soldPlot.plotNumber}</div>

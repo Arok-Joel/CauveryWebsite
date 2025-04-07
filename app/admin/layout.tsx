@@ -63,6 +63,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       href: "/admin/plots",
     },
     {
+      name: "Book Plots",
+      href: "/plots",
+    },
+    {
       name: "Messages",
       href: "/admin/messages",
     },

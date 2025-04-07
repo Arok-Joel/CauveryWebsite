@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
 import Link from "next/link";
 import { ContactSalesDialog } from "@/components/ContactSalesDialog";
+import { use } from 'react';
 
 interface PlotData {
   id: string;
@@ -28,12 +29,13 @@ interface PlotImage {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function PlotPage({ params }: PageProps) {
+  const { id } = use(params);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [plot, setPlot] = useState<PlotData | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function PlotPage({ params }: PageProps) {
     const fetchData = async () => {
       try {
         // Fetch plot data
-        const plotResponse = await fetch(`/api/plots/${params.id}`);
+        const plotResponse = await fetch(`/api/plots/${id}`);
         if (!plotResponse.ok) {
           if (plotResponse.status === 404) {
             router.push('/404');
@@ -69,7 +71,7 @@ export default function PlotPage({ params }: PageProps) {
     };
 
     fetchData();
-  }, [params.id, router]);
+  }, [id, router]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -311,7 +313,7 @@ export default function PlotPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-4">
-                {userRole === "EMPLOYEE" && plot.status.toLowerCase() === 'available' && (
+                {userRole === "ADMIN" && plot.status.toLowerCase() === 'available' && (
                   <Button className="w-full bg-green-600 hover:bg-green-700" size="lg" asChild>
                     <Link href={`/plots/${plot.id}/book`}>
                       <Calendar className="mr-2 h-4 w-4" />
@@ -322,7 +324,8 @@ export default function PlotPage({ params }: PageProps) {
                 <div className="mt-4">
                   <Button 
                     onClick={() => setIsContactDialogOpen(true)}
-                    className="w-full md:w-auto"
+                    className="w-full"
+                    size="lg"
                   >
                     Contact Sales Team
                   </Button>
@@ -361,7 +364,7 @@ export default function PlotPage({ params }: PageProps) {
       <ContactSalesDialog
         isOpen={isContactDialogOpen}
         onClose={() => setIsContactDialogOpen(false)}
-        plotId={params.id}
+        plotId={id}
         plotNumber={plot.plotNumber}
       />
     </div>

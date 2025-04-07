@@ -1,9 +1,32 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifyAuth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { EmployeeRole } from "@prisma/client";
+import { sendPlotBookingConfirmationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
+    // Get auth token from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 });
+    }
+
+    // Verify token
+    const verified = await verifyAuth(token);
+
+    if (!verified) {
+      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
+    }
+
+    // Check if user has admin role
+    if (verified.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized - Only admins can book plots' }, { status: 401 });
+    }
+
     const data = await request.json();
     const {
       plotId,
@@ -23,8 +46,7 @@ export async function POST(request: Request) {
 
     // Validate that all required fields are present
     if (!plotId || !plotNumber || !size || !plotAddress || !price || !dimensions || 
-        !facing || !employeeId || !customerName || !phoneNumber || !email || 
-        !address || !aadhaarNumber) {
+        !facing || !employeeId || !customerName || !phoneNumber || !email || !address || !aadhaarNumber) {
       return NextResponse.json(
         { error: "All fields are required" },
         { status: 400 }
@@ -50,9 +72,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get employee details to determine role
+    // Get employee details
     const employee = await db.employee.findUnique({
       where: { id: employeeId },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!employee) {
@@ -62,19 +91,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch team hierarchy
-    const teamHierarchy = await getTeamHierarchy(employeeId);
-
-    if (!teamHierarchy) {
-      return NextResponse.json(
-        { error: "Failed to fetch team hierarchy" },
-        { status: 500 }
-      );
-    }
-
-    // Calculate commissions based on employee role
+    // Calculate commission based on employee role
     const saleAmount = parseFloat(price);
-    const commissions = calculateCommissions(employee.employeeRole, employeeId, saleAmount, teamHierarchy);
+    const commission = calculateCommission(employee.employeeRole, saleAmount);
 
     // Start a transaction to ensure all operations succeed or fail together
     const result = await db.$transaction(async (tx) => {
@@ -103,22 +122,43 @@ export async function POST(request: Request) {
         data: { status: "sold" },
       });
 
-      // Create commission records
-      const commissionRecords = await Promise.all(
-        commissions.map(commission =>
-          tx.commission.create({
-            data: {
-              amount: commission.amount,
-              percentage: commission.percentage,
-              employeeId: commission.employeeId,
-              employeeRole: commission.employeeRole,
-              soldPlotId: soldPlot.id,
-            }
-          })
-        )
-      );
+      // Create commission record
+      const commissionRecord = await tx.commission.create({
+        data: {
+          amount: commission.amount,
+          percentage: commission.percentage,
+          employeeId: employeeId,
+          employeeRole: employee.employeeRole,
+          soldPlotId: soldPlot.id,
+        },
+      });
 
-      return { soldPlot, updatedPlot, commissions: commissionRecords };
+      // Send confirmation email to customer
+      try {
+        await sendPlotBookingConfirmationEmail({
+          to: email,
+          customerName,
+          plotNumber,
+          size,
+          price: parseFloat(price),
+          dimensions,
+          facing,
+          plotAddress,
+          phoneNumber,
+          email,
+          address,
+          aadhaarNumber,
+          employeeId,
+          employeeName: employee.user.name,
+          employeeRole: employee.employeeRole,
+        });
+        console.log("Confirmation email sent successfully");
+      } catch (emailError) {
+        console.error("Error sending confirmation email:", emailError);
+        // Continue with response even if email fails
+      }
+
+      return { soldPlot, updatedPlot, commission: commissionRecord };
     });
 
     return NextResponse.json(result);
@@ -129,6 +169,24 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+function calculateCommission(role: EmployeeRole, saleAmount: number) {
+  // Define commission rates based on employee role
+  const commissionRates: Record<EmployeeRole, number> = {
+    FIELD_OFFICER: 0.10, // 10%
+    JOINT_DIRECTOR: 0.15, // 15%
+    DIRECTOR: 0.20, // 20%
+    EXECUTIVE_DIRECTOR: 0.25, // 25%
+  };
+
+  const percentage = commissionRates[role];
+  const amount = saleAmount * percentage;
+
+  return {
+    percentage,
+    amount,
+  };
 }
 
 /**

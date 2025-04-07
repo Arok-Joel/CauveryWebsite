@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Move } from "lucide-react";
+import { use } from 'react';
 
 interface Point {
   x: number;
@@ -23,37 +24,47 @@ interface Layout {
   Plot: Plot[];
 }
 
-export default function LayoutPage() {
-  const params = useParams();
-  const [layout, setLayout] = useState<Layout | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<Point | null>(null);
-  const [selectedTool, setSelectedTool] = useState<"move" | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function PlotLayoutPage({ params }: PageProps) {
+  const { id } = use(params);
   const router = useRouter();
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [loading, setLoading] = useState(true);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [scale, setScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
+  const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
+  const [selectedTool, setSelectedTool] = useState<"move" | null>(null);
 
   useEffect(() => {
     const fetchLayout = async () => {
       try {
-        const response = await fetch(`/api/layouts/${params.id}`);
+        const response = await fetch(`/api/layouts/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch layout');
+        }
         const data = await response.json();
         setLayout(data);
       } catch (error) {
-        console.error("Error fetching layout:", error);
+        console.error('Error fetching layout:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (params.id) {
-      fetchLayout();
-    }
-  }, [params.id]);
+    fetchLayout();
+  }, [id]);
 
   useEffect(() => {
     if (!layout) return;
     drawCanvas();
-  }, [layout, zoom, pan]);
+  }, [layout, scale, offset]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -69,8 +80,8 @@ export default function LayoutPage() {
     img.src = layout.image;
     img.onload = () => {
       ctx.save();
-      ctx.translate(pan.x, pan.y);
-      ctx.scale(zoom, zoom);
+      ctx.translate(offset.x, offset.y);
+      ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       // Draw plots
@@ -100,8 +111,8 @@ export default function LayoutPage() {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left - pan.x) / zoom;
-    const y = (event.clientY - rect.top - pan.y) / zoom;
+    const x = (event.clientX - rect.left - offset.x) / scale;
+    const y = (event.clientY - rect.top - offset.y) / scale;
 
     // Check if click is inside any plot
     layout.Plot.forEach((plot) => {
@@ -114,13 +125,13 @@ export default function LayoutPage() {
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (selectedTool === "move") {
       setIsDragging(true);
-      setDragStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
+      setDragStart({ x: event.clientX - offset.x, y: event.clientY - offset.y });
     }
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging && dragStart) {
-      setPan({
+      setOffset({
         x: event.clientX - dragStart.x,
         y: event.clientY - dragStart.y,
       });
@@ -129,7 +140,7 @@ export default function LayoutPage() {
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    setDragStart(null);
+    setDragStart({ x: 0, y: 0 });
   };
 
   // Helper function to check if a point is inside a polygon
@@ -166,11 +177,11 @@ export default function LayoutPage() {
             <Move className="mr-2 h-4 w-4" />
             Move
           </Button>
-          <Button variant="outline" onClick={() => setZoom(zoom * 1.2)}>
+          <Button variant="outline" onClick={() => setScale(scale * 1.2)}>
             <ZoomIn className="mr-2 h-4 w-4" />
             Zoom In
           </Button>
-          <Button variant="outline" onClick={() => setZoom(zoom / 1.2)}>
+          <Button variant="outline" onClick={() => setScale(scale / 1.2)}>
             <ZoomOut className="mr-2 h-4 w-4" />
             Zoom Out
           </Button>

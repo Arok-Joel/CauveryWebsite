@@ -91,10 +91,14 @@ export async function GET() {
     const monthlySales = monthlySalesResult;
     const monthlyRevenue = Number(monthlyRevenueResult._sum.price) || 0;
 
-    // Calculate conversion rates as absolute numbers (not percentages)
-    // If 2 out of 10 users bought plots, the rate is 2
-    const overallConversionRate = totalSales;
-    const monthlyConversionRate = monthlySales;
+    // Calculate conversion rates as percentages (capped at 100%)
+    const overallConversionRate = totalUsers > 0 
+      ? Math.min(((totalSales / totalUsers) * 100), 100).toFixed(1)
+      : '0';
+
+    const monthlyConversionRate = monthlyNewUsers > 0
+      ? Math.min(((monthlySales / monthlyNewUsers) * 100), 100).toFixed(1)
+      : '0';
 
     // Build response
     const response = {
