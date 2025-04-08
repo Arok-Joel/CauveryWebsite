@@ -197,6 +197,21 @@ export default function BookPlotPage({ params }: PageProps) {
         email: data.email,
       });
       
+      // Get the selected employee details
+      const selectedEmployee = employees.find(emp => emp.id === data.employeeId);
+      if (selectedEmployee) {
+        searchParams.append('employeeId', selectedEmployee.id);
+        searchParams.append('employeeName', selectedEmployee.name);
+        searchParams.append('employeeRole', selectedEmployee.employeeRole);
+        
+        // Debug logging
+        console.log('Adding employee details to URL:', {
+          id: selectedEmployee.id,
+          name: selectedEmployee.name,
+          role: selectedEmployee.employeeRole
+        });
+      }
+      
       router.push(`/thank-you?${searchParams.toString()}`);
     } catch (error) {
       console.error("Error booking plot:", error);

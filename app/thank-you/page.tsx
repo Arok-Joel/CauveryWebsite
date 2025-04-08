@@ -152,7 +152,50 @@ function ThankYouContent() {
                   </div>
                 </div>
 
-                <Separator />
+                {/* Employee Information - Only show if employee details exist */}
+                {bookingDetails.employeeId && bookingDetails.employeeName && (
+                  <>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="mr-2 text-[#3C5A3E]"
+                        >
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Sales Representative
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Employee ID</p>
+                            <p className="text-base font-semibold text-gray-900">{bookingDetails.employeeId}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Name</p>
+                            <p className="text-base font-semibold text-gray-900">{bookingDetails.employeeName}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Role</p>
+                            <p className="text-base font-semibold text-gray-900">{bookingDetails.employeeRole}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                  </>
+                )}
 
                 {/* Next Steps */}
                 <div>
