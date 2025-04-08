@@ -105,6 +105,7 @@ export function EmployeeRegisterForm() {
   const [showError, setShowError] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const router = useRouter();
 
   useEffect(() => {
@@ -131,6 +132,7 @@ export function EmployeeRegisterForm() {
       accountNumber: "",
       ifscCode: "",
     },
+    mode: "onTouched"
   });
 
   const {
@@ -141,6 +143,11 @@ export function EmployeeRegisterForm() {
   const handleNext = async () => {
     const fields = formSteps[currentStep]
       .fields as (keyof EmployeeRegisterFormValues)[];
+
+    // Mark all fields in current step as touched
+    fields.forEach(field => {
+      setTouchedFields(prev => new Set([...prev, field]));
+    });
 
     // Validate current step fields
     const isValid = await trigger(fields);
@@ -205,11 +212,13 @@ export function EmployeeRegisterForm() {
 
   const currentFields = formSteps[currentStep].fields;
 
-  // Get current step error messages
+  // Get current step error messages only for touched fields
   const currentStepErrors = currentFields.reduce((acc, field) => {
-    const error = errors[field as keyof EmployeeRegisterFormValues];
-    if (error) {
-      acc.push(error.message as string);
+    if (touchedFields.has(field)) {
+      const error = errors[field as keyof EmployeeRegisterFormValues];
+      if (error) {
+        acc.push(error.message as string);
+      }
     }
     return acc;
   }, [] as string[]);
@@ -291,15 +300,19 @@ export function EmployeeRegisterForm() {
                     name={fieldName as keyof EmployeeRegisterFormValues}
                     render={({ field }) => (
                       <FormItem
-                        className={
-                          fieldName === "employeeRole" ? "md:col-span-2" : ""
-                        }
+                        className={cn(
+                          fieldName === "employeeRole" ? "md:col-span-2" : "",
+                          "space-y-2"
+                        )}
                       >
-                        <FormLabel>{getFieldLabel(fieldName)}</FormLabel>
+                        <FormLabel className="text-gray-700">{getFieldLabel(fieldName)}</FormLabel>
                         <FormControl>
                           {fieldName === "gender" ? (
                             <Select
-                              onValueChange={field.onChange}
+                              onValueChange={(value) => {
+                                setTouchedFields(prev => new Set([...prev, fieldName]));
+                                field.onChange(value);
+                              }}
                               defaultValue={field.value}
                             >
                               <FormControl>
@@ -325,10 +338,28 @@ export function EmployeeRegisterForm() {
                               {...field}
                               type={getInputType(fieldName)}
                               placeholder={getPlaceholder(fieldName)}
+                              className={cn(
+                                "w-full",
+                                touchedFields.has(fieldName) && errors[fieldName as keyof EmployeeRegisterFormValues] 
+                                  ? "border-red-500" 
+                                  : "border-gray-200"
+                              )}
+                              onBlur={(e) => {
+                                setTouchedFields(prev => new Set([...prev, fieldName]));
+                                field.onBlur();
+                              }}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (!touchedFields.has(fieldName)) {
+                                  setTouchedFields(prev => new Set([...prev, fieldName]));
+                                }
+                              }}
                             />
                           )}
                         </FormControl>
-                        <FormMessage />
+                        {touchedFields.has(fieldName) && errors[fieldName as keyof EmployeeRegisterFormValues] && (
+                          <FormMessage className="text-sm text-red-500" />
+                        )}
                       </FormItem>
                     )}
                   />
