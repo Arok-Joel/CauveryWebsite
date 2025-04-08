@@ -173,7 +173,15 @@ export default function BookPlotPage({ params }: PageProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to book plot");
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        
+        if (errorData.error && errorData.error.includes("transaction timeout")) {
+          // Handle transaction timeout specifically
+          toast.info("Your booking is being processed. You may receive a confirmation email shortly, but please check with admin to confirm the booking was completed.");
+          throw new Error("Transaction timeout - your booking might still be processing");
+        } else {
+          throw new Error(errorData.error || "Failed to book plot");
+        }
       }
 
       const result = await response.json();
@@ -192,7 +200,12 @@ export default function BookPlotPage({ params }: PageProps) {
       router.push(`/thank-you?${searchParams.toString()}`);
     } catch (error) {
       console.error("Error booking plot:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to book plot. Please try again.");
+      
+      if (error instanceof Error && error.message.includes("transaction timeout")) {
+        toast.error("The booking process is taking longer than expected. If you received a confirmation email, your booking was likely successful. Please contact support to confirm.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to book plot. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

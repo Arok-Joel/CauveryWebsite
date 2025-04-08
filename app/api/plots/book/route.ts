@@ -4,6 +4,7 @@ import { verifyAuth } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { EmployeeRole } from "@prisma/client";
 import { sendPlotBookingConfirmationEmail } from "@/lib/email";
+import { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -95,10 +96,10 @@ export async function POST(request: Request) {
     const saleAmount = parseFloat(price);
     const commission = calculateCommission(employee.employeeRole, saleAmount);
 
-    // Start a transaction to ensure all operations succeed or fail together
-    const result = await db.$transaction(async (tx) => {
+    // Use a transaction to ensure all operations succeed or fail together
+    const result = await db.$transaction(async (prisma) => {
       // Create the sold plot record
-      const soldPlot = await tx.soldPlot.create({
+      const soldPlot = await prisma.soldPlot.create({
         data: {
           plotNumber,
           size,
@@ -117,13 +118,13 @@ export async function POST(request: Request) {
       });
 
       // Update the plot status to "sold"
-      const updatedPlot = await tx.plot.update({
+      const updatedPlot = await prisma.plot.update({
         where: { id: plotId },
         data: { status: "sold" },
       });
 
       // Create commission record
-      const commissionRecord = await tx.commission.create({
+      const commissionRecord = await prisma.commission.create({
         data: {
           amount: commission.amount,
           percentage: commission.percentage,
@@ -159,13 +160,33 @@ export async function POST(request: Request) {
       }
 
       return { soldPlot, updatedPlot, commission: commissionRecord };
+    }, {
+      timeout: 30000, // 30 second timeout for transaction
+      maxWait: 5000,  // Maximum wait time for available connection
     });
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error("Error booking plot:", error);
+  } catch (txError) {
+    console.error("Transaction error:", txError);
+    
+    // More specific error handling for transaction issues
+    if (txError instanceof Prisma.PrismaClientKnownRequestError) {
+      // The .code property can be used to identify the type of error
+      if (txError.code === 'P2034') {
+        return NextResponse.json(
+          { error: "transaction timeout - the database is currently under high load, please try again" },
+          { status: 408 }
+        );
+      } else if (txError.code === 'P2025') {
+        return NextResponse.json(
+          { error: "Record not found - the plot may have been booked by someone else" },
+          { status: 409 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to book plot" },
+      { error: "Database transaction failed, please try again" },
       { status: 500 }
     );
   }
