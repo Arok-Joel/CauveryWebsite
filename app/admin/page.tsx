@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Users, UserPlus, ShoppingCart, TrendingUp, ActivitySquare } from 'lucide-react';
+import { Loader2, Users, UserPlus, ShoppingCart, TrendingUp, ActivitySquare, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardMetrics {
@@ -56,111 +56,118 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="space-y-6 p-6">
-      <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+    <div className="space-y-6">
+      {/* Welcome Message */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Royal Cauvery Farms</h1>
+        <p className="text-gray-600">
+          Manage your teams, employees, plots, and sales from this admin dashboard.
+        </p>
+      </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.overall?.totalUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">Registered users</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      {/* Metrics Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Total Users</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">{metrics?.overall?.totalUsers || 0}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Registered users</p>
+            </div>
+            <div className="admin-stat-icon">
+              <Users className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly New Users</CardTitle>
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.monthly?.newUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">New users this month</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Monthly New Users</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">{metrics?.monthly?.newUsers || 0}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">New users this month</p>
+            </div>
+            <div className="admin-stat-icon">
+              <UserPlus className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Plot Sales</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.overall?.totalSales || 0}</div>
-                <p className="text-xs text-muted-foreground">Total plots sold</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Total Plot Sales</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">{metrics?.overall?.totalSales || 0}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Total plots sold</p>
+            </div>
+            <div className="admin-stat-icon">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Plot Sales</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.monthly?.sales || 0}</div>
-                <p className="text-xs text-muted-foreground">Plots sold this month</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Monthly Plot Sales</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">{metrics?.monthly?.sales || 0}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Plots sold this month</p>
+            </div>
+            <div className="admin-stat-icon">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Conversion Rate</CardTitle>
-            <ActivitySquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.overall?.conversionRate || '0'}%</div>
-                <p className="text-xs text-muted-foreground">User to sales conversion</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Total Revenue</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">₹{metrics?.overall?.totalRevenue?.toLocaleString() || 0}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Overall revenue</p>
+            </div>
+            <div className="admin-stat-icon">
+              <IndianRupee className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Conversion Rate</CardTitle>
-            <ActivitySquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metrics?.monthly?.conversionRate || '0'}%</div>
-                <p className="text-xs text-muted-foreground">Monthly user to sales conversion</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="admin-stat-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-stat-title">Conversion Rate</p>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : (
+                <p className="admin-stat-value">{metrics?.overall?.conversionRate || '0'}%</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">User to sales conversion</p>
+            </div>
+            <div className="admin-stat-icon">
+              <ActivitySquare className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

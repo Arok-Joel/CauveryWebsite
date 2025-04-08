@@ -34,6 +34,25 @@ interface PageProps {
   };
 }
 
+interface TeamWithMembers extends Team {
+  members: (Employee & {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    employeeRole: string;
+    reportsToId: string | null;
+  })[];
+  leader: Employee & {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 interface EmployeeWithRelations extends Employee {
   user: PrismaUser;
   reportsTo: (Employee & {
@@ -42,16 +61,8 @@ interface EmployeeWithRelations extends Employee {
   subordinates: (Employee & {
     user: PrismaUser;
   })[];
-  leadsTeam: (Team & {
-    members: (Employee & {
-      user: PrismaUser;
-    })[];
-  }) | null;
-  memberOfTeam: (Team & {
-    leader: Employee & {
-      user: PrismaUser;
-    };
-  }) | null;
+  leadsTeam: TeamWithMembers | null;
+  memberOfTeam: TeamWithMembers | null;
   commissions: (Commission & {
     soldPlot: SoldPlot;
   })[];
@@ -314,9 +325,11 @@ export default async function EmployeePage({ params }: PageProps) {
     return notFound();
   }
 
-  const totalCommission = employee.commissions.reduce((sum: number, commission: Commission) => 
-    sum + parseFloat(commission.amount.toString()), 0
-  );
+  // Calculate total commission with proper type checking and error handling
+  const totalCommission = employee.commissions && Array.isArray(employee.commissions)
+    ? employee.commissions.reduce((sum: number, commission: Commission) => 
+        sum + (commission.amount ? parseFloat(commission.amount.toString()) : 0), 0)
+    : 0;
 
   // Pre-format dates to avoid date manipulation in JSX
   const formattedDates = {
@@ -627,8 +640,22 @@ export default async function EmployeePage({ params }: PageProps) {
                       {/* Create a tree-like structure */}
                       <div className="space-y-4">
                         {(() => {
-                          // Get all team members
-                          const allMembers = employee.leadsTeam?.members || employee.memberOfTeam?.members || [];
+                          // Define member type
+                          type TeamMember = Employee & {
+                            user: {
+                              id: string;
+                              name: string;
+                              email: string;
+                            };
+                            employeeRole: string;
+                            reportsToId: string | null;
+                          };
+
+                          // Get all team members with proper typing
+                          const allMembers: TeamMember[] = 
+                            (employee.leadsTeam?.members as TeamMember[]) || 
+                            (employee.memberOfTeam?.members as TeamMember[]) || 
+                            [];
                           
                           // Get the team leader ID
                           const leaderId = employee.leadsTeam 
@@ -636,17 +663,17 @@ export default async function EmployeePage({ params }: PageProps) {
                             : employee.memberOfTeam?.leader?.id;
                           
                           // Find directors (exclude team leader)
-                          const directors = allMembers.filter(m => 
+                          const directors = allMembers.filter((m: TeamMember) => 
                             m.employeeRole === 'DIRECTOR' && m.id !== leaderId
                           );
                           
                           // Find joint directors
-                          const jointDirectors = allMembers.filter(m => 
+                          const jointDirectors = allMembers.filter((m: TeamMember) => 
                             m.employeeRole === 'JOINT_DIRECTOR'
                           );
                           
                           // Find field officers
-                          const fieldOfficers = allMembers.filter(m => 
+                          const fieldOfficers = allMembers.filter((m: TeamMember) => 
                             m.employeeRole === 'FIELD_OFFICER'
                           );
                           
@@ -938,7 +965,7 @@ export default async function EmployeePage({ params }: PageProps) {
               <LayoutGrid className="h-5 w-5 text-muted-foreground" />
               <CardTitle>Sold Plots</CardTitle>
             </div>
-            {employee.commissions.length > 0 && (
+            {employee.commissions && employee.commissions.length > 0 && (
               <div className="flex items-center gap-12">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Sales</p>
@@ -953,7 +980,7 @@ export default async function EmployeePage({ params }: PageProps) {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          {employee.commissions.length > 0 ? (
+          {employee.commissions && employee.commissions.length > 0 ? (
             <div className="space-y-2">
               <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 border-b">
                 <div className="pb-2 text-sm font-medium text-muted-foreground">Plot Number</div>
