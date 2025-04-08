@@ -31,11 +31,9 @@ export async function GET() {
     // Run all queries in parallel for better performance
     const [
       totalUsersResult, 
-      totalSalesResult, 
-      totalRevenueResult,
+      totalSalesResult,
       monthlyNewUsersResult,
-      monthlySalesResult,
-      monthlyRevenueResult
+      monthlySalesResult
     ] = await Promise.all([
       // Overall metrics
       db.user.count({
@@ -43,12 +41,6 @@ export async function GET() {
       }).catch(() => 0),
       
       db.soldPlot.count().catch(() => 0),
-      
-      db.soldPlot.aggregate({
-        _sum: {
-          price: true
-        }
-      }).catch(() => ({ _sum: { price: 0 } })),
       
       // Monthly metrics
       db.user.count({
@@ -69,27 +61,35 @@ export async function GET() {
           }
         }
       }).catch(() => 0),
-      
-      db.soldPlot.aggregate({
-        _sum: {
-          price: true
-        },
-        where: {
-          soldAt: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        }
-      }).catch(() => ({ _sum: { price: 0 } }))
     ]);
+
+    // Get all sold plots for revenue calculations
+    const allSoldPlots = await db.soldPlot.findMany({
+      select: {
+        price: true,
+        soldAt: true,
+      }
+    }).catch(() => []);
+
+    // Calculate total revenue by converting string prices to numbers
+    const totalRevenue = allSoldPlots.reduce((sum, plot) => {
+      return sum + (parseFloat(plot.price) || 0);
+    }, 0);
+
+    // Calculate monthly revenue
+    const monthlyRevenue = allSoldPlots.reduce((sum, plot) => {
+      const soldDate = new Date(plot.soldAt);
+      if (soldDate >= monthStart && soldDate <= monthEnd) {
+        return sum + (parseFloat(plot.price) || 0);
+      }
+      return sum;
+    }, 0);
 
     // Extract values
     const totalUsers = totalUsersResult;
     const totalSales = totalSalesResult;
-    const totalRevenue = Number(totalRevenueResult._sum.price) || 0;
     const monthlyNewUsers = monthlyNewUsersResult;
     const monthlySales = monthlySalesResult;
-    const monthlyRevenue = Number(monthlyRevenueResult._sum.price) || 0;
 
     // Calculate conversion rates as percentages (capped at 100%)
     const overallConversionRate = totalUsers > 0 

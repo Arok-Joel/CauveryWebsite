@@ -94,7 +94,25 @@ export async function POST(request: Request) {
 
     // Calculate commission based on employee role
     const saleAmount = parseFloat(price);
-    const commission = calculateCommission(employee.employeeRole, saleAmount);
+    
+    // Get the team hierarchy for commission distribution
+    const teamHierarchy = await getTeamHierarchy(employeeId);
+    if (!teamHierarchy) {
+      return NextResponse.json(
+        { error: "Failed to determine team hierarchy" },
+        { status: 500 }
+      );
+    }
+    
+    // Calculate commissions for all team members
+    const commissions = calculateCommissions(
+      employee.employeeRole,
+      employeeId,
+      saleAmount,
+      teamHierarchy
+    );
+    
+    console.log('Calculated commissions:', commissions);
 
     // Use a transaction to ensure all operations succeed or fail together
     const result = await db.$transaction(async (prisma) => {
@@ -107,7 +125,7 @@ export async function POST(request: Request) {
           price,
           dimensions,
           facing,
-          employeeName: employeeId,
+          employeeName: employee.user.name,
           customerName,
           phoneNumber,
           email,
@@ -123,16 +141,20 @@ export async function POST(request: Request) {
         data: { status: "sold" },
       });
 
-      // Create commission record
-      const commissionRecord = await prisma.commission.create({
-        data: {
-          amount: commission.amount,
-          percentage: commission.percentage,
-          employeeId: employeeId,
-          employeeRole: employee.employeeRole,
-          soldPlotId: soldPlot.id,
-        },
-      });
+      // Create commission records for all team members
+      const commissionRecords = await Promise.all(
+        commissions.map(comm => 
+          prisma.commission.create({
+            data: {
+              amount: comm.amount,
+              percentage: comm.percentage,
+              employeeId: comm.employeeId,
+              employeeRole: comm.employeeRole,
+              soldPlotId: soldPlot.id,
+            },
+          })
+        )
+      );
 
       // Send confirmation email to customer
       try {
@@ -159,7 +181,7 @@ export async function POST(request: Request) {
         // Continue with response even if email fails
       }
 
-      return { soldPlot, updatedPlot, commission: commissionRecord };
+      return { soldPlot, updatedPlot, commission: commissionRecords };
     }, {
       timeout: 30000, // 30 second timeout for transaction
       maxWait: 5000,  // Maximum wait time for available connection

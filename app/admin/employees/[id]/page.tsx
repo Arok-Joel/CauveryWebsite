@@ -267,9 +267,33 @@ async function getEmployeeCommissions(employeeId: string) {
         },
       },
     },
+    orderBy: {
+      createdAt: 'desc',
+    },
   });
 
-  return commissions;
+  console.log(`Found ${commissions.length} commissions for employee ${employeeId}`);
+  
+  // Map the commissions to the expected format for the UI
+  return commissions.map(commission => ({
+    ...commission,
+    soldPlot: {
+      ...commission.soldPlot,
+      // Ensure all required fields are available for the UI
+      plotNumber: commission.soldPlot.plotNumber || '',
+      size: commission.soldPlot.size || '',
+      price: commission.soldPlot.price || '0',
+      dimensions: commission.soldPlot.dimensions || '',
+      facing: commission.soldPlot.facing || '',
+      plotAddress: commission.soldPlot.plotAddress || '',
+      customerName: commission.soldPlot.customerName || '',
+      phoneNumber: commission.soldPlot.phoneNumber || '',
+      email: commission.soldPlot.email || '',
+      address: commission.soldPlot.address || '',
+      aadhaarNumber: commission.soldPlot.aadhaarNumber || '',
+      soldAt: commission.soldPlot.soldAt || commission.createdAt,
+    }
+  }));
 }
 
 function getRoleBadgeVariant(role: string): "default" | "secondary" | "destructive" | "outline" {
@@ -319,15 +343,17 @@ export default async function EmployeePage({ params }: PageProps) {
   const id = resolvedParams.id;
 
   const employee = await getEmployee(id);
-  const commissions = await getEmployeeCommissions(id);
-
   if (!employee) {
     return notFound();
   }
+  
+  // Fetch commissions separately
+  const commissions = await getEmployeeCommissions(id);
+  console.log(`Fetched ${commissions.length} commissions for employee ${id}`);
 
   // Calculate total commission with proper type checking and error handling
-  const totalCommission = employee.commissions && Array.isArray(employee.commissions)
-    ? employee.commissions.reduce((sum: number, commission: Commission) => 
+  const totalCommission = commissions && Array.isArray(commissions)
+    ? commissions.reduce((sum: number, commission: any) => 
         sum + (commission.amount ? parseFloat(commission.amount.toString()) : 0), 0)
     : 0;
 
@@ -958,18 +984,18 @@ export default async function EmployeePage({ params }: PageProps) {
       </div>
 
       {/* Sold Plots Information */}
-      <Card>
+      <Card className="col-span-2 mt-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+              <BadgeIndianRupee className="h-5 w-5 text-muted-foreground" />
               <CardTitle>Sold Plots</CardTitle>
             </div>
-            {employee.commissions && employee.commissions.length > 0 && (
+            {commissions && commissions.length > 0 && (
               <div className="flex items-center gap-12">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Sales</p>
-                  <p className="text-xl font-bold">{employee.commissions.length} plots</p>
+                  <p className="text-xl font-bold">{commissions.length} plots</p>
                 </div>
                 <div className="border-l pl-12">
                   <p className="text-sm text-muted-foreground">Total Commission</p>
@@ -979,18 +1005,10 @@ export default async function EmployeePage({ params }: PageProps) {
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-6">
-          {employee.commissions && employee.commissions.length > 0 ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 border-b">
-                <div className="pb-2 text-sm font-medium text-muted-foreground">Plot Number</div>
-                <div className="pb-2 text-sm font-medium text-muted-foreground text-center">Commission Amount</div>
-                <div className="pb-2 text-sm font-medium text-muted-foreground text-center">Commission Rate</div>
-                <div className="pb-2 text-sm font-medium text-muted-foreground">Sale Date</div>
-                <div className="pb-2"></div>
-              </div>
-
-              {employee.commissions.map(commission => (
+        <CardContent>
+          {commissions && commissions.length > 0 ? (
+            <div className="space-y-6">
+              {commissions.map((commission, index) => (
                 <Collapsible key={commission.id}>
                   <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-3 group">
                     <div className="font-medium">{commission.soldPlot.plotNumber}</div>
@@ -1074,14 +1092,14 @@ export default async function EmployeePage({ params }: PageProps) {
               ))}
             </div>
           ) : (
-            <div className="py-12">
-              <div className="flex flex-col items-center justify-center text-center">
-                <BadgeIndianRupee className="h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-medium">No Sold Plots</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  This employee hasn't sold any plots yet. Commissions will appear here once they make their first sale.
-                </p>
+            <div className="py-8 text-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <BadgeIndianRupee className="h-6 w-6 text-gray-500" />
               </div>
+              <h3 className="mt-4 text-lg font-medium">No Sold Plots</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                This employee hasn't sold any plots yet.
+              </p>
             </div>
           )}
         </CardContent>
