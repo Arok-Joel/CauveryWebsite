@@ -6,7 +6,9 @@ import { AssignTeamMemberDialog } from '@/components/admin/assign-team-member-di
 import { DeleteTeamDialog } from '@/components/admin/delete-team-dialog';
 import { ManageTeamDialog } from '@/components/admin/manage-team-dialog';
 import { ManageTeamHierarchyDialog } from '@/components/admin/manage-team-hierarchy-dialog';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Users, Settings, UserPlus, Trash2, Network, Trophy } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type TeamWithLeaderAndMembers = {
   id: string;
@@ -34,6 +36,31 @@ async function getTeams() {
   return teams;
 }
 
+// Helper function to get role-based styling
+function getRoleBadgeStyles(role: string) {
+  switch (role) {
+    case 'EXECUTIVE_DIRECTOR':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'DIRECTOR':
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'JOINT_DIRECTOR':
+      return 'bg-purple-100 text-purple-800 border-purple-200';
+    case 'FIELD_OFFICER':
+      return 'bg-orange-100 text-orange-800 border-orange-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+}
+
+// Helper function to get initials from name
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -41,78 +68,121 @@ export default async function TeamsPage() {
   const teams = await getTeams();
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-1 bg-[#3C5A3E] rounded-full"></div>
+          <h3 className="text-xl font-medium text-gray-700">Manage Your Teams</h3>
+        </div>
         <CreateTeamDialog />
       </div>
 
       {teams.length === 0 ? (
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center">
-              <UserCircle className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-semibold text-gray-900">No teams</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new team.</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10">
+          <div className="text-center max-w-md mx-auto">
+            <div className="bg-gray-50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="h-10 w-10 text-gray-400" />
             </div>
-          </CardContent>
-        </Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No teams created yet</h3>
+            <p className="text-gray-500 mb-6">Create your first team to start organizing your employees into efficient working groups.</p>
+            <CreateTeamDialog />
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-3">
           {teams.map(team => (
-            <Card key={team.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xl font-bold">
-                  {team.leader.user.name}&apos;s Team
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <ManageTeamHierarchyDialog
-                    teamId={team.id}
-                    teamName={`Team ${team.leader.user.name}`}
-                    members={team.members}
-                  />
-                  <ManageTeamDialog teamId={team.id} currentLeaderId={team.leader.id} />
-                  <AssignTeamMemberDialog
-                    teamId={team.id}
-                    teamName={`Team ${team.leader.user.name}`}
-                  />
-                  <DeleteTeamDialog teamId={team.id} teamName={`Team ${team.leader.user.name}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Team Leader</h4>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{team.leader.user.name}</p>
-                        <p className="text-sm text-gray-500">{team.leader.user.email}</p>
-                      </div>
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-                        {team.leader.employeeRole.replace(/_/g, ' ')}
-                      </span>
+            <Card key={team.id} className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-gradient-to-r from-[#3C5A3E]/90 to-[#2A3F2B] text-white p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border-2 border-white/50">
+                      <AvatarFallback className="bg-[#2A3F2B] text-white">
+                        {getInitials(team.leader.user.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="text-xl font-bold line-clamp-1">{team.leader.user.name}'s Team</h3>
+                      <p className="text-sm text-white/80">{team.leader.user.email}</p>
                     </div>
                   </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">
-                      Team Members ({team.members.length})
+                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-none">
+                    {team.members.length} {team.members.length === 1 ? 'Member' : 'Members'}
+                  </Badge>
+                </div>
+              </div>
+              
+              <CardContent className="p-0">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-[#3C5A3E]" />
+                      Team Leader
                     </h4>
-                    <div className="mt-2 divide-y divide-gray-100">
-                      {team.members.map(member => (
-                        <div key={member.id} className="flex items-center justify-between py-2">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{member.user.name}</p>
-                            <p className="text-sm text-gray-500">{member.user.email}</p>
+                    <Badge className={getRoleBadgeStyles(team.leader.employeeRole)}>
+                      {team.leader.employeeRole.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-4">
+                    <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2 mb-4">
+                      <Users className="h-4 w-4 text-[#3C5A3E]" />
+                      Team Members
+                    </h4>
+                    
+                    {team.members.length === 0 ? (
+                      <div className="text-center py-6 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-500">No members assigned yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Use the "Add Members" button to assign team members</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {team.members.map(member => (
+                          <div key={member.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-gray-100 text-gray-700 text-xs">
+                                  {getInitials(member.user.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 line-clamp-1">{member.user.name}</p>
+                                <p className="text-xs text-gray-500 line-clamp-1">{member.user.email}</p>
+                              </div>
+                            </div>
+                            <Badge className={`text-xs ${getRoleBadgeStyles(member.employeeRole)}`}>
+                              {member.employeeRole.replace(/_/g, ' ')}
+                            </Badge>
                           </div>
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                            {member.employeeRole.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                      ))}
-                      {team.members.length === 0 && (
-                        <p className="py-4 text-sm text-gray-500 text-center">No members yet</p>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 flex items-center justify-between border-t border-gray-100">
+                  <div className="flex gap-2">
+                    <ManageTeamHierarchyDialog
+                      teamId={team.id}
+                      teamName={`Team ${team.leader.user.name}`}
+                      members={team.members}
+                    />
+                    
+                    <ManageTeamDialog 
+                      teamId={team.id} 
+                      currentLeaderId={team.leader.id} 
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <AssignTeamMemberDialog
+                      teamId={team.id}
+                      teamName={`Team ${team.leader.user.name}`}
+                    />
+                    
+                    <DeleteTeamDialog 
+                      teamId={team.id} 
+                      teamName={`Team ${team.leader.user.name}`} 
+                    />
                   </div>
                 </div>
               </CardContent>
