@@ -196,12 +196,12 @@ export function Navbar() {
                             />
                           ) : (
                             <AvatarFallback className="bg-[#3C5A3E] text-white text-xs">
-                              {user.name ? user.name[0].toUpperCase() : 'U'}
+                              {user.role === 'ADMIN' ? 'A' : user.name ? user.name[0].toUpperCase() : 'U'}
                             </AvatarFallback>
                           )}
                         </Avatar>
                         <span className="text-sm font-medium">
-                          {user.role === 'EMPLOYEE' ? profile?.user.name : userProfile?.user.name}
+                          {user.role === 'ADMIN' ? 'Admin' : user.role === 'EMPLOYEE' ? profile?.user.name : userProfile?.user.name}
                         </span>
                       </Button>
                     </DropdownMenuTrigger>

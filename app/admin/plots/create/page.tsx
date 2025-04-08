@@ -596,7 +596,10 @@ export default function CreateLayout() {
           }),
         });
         
-        if (!response.ok) throw new Error("Failed to save plot details");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save plot details");
+        }
         
         setPlots(plots.map(p => p === selectedPlot ? updatedPlot : p));
         setSelectedPlot(null);
@@ -633,7 +636,10 @@ export default function CreateLayout() {
           }),
         });
         
-        if (!response.ok) throw new Error("Failed to save plot details");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save plot details");
+        }
 
         const savedPlot = await response.json();
         setPlots([...plots, { ...newPlot, id: savedPlot.id }]);

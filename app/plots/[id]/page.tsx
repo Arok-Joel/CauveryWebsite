@@ -1,17 +1,26 @@
-import { notFound } from "next/navigation";
-import prisma from "@/lib/prisma";
+"use client";
+
+import { useState, useEffect } from "react";
+import { notFound, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
-import { cookies } from "next/headers";
-import { verifyAuth } from "@/lib/auth";
 import Link from "next/link";
+import { ContactSalesDialog } from "@/components/ContactSalesDialog";
+import { use } from 'react';
 
-interface PageProps {
-  params: {
-    id: string;
-  };
+interface PlotData {
+  id: string;
+  plotNumber: string;
+  size: string;
+  plotAddress: string;
+  price: number;
+  dimensions: string;
+  facing: string;
+  status: string;
+  coordinates: any;
+  images: string;
 }
 
 interface PlotImage {
@@ -19,76 +28,176 @@ interface PlotImage {
   caption?: string;
 }
 
-async function getPlot(id: string) {
-  const plot = await prisma.plot.findUnique({
-    where: { id },
-  });
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function PlotPage({ params }: PageProps) {
+  const { id } = use(params);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [plot, setPlot] = useState<PlotData | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [parsedImages, setParsedImages] = useState<PlotImage[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Use Promise.all to fetch data concurrently
+        const [plotResponse, roleResponse] = await Promise.all([
+          fetch(`/api/plots/${id}`),
+          fetch("/api/auth/role")
+        ]);
+        
+        // Handle plot response
+        if (!plotResponse.ok) {
+          if (plotResponse.status === 404) {
+            router.push('/404');
+            return;
+          }
+          throw new Error(`Failed to fetch plot: ${plotResponse.status}`);
+        }
+        
+        // Parse plot data
+        const plotData = await plotResponse.json();
+        setPlot(plotData);
+        
+        // Handle role response
+        if (roleResponse.ok) {
+          const { role } = await roleResponse.json();
+          setUserRole(role);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        // Add visible error state here if needed
+      } finally {
+        // Always set loading to false, even on error
+        setLoading(false);
+      }
+    };
+
+    // Immediately invoke the function
+    fetchData();
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!plot) return;
+    
+    // Parse images outside the render cycle
+    const parseImages = () => {
+      let images: PlotImage[] = [];
+      try {
+        if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
+          const imagesData = plot.images.trim();
+          if (imagesData !== '[]') {
+            try {
+              // Try parsing the string
+              let parsedData = JSON.parse(imagesData);
+              
+              // Handle double-encoded JSON
+              if (typeof parsedData === 'string') {
+                parsedData = JSON.parse(parsedData);
+              }
+              
+              // Make sure we have an array of valid image objects
+              if (Array.isArray(parsedData)) {
+                images = parsedData
+                  .filter(img => img && typeof img === 'object')
+                  .map(img => ({
+                    url: typeof img.url === 'string' ? img.url : '',
+                    caption: typeof img.caption === 'string' ? img.caption : undefined
+                  }))
+                  .filter(img => img.url);
+              }
+            } catch (error) {
+              console.error('Error parsing images JSON:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error handling plot images:', error);
+      }
+      
+      setParsedImages(images);
+    };
+    
+    parseImages();
+  }, [plot]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="grid gap-8 md:grid-cols-3">
+          {/* Left Column - Images and Details */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Hero Section Skeleton */}
+            <div className="relative">
+              <div className="w-full h-[500px] rounded-xl bg-gray-200 animate-pulse"></div>
+            </div>
+            
+            {/* Quick Info Bar Skeleton */}
+            <Card>
+              <CardContent className="py-4">
+                <div className="grid grid-cols-3 divide-x">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="px-4 text-center">
+                      <div className="h-4 w-20 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
+                      <div className="h-6 w-16 mx-auto bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Plot Details Skeleton */}
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              {[1, 2].map((i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <div className="h-8 w-40 bg-gray-200 rounded animate-pulse"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((j) => (
+                        <div key={j} className="flex items-center space-x-3">
+                          <div className="p-3 bg-gray-200 rounded-lg animate-pulse h-12 w-12"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+          
+          {/* Right Column Skeleton */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="h-8 w-40 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!plot) {
-    notFound();
-  }
-
-  return plot;
-}
-
-async function getUserRole() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-  
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const verified = await verifyAuth(token);
-    return verified?.role || null;
-  } catch (error) {
-    return null;
-  }
-}
-
-export default async function PlotPage({ params }: PageProps) {
-  const plot = await getPlot(params.id);
-  const userRole = await getUserRole();
-  
-  // Parse images string with error handling and default empty array
-  let images: PlotImage[] = [];
-  try {
-    if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
-      const imagesData = plot.images.trim();
-      if (imagesData === '[]') {
-        images = [];
-      } else {
-        try {
-          // First, try parsing the string directly
-          let parsedImages = JSON.parse(imagesData);
-          
-          // If the parsed result is a string (double-encoded JSON), parse it again
-          if (typeof parsedImages === 'string') {
-            parsedImages = JSON.parse(parsedImages);
-          }
-          
-          // Ensure we have an array
-          if (Array.isArray(parsedImages)) {
-            images = parsedImages.map(img => ({
-              url: typeof img.url === 'string' ? img.url : '',
-              caption: typeof img.caption === 'string' ? img.caption : undefined
-            })).filter(img => img.url);
-          } else {
-            console.error('Parsed images is not an array:', parsedImages);
-            images = [];
-          }
-        } catch (parseError) {
-          console.error('Error parsing JSON:', parseError);
-          console.error('Raw images string:', imagesData);
-          images = [];
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error handling plot images:', error);
-    console.error('Raw images value:', plot.images);
-    images = [];
+    return notFound();
   }
 
   return (
@@ -98,11 +207,11 @@ export default async function PlotPage({ params }: PageProps) {
         <div className="md:col-span-2 space-y-6">
           {/* Hero Section */}
           <div className="relative">
-            {images.length > 0 ? (
+            {parsedImages.length > 0 ? (
               <div className="relative w-full h-[500px] rounded-xl overflow-hidden">
                 <Image
-                  src={images[0].url}
-                  alt={images[0].caption || `Plot ${plot.plotNumber} main view`}
+                  src={parsedImages[0].url}
+                  alt={parsedImages[0].caption || `Plot ${plot.plotNumber} main view`}
                   fill
                   className="object-cover"
                   priority
@@ -230,14 +339,14 @@ export default async function PlotPage({ params }: PageProps) {
           </div>
 
           {/* Gallery */}
-          {images.length > 1 && (
+          {parsedImages.length > 1 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Plot Gallery</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {images.slice(1).map((image, index) => (
+                  {parsedImages.slice(1).map((image, index) => (
                     <div key={index} className="group relative">
                       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
                         <Image
@@ -283,7 +392,7 @@ export default async function PlotPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-4">
-                {userRole === "EMPLOYEE" && plot.status.toLowerCase() === 'available' && (
+                {userRole === "ADMIN" && plot.status.toLowerCase() === 'available' && (
                   <Button className="w-full bg-green-600 hover:bg-green-700" size="lg" asChild>
                     <Link href={`/plots/${plot.id}/book`}>
                       <Calendar className="mr-2 h-4 w-4" />
@@ -291,10 +400,15 @@ export default async function PlotPage({ params }: PageProps) {
                     </Link>
                   </Button>
                 )}
-                <Button className="w-full" size="lg">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Contact Sales Team
-                </Button>
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => setIsContactDialogOpen(true)}
+                    className="w-full"
+                    size="lg"
+                  >
+                    Contact Sales Team
+                  </Button>
+                </div>
                 <Button variant="outline" className="w-full" size="lg">
                   <Mail className="mr-2 h-4 w-4" />
                   Request Details
@@ -325,6 +439,13 @@ export default async function PlotPage({ params }: PageProps) {
           </Card>
         </div>
       </div>
+      
+      <ContactSalesDialog
+        isOpen={isContactDialogOpen}
+        onClose={() => setIsContactDialogOpen(false)}
+        plotId={id}
+        plotNumber={plot.plotNumber}
+      />
     </div>
   );
 } 
