@@ -4,7 +4,7 @@ import { verifyAuth } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
 
     if (!token) {
