@@ -37,8 +37,7 @@ export default async function AnnouncementsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Announcements</h2>
+      <div className="flex justify-end">
         <Button asChild>
           <Link href="/admin/announcements/new">Create Announcement</Link>
         </Button>

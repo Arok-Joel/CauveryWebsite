@@ -208,13 +208,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           <div className="max-w-7xl mx-auto">
             {/* Desktop Page Header */}
-            {!pathname.includes('/employees/') && (
-              <header className="hidden lg:flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">
-                  {navigation.find(item => item.href === pathname)?.name || 'Admin'}
-                </h1>
-              </header>
-            )}
+            <header className="hidden lg:flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-800">
+                {navigation.find(item => item.href === pathname)?.name || 'Admin'}
+              </h1>
+            </header>
             {children}
           </div>
         </main>

@@ -93,8 +93,6 @@ export default function MessagesPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Contact Messages</h1>
-      
       <div className="space-y-4">
         {messages.length === 0 ? (
           <Card>

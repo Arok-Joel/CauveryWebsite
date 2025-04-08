@@ -94,8 +94,7 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Sales Overview</h2>
+      <div className="flex justify-end">
         <Select value={timeFilter} onValueChange={handleTimeFilterChange} disabled={isLoading}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select time period" />

@@ -42,8 +42,7 @@ export default async function TeamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Teams</h2>
+      <div className="flex justify-end">
         <CreateTeamDialog />
       </div>
 

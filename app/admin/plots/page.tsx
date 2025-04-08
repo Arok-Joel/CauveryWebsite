@@ -80,8 +80,7 @@ export default function PlotsAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Plot Layouts</h2>
+      <div className="flex justify-end">
         <Button asChild>
           <Link href="/admin/plots/create">Create New Layout</Link>
         </Button>
