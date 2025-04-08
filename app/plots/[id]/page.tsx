@@ -41,84 +41,163 @@ export default function PlotPage({ params }: PageProps) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [parsedImages, setParsedImages] = useState<PlotImage[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch plot data
-        const plotResponse = await fetch(`/api/plots/${id}`);
+        // Use Promise.all to fetch data concurrently
+        const [plotResponse, roleResponse] = await Promise.all([
+          fetch(`/api/plots/${id}`),
+          fetch("/api/auth/role")
+        ]);
+        
+        // Handle plot response
         if (!plotResponse.ok) {
           if (plotResponse.status === 404) {
             router.push('/404');
             return;
           }
-          throw new Error("Failed to fetch plot");
+          throw new Error(`Failed to fetch plot: ${plotResponse.status}`);
         }
+        
+        // Parse plot data
         const plotData = await plotResponse.json();
         setPlot(plotData);
-
-        // Fetch user role
-        const roleResponse = await fetch("/api/auth/role");
+        
+        // Handle role response
         if (roleResponse.ok) {
           const { role } = await roleResponse.json();
           setUserRole(role);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Add visible error state here if needed
       } finally {
+        // Always set loading to false, even on error
         setLoading(false);
       }
     };
 
+    // Immediately invoke the function
     fetchData();
   }, [id, router]);
 
+  useEffect(() => {
+    if (!plot) return;
+    
+    // Parse images outside the render cycle
+    const parseImages = () => {
+      let images: PlotImage[] = [];
+      try {
+        if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
+          const imagesData = plot.images.trim();
+          if (imagesData !== '[]') {
+            try {
+              // Try parsing the string
+              let parsedData = JSON.parse(imagesData);
+              
+              // Handle double-encoded JSON
+              if (typeof parsedData === 'string') {
+                parsedData = JSON.parse(parsedData);
+              }
+              
+              // Make sure we have an array of valid image objects
+              if (Array.isArray(parsedData)) {
+                images = parsedData
+                  .filter(img => img && typeof img === 'object')
+                  .map(img => ({
+                    url: typeof img.url === 'string' ? img.url : '',
+                    caption: typeof img.caption === 'string' ? img.caption : undefined
+                  }))
+                  .filter(img => img.url);
+              }
+            } catch (error) {
+              console.error('Error parsing images JSON:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error handling plot images:', error);
+      }
+      
+      setParsedImages(images);
+    };
+    
+    parseImages();
+  }, [plot]);
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="container mx-auto py-8">
+        <div className="grid gap-8 md:grid-cols-3">
+          {/* Left Column - Images and Details */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Hero Section Skeleton */}
+            <div className="relative">
+              <div className="w-full h-[500px] rounded-xl bg-gray-200 animate-pulse"></div>
+            </div>
+            
+            {/* Quick Info Bar Skeleton */}
+            <Card>
+              <CardContent className="py-4">
+                <div className="grid grid-cols-3 divide-x">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="px-4 text-center">
+                      <div className="h-4 w-20 mx-auto bg-gray-200 rounded animate-pulse mb-2"></div>
+                      <div className="h-6 w-16 mx-auto bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Plot Details Skeleton */}
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+              {[1, 2].map((i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <div className="h-8 w-40 bg-gray-200 rounded animate-pulse"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((j) => (
+                        <div key={j} className="flex items-center space-x-3">
+                          <div className="p-3 bg-gray-200 rounded-lg animate-pulse h-12 w-12"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+          
+          {/* Right Column Skeleton */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="h-8 w-40 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!plot) {
     return notFound();
-  }
-
-  // Parse images string with error handling and default empty array
-  let images: PlotImage[] = [];
-  try {
-    if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
-      const imagesData = plot.images.trim();
-      if (imagesData === '[]') {
-        images = [];
-      } else {
-        try {
-          // First, try parsing the string directly
-          let parsedImages = JSON.parse(imagesData);
-          
-          // If the parsed result is a string (double-encoded JSON), parse it again
-          if (typeof parsedImages === 'string') {
-            parsedImages = JSON.parse(parsedImages);
-          }
-          
-          // Ensure we have an array
-          if (Array.isArray(parsedImages)) {
-            images = parsedImages.map(img => ({
-              url: typeof img.url === 'string' ? img.url : '',
-              caption: typeof img.caption === 'string' ? img.caption : undefined
-            })).filter(img => img.url);
-          } else {
-            console.error('Parsed images is not an array:', parsedImages);
-            images = [];
-          }
-        } catch (parseError) {
-          console.error('Error parsing JSON:', parseError);
-          console.error('Raw images string:', imagesData);
-          images = [];
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error handling plot images:', error);
-    console.error('Raw images value:', plot.images);
-    images = [];
   }
 
   return (
@@ -128,11 +207,11 @@ export default function PlotPage({ params }: PageProps) {
         <div className="md:col-span-2 space-y-6">
           {/* Hero Section */}
           <div className="relative">
-            {images.length > 0 ? (
+            {parsedImages.length > 0 ? (
               <div className="relative w-full h-[500px] rounded-xl overflow-hidden">
                 <Image
-                  src={images[0].url}
-                  alt={images[0].caption || `Plot ${plot.plotNumber} main view`}
+                  src={parsedImages[0].url}
+                  alt={parsedImages[0].caption || `Plot ${plot.plotNumber} main view`}
                   fill
                   className="object-cover"
                   priority
@@ -260,14 +339,14 @@ export default function PlotPage({ params }: PageProps) {
           </div>
 
           {/* Gallery */}
-          {images.length > 1 && (
+          {parsedImages.length > 1 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Plot Gallery</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {images.slice(1).map((image, index) => (
+                  {parsedImages.slice(1).map((image, index) => (
                     <div key={index} className="group relative">
                       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
                         <Image
