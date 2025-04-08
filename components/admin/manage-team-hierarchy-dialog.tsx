@@ -181,9 +181,9 @@ export function ManageTeamHierarchyDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Network className="h-4 w-4 mr-2" />
-          Manage Hierarchy
+        <Button variant="outline" size="sm" className="flex items-center gap-1 h-9 px-3">
+          <Network className="h-4 w-4" />
+          <span className="hidden sm:inline">Hierarchy</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

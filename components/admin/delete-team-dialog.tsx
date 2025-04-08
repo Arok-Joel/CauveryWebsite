@@ -50,8 +50,13 @@ export function DeleteTeamDialog({ teamId, teamName }: DeleteTeamDialogProps) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="icon" className="h-8 w-8">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-1 h-9 px-3 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:text-red-700"
+        >
           <Trash2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Delete</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

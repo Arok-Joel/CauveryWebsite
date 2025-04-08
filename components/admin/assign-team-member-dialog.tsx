@@ -135,9 +135,13 @@ export function AssignTeamMemberDialog({ teamId, teamName }: AssignTeamMemberDia
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Members
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-1 h-9 px-3 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
+        >
+          <UserPlus className="h-4 w-4" />
+          <span className="hidden sm:inline">Add</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

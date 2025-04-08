@@ -159,8 +159,8 @@ export default async function TeamsPage() {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 p-4 flex items-center justify-between border-t border-gray-100">
-                  <div className="flex gap-2">
+                <div className="bg-gray-50 px-6 py-5 flex items-center justify-between border-t border-gray-100">
+                  <div className="flex gap-3">
                     <ManageTeamHierarchyDialog
                       teamId={team.id}
                       teamName={`Team ${team.leader.user.name}`}
@@ -173,7 +173,7 @@ export default async function TeamsPage() {
                     />
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <AssignTeamMemberDialog
                       teamId={team.id}
                       teamName={`Team ${team.leader.user.name}`}

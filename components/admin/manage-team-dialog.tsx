@@ -189,8 +189,9 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="sm" className="flex items-center gap-1 h-9 px-3">
           <Settings className="h-4 w-4" />
+          <span className="hidden sm:inline">Manage</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
