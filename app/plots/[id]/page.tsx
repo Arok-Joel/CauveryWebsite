@@ -86,42 +86,35 @@ export default function PlotPage({ params }: PageProps) {
   useEffect(() => {
     if (!plot) return;
     
-    // Parse images outside the render cycle
+    // Simplified image parsing
     const parseImages = () => {
-      let images: PlotImage[] = [];
-      try {
-        if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
-          const imagesData = plot.images.trim();
-          if (imagesData !== '[]') {
-            try {
-              // Try parsing the string
-              let parsedData = JSON.parse(imagesData);
-              
-              // Handle double-encoded JSON
-              if (typeof parsedData === 'string') {
-                parsedData = JSON.parse(parsedData);
-              }
-              
-              // Make sure we have an array of valid image objects
-              if (Array.isArray(parsedData)) {
-                images = parsedData
-                  .filter(img => img && typeof img === 'object')
-                  .map(img => ({
-                    url: typeof img.url === 'string' ? img.url : '',
-                    caption: typeof img.caption === 'string' ? img.caption : undefined
-                  }))
-                  .filter(img => img.url);
-              }
-            } catch (error) {
-              console.error('Error parsing images JSON:', error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error handling plot images:', error);
+      if (!plot.images || typeof plot.images !== 'string' || plot.images.trim() === '') {
+        setParsedImages([]);
+        return;
       }
       
-      setParsedImages(images);
+      try {
+        // Try a single parse operation with better error handling
+        const imagesData = plot.images.trim();
+        const parsed = JSON.parse(imagesData);
+        const imageArray = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+        
+        if (Array.isArray(imageArray)) {
+          const validImages = imageArray
+            .filter(img => img && img.url)
+            .map(img => ({
+              url: img.url,
+              caption: img.caption || `Plot ${plot.plotNumber}`
+            }));
+          
+          setParsedImages(validImages);
+        } else {
+          setParsedImages([]);
+        }
+      } catch (error) {
+        console.error('Error parsing images:', error);
+        setParsedImages([]);
+      }
     };
     
     parseImages();
@@ -214,7 +207,10 @@ export default function PlotPage({ params }: PageProps) {
                   alt={parsedImages[0].caption || `Plot ${plot.plotNumber} main view`}
                   fill
                   className="object-cover"
-                  priority
+                  priority={true}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
+                  placeholder="blur"
+                  blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAEggI73Jt/8QAAAABJRU5ErkJggg=="
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-8 w-full">

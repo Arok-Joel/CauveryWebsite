@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Map } from "lucide-react";
+import React from "react";
 
 interface Point {
   x: number;
@@ -55,75 +56,261 @@ export default function PlotsPage() {
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [hoveredPlotId, setHoveredPlotId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"map" | "cards">("map");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isImageLoading, setIsImageLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    limit: 10
+  });
+  const [loadingMessage, setLoadingMessage] = useState("Loading layout data...");
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Improved cache with timeout
+  const layoutCache = React.useRef<Record<string, {
+    layouts: Layout[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      limit: number;
+    },
+    timestamp: number
+  }>>({});
+  
+  // Cache timeout - 10 minutes
+  const CACHE_TIMEOUT = 10 * 60 * 1000;
+
   useEffect(() => {
-    fetchLayouts();
+    fetchLayouts(1);
   }, []);
 
   useEffect(() => {
     if (layouts.length > 0 && !selectedLayout) {
       setSelectedLayout(layouts[0]);
     }
-  }, [layouts]);
+  }, [layouts, selectedLayout]);
 
+  // Separate effect for loading image dimensions
   useEffect(() => {
     if (selectedLayout && selectedLayout.image) {
+      setIsImageLoading(true);
+      
       const img = new window.Image();
+      
       img.onload = () => {
         setImageSize({ width: img.width, height: img.height });
+        setIsImageLoading(false);
       };
+      
+      img.onerror = () => {
+        console.error('Error loading layout image');
+        setImageSize({ width: 1000, height: 800 });
+        setIsImageLoading(false);
+      };
+      
+      const timeout = setTimeout(() => {
+        setImageSize({ width: 1000, height: 800 });
+        setIsImageLoading(false);
+      }, 5000);
+      
       img.src = selectedLayout.image;
+      
+      return () => clearTimeout(timeout);
     }
   }, [selectedLayout]);
 
-  const fetchLayouts = async () => {
+  const fetchLayouts = async (page: number) => {
+    // Reset error state when trying a new fetch
+    setError(null);
+    
+    // Return cached data if available for this page and not expired
+    const cacheKey = `layouts-page-${page}-limit-${pagination.limit}`;
+    const now = Date.now();
+    
+    if (layoutCache.current[cacheKey] && 
+        (now - layoutCache.current[cacheKey].timestamp) < CACHE_TIMEOUT) {
+      console.log('Using cached layout data for page', page);
+      const cachedData = layoutCache.current[cacheKey];
+      setLayouts(cachedData.layouts);
+      setPagination(cachedData.pagination);
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const response = await fetch("/api/layouts");
+      setIsLoading(true);
+      setLoadingMessage("Loading layout data...");
+      setLoadingProgress(10);
+      
+      console.log(`Fetching layouts for page ${page} with limit ${pagination.limit}`);
+      
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const startFetch = performance.now();
+      setLoadingMessage("Requesting layouts from server...");
+      
+      const response = await fetch(
+        `/api/layouts?page=${page}&limit=${pagination.limit}&withPlots=true`, 
+        { signal: controller.signal }
+      );
+      
+      setLoadingProgress(40);
+      setLoadingMessage("Processing layout data...");
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+      
       const data = await response.json();
+      setLoadingProgress(70);
       
-      // Parse plot images for each layout
-      const layoutsWithParsedImages = data.map((layout: Layout) => ({
-        ...layout,
-        Plot: layout.Plot.map((plot: any) => {
-          let parsedImages: PlotImage[] = [];
-          try {
-            if (plot.images && typeof plot.images === 'string' && plot.images.trim() !== '') {
-              const imagesData = plot.images.trim();
-              if (imagesData !== '[]') {
-                let parsedData = JSON.parse(imagesData);
-                if (typeof parsedData === 'string') {
-                  parsedData = JSON.parse(parsedData);
-                }
-                if (Array.isArray(parsedData)) {
-                  parsedImages = parsedData
-                    .map(img => ({
-                      url: typeof img.url === 'string' ? img.url : '',
-                      caption: typeof img.caption === 'string' ? img.caption : undefined
-                    }))
-                    .filter(img => img.url);
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error parsing plot images:', error);
-          }
-          return {
-            ...plot,
-            images: parsedImages
-          };
-        })
-      }));
+      if (data.error) {
+        throw new Error(`API error: ${data.error}`);
+      }
       
-      setLayouts(layoutsWithParsedImages);
+      if (data.data) {
+        setLoadingMessage("Processing layout images...");
+        setLoadingProgress(80);
+        
+        // New paginated API
+        const layoutsWithParsedImages = data.data.map(processLayoutImages);
+        setLayouts(layoutsWithParsedImages);
+        
+        const paginationData = {
+          currentPage: data.pagination.page,
+          totalPages: data.pagination.totalPages,
+          limit: data.pagination.limit
+        };
+        
+        setPagination(paginationData);
+        
+        const fetchTime = Math.round((performance.now() - startFetch) / 100) / 10;
+        
+        // Cache the processed data with timestamp
+        layoutCache.current[cacheKey] = {
+          layouts: layoutsWithParsedImages,
+          pagination: paginationData,
+          timestamp: now
+        };
+        
+        setLoadingMessage(`Layouts loaded in ${fetchTime}s`);
+        setLoadingProgress(100);
+      } else {
+        // Legacy API format
+        const layoutsWithParsedImages = data.map(processLayoutImages);
+        setLayouts(layoutsWithParsedImages);
+      }
+      
+      clearTimeout(timeoutId);
     } catch (error) {
       console.error("Error fetching layouts:", error);
+      setError(error instanceof Error ? error.message : "Unknown error occurred");
+      setLoadingMessage("Failed to load layouts");
+      setLoadingProgress(0);
+    } finally {
+      // Add slight delay before removing loading indicator for better UX
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
+
+  // Process layout images in a more efficient way
+  const processLayoutImages = (layout: Layout) => ({
+    ...layout,
+    Plot: (layout.Plot || []).map((plot: any) => {
+      // Ensure plot is an object with required fields
+      if (!plot || typeof plot !== 'object') {
+        return {
+          id: 'unknown',
+          plotNumber: 'Unknown',
+          status: 'unknown',
+          coordinates: [],
+          images: [],
+          price: 0,
+          size: 'Unknown',
+          dimensions: 'Unknown',
+          facing: 'Unknown'
+        };
+      }
+      
+      let parsedImages: PlotImage[] = [];
+      let parsedCoordinates = plot.coordinates || [];
+      
+      // Parse images if needed
+      if (plot.images && typeof plot.images === 'string') {
+        try {
+          // Try to parse JSON safely
+          const imagesData = plot.images.trim();
+          if (imagesData && imagesData !== '[]') {
+            // Use a single parse attempt with try/catch
+            const parsed = JSON.parse(imagesData);
+            const imageArray = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+            
+            if (Array.isArray(imageArray)) {
+              parsedImages = imageArray
+                .filter(img => img && img.url)
+                .map(img => ({
+                  url: img.url,
+                  caption: img.caption || undefined
+                }));
+            }
+          }
+        } catch (error) {
+          // Silent error - just return empty array
+          console.error('Error parsing images for plot:', plot.id);
+        }
+      }
+      
+      // Parse coordinates if needed
+      if (typeof plot.coordinates === 'string') {
+        try {
+          parsedCoordinates = JSON.parse(plot.coordinates);
+          if (!Array.isArray(parsedCoordinates)) {
+            parsedCoordinates = [];
+          }
+        } catch (error) {
+          console.error('Error parsing coordinates for plot:', plot.id);
+          parsedCoordinates = [];
+        }
+      }
+      
+      // Return plot with all required fields and default values for missing ones
+      return {
+        id: plot.id || 'unknown',
+        plotNumber: plot.plotNumber || 'Unknown',
+        status: plot.status || 'unknown',
+        coordinates: parsedCoordinates,
+        images: parsedImages,
+        price: typeof plot.price === 'number' ? plot.price : 0,
+        size: plot.size || 'Unknown',
+        dimensions: plot.dimensions || 'Unknown',
+        facing: plot.facing || 'Unknown'
+      };
+    })
+  });
 
   const handlePlotClick = (plotId: string) => {
     router.push(`/plots/${plotId}`);
   };
+
+  // Debounced layout selection to prevent rapid re-renders
+  const debouncedSetSelectedLayout = React.useCallback((layout: Layout | null) => {
+    // Show loading indicator while image loads
+    if (layout?.image) {
+      setIsImageLoading(true);
+    }
+    
+    // Set layout after a small delay
+    setTimeout(() => {
+      setSelectedLayout(layout);
+    }, 100);
+  }, []);
 
   if (!selectedLayout) return null;
 
@@ -137,7 +324,7 @@ export default function PlotsPage() {
             value={selectedLayout?.id}
             onValueChange={(value) => {
               const layout = layouts.find(l => l.id === value);
-              if (layout) setSelectedLayout(layout);
+              if (layout) debouncedSetSelectedLayout(layout);
             }}
           >
             <SelectTrigger className="w-full bg-white/50 border border-[#3C5A3E]/20 text-[#3C5A3E] hover:bg-white/80 transition-colors">
@@ -235,21 +422,52 @@ export default function PlotsPage() {
 
       {/* Main content */}
       <div className="flex-1 bg-white">
-        {viewMode === "map" ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+            <div className="text-center space-y-5">
+              <div className="inline-block w-16 h-16 border-4 border-[#3C5A3E] border-t-transparent rounded-full animate-spin"></div>
+              <div className="space-y-2">
+                <p className="text-xl font-medium text-[#3C5A3E]">{loadingMessage}</p>
+                {error ? (
+                  <p className="text-sm text-red-500">
+                    {error}. <button onClick={() => fetchLayouts(pagination.currentPage)} className="text-blue-500 underline">Try again</button>
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    This may take 10-15 seconds the first time as we load all plot details.
+                  </p>
+                )}
+                <div className="w-64 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                  <div 
+                    className="h-full bg-[#3C5A3E] transition-all duration-300 rounded-full" 
+                    style={{ width: `${loadingProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400">Future loads will be much faster due to caching.</p>
+            </div>
+          </div>
+        ) : viewMode === "map" ? (
           <div className="relative w-full h-[calc(100vh-64px)]">
             {selectedLayout.image && (
-              <Image
-                src={selectedLayout.image}
-                alt={selectedLayout.name}
-                fill
-                style={{ objectFit: 'contain' }}
-                priority
-              />
+              <div className="relative w-full h-full">
+                <Image
+                  src={selectedLayout.image}
+                  alt={selectedLayout.name}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  priority={false}
+                  loading="lazy"
+                  sizes="100vw"
+                  placeholder="blur"
+                  blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAEggI73Jt/8QAAAABJRU5ErkJggg=="
+                />
+              </div>
             )}
             
             <svg
               className="absolute top-0 left-0 w-full h-full"
-              viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+              viewBox={`0 0 ${imageSize.width || 1000} ${imageSize.height || 800}`}
               preserveAspectRatio="xMidYMid meet"
             >
               <defs>
@@ -260,45 +478,61 @@ export default function PlotsPage() {
               
               {selectedLayout.Plot.map((plot) => (
                 <g key={plot.id}>
-                  <polygon
-                    points={plot.coordinates.map(p => `${p.x},${p.y}`).join(' ')}
-                    fill={
-                      plot.status === "sold"
-                        ? hoveredPlotId === plot.id ? "rgba(255, 0, 0, 0.4)" : "rgba(255, 0, 0, 0.2)"
-                        : plot.status === "reserved"
-                        ? hoveredPlotId === plot.id ? "rgba(255, 165, 0, 0.4)" : "rgba(255, 165, 0, 0.2)"
-                        : hoveredPlotId === plot.id ? "rgba(60, 90, 62, 0.4)" : "rgba(60, 90, 62, 0.2)"
-                    }
-                    stroke={
-                      plot.status === "sold"
-                        ? "#ff0000"
-                        : plot.status === "reserved"
-                        ? "#ffa500"
-                        : "#3C5A3E"
-                    }
-                    strokeWidth={hoveredPlotId === plot.id ? "2" : "1"}
-                    style={{
-                      cursor: 'pointer',
-                      filter: hoveredPlotId === plot.id ? 'url(#hover-shadow)' : 'none',
-                      transform: hoveredPlotId === plot.id ? 'translate(-2px, -2px)' : 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={() => setHoveredPlotId(plot.id)}
-                    onMouseLeave={() => setHoveredPlotId(null)}
-                    onClick={() => handlePlotClick(plot.id)}
-                  />
-                  <text
-                    x={plot.coordinates.reduce((sum, p) => sum + p.x, 0) / plot.coordinates.length}
-                    y={plot.coordinates.reduce((sum, p) => sum + p.y, 0) / plot.coordinates.length}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="#000"
-                    fontSize={hoveredPlotId === plot.id ? "16" : "14"}
-                    pointerEvents="none"
-                    style={{ transition: 'font-size 0.2s ease' }}
-                  >
-                    {plot.plotNumber}
-                  </text>
+                  {plot.coordinates && Array.isArray(plot.coordinates) && plot.coordinates.length > 0 ? (
+                    <>
+                      <polygon
+                        points={plot.coordinates.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill={
+                          plot.status === "sold"
+                            ? hoveredPlotId === plot.id ? "rgba(255, 0, 0, 0.4)" : "rgba(255, 0, 0, 0.2)"
+                            : plot.status === "reserved"
+                            ? hoveredPlotId === plot.id ? "rgba(255, 165, 0, 0.4)" : "rgba(255, 165, 0, 0.2)"
+                            : hoveredPlotId === plot.id ? "rgba(60, 90, 62, 0.4)" : "rgba(60, 90, 62, 0.2)"
+                        }
+                        stroke={
+                          plot.status === "sold"
+                            ? "#ff0000"
+                            : plot.status === "reserved"
+                            ? "#ffa500"
+                            : "#3C5A3E"
+                        }
+                        strokeWidth={hoveredPlotId === plot.id ? "2" : "1"}
+                        style={{
+                          cursor: 'pointer',
+                          filter: hoveredPlotId === plot.id ? 'url(#hover-shadow)' : 'none',
+                          transform: hoveredPlotId === plot.id ? 'translate(-2px, -2px)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={() => setHoveredPlotId(plot.id)}
+                        onMouseLeave={() => setHoveredPlotId(null)}
+                        onClick={() => handlePlotClick(plot.id)}
+                      />
+                      <text
+                        x={plot.coordinates.reduce((sum, p) => sum + p.x, 0) / plot.coordinates.length}
+                        y={plot.coordinates.reduce((sum, p) => sum + p.y, 0) / plot.coordinates.length}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="#000"
+                        fontSize={hoveredPlotId === plot.id ? "16" : "14"}
+                        pointerEvents="none"
+                        style={{ transition: 'font-size 0.2s ease' }}
+                      >
+                        {plot.plotNumber}
+                      </text>
+                    </>
+                  ) : (
+                    // Fallback for plots without coordinates
+                    <text 
+                      x={20} 
+                      y={20 + (selectedLayout.Plot.indexOf(plot) * 30)} 
+                      fill="#000" 
+                      fontSize="14" 
+                      onClick={() => handlePlotClick(plot.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      Plot {plot.plotNumber} ({plot.status})
+                    </text>
+                  )}
                 </g>
               ))}
             </svg>
