@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import Link from 'next/link';
 
 const employeeLoginFormSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required').regex(/^RCF\d{7}$/, {
@@ -100,7 +101,15 @@ export function EmployeeLoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Password</FormLabel>
+                <Link
+                  href="/auth/employee/forgot-password"
+                  className="text-sm text-[#3C5A3E] hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <FormControl>
                 <Input type="password" placeholder="********" {...field} />
               </FormControl>

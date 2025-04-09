@@ -24,6 +24,10 @@ model User {
   employee      Employee?
   sessions      Session[]
   reviewedPromotions PromotionRequest[]
+  resetToken    String?
+  resetExpires  DateTime?
+  otp           String?
+  otpExpires    DateTime?
 }
 
 model Team {
