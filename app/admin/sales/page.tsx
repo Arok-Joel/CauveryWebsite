@@ -4,8 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LabelList } from 'recharts';
-import { Loader2, TrendingUp, IndianRupee, LineChart } from 'lucide-react';
+import { Loader2, TrendingUp, IndianRupee, LineChart, ShoppingCart, ChevronDown, LayoutGrid, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { format } from 'date-fns';
 
 interface SalesData {
   totalSales: number;
@@ -15,6 +21,23 @@ interface SalesData {
     count: number;
     revenue: number;
   }[];
+  soldPlots: Array<{
+    id: string;
+    plotNumber: string;
+    customerName: string;
+    price: string;
+    soldAt: string;
+    size: string;
+    dimensions: string;
+    facing: string;
+    plotAddress: string;
+    phoneNumber: string;
+    email: string;
+    address: string;
+    aadhaarNumber: string;
+    employeeName: string;
+    employeeRole?: string;
+  }>;
 }
 
 const getTimeFilterLabel = (filter: string) => {
@@ -255,6 +278,150 @@ export default function SalesPage() {
               </ResponsiveContainer>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Company Sold Plots Overview</CardTitle>
+            </div>
+            {!isLoading && (
+              <div className="flex items-center gap-12">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Plots Sold</p>
+                  <p className="text-xl font-bold">{salesData?.totalSales || 0} plots</p>
+                </div>
+                <div className="border-l pl-12">
+                  <p className="text-sm text-muted-foreground">Total Revenue Generated</p>
+                  <p className="text-xl font-bold text-green-600">₹{salesData?.totalRevenue.toLocaleString() || 0}</p>
+                </div>
+                <div className="border-l pl-12">
+                  <p className="text-sm text-muted-foreground">Average Revenue Per Plot</p>
+                  <p className="text-xl font-bold text-green-600">₹{calculateAverageRevenue(
+                    salesData?.totalSales || 0,
+                    salesData?.totalRevenue || 0
+                  ).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : salesData?.soldPlots && salesData.soldPlots.length > 0 ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-2 border-b">
+                <div className="font-semibold text-muted-foreground">Plot Number</div>
+                <div className="text-center font-semibold text-muted-foreground">Employee</div>
+                <div className="text-center font-semibold text-muted-foreground">Price</div>
+                <div className="font-semibold text-muted-foreground">Sale Date</div>
+                <div></div>
+              </div>
+              {salesData.soldPlots.map((plot) => (
+                <Collapsible key={plot.id}>
+                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-3 group">
+                    <div className="font-medium">{plot.plotNumber}</div>
+                    <div className="text-center">
+                      <div className="font-medium">{plot.employeeName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {plot.employeeRole?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                      </div>
+                    </div>
+                    <div className="text-center text-green-600 font-medium">₹{parseFloat(plot.price).toLocaleString()}</div>
+                    <div className="font-medium">{format(new Date(plot.soldAt), 'MMM d, yyyy')}</div>
+                    <div className="flex justify-end">
+                      <CollapsibleTrigger className="h-6 w-6 p-1 hover:bg-muted rounded">
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                    </div>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="border-t bg-muted/50 py-4">
+                      <div className="px-6">
+                        <div className="grid grid-cols-2 gap-8">
+                          {/* Plot Details */}
+                          <div>
+                            <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm">
+                              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                              Plot Details
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Size</p>
+                                <p className="font-medium">{plot.size} sq ft</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Price</p>
+                                <p className="font-medium">₹{parseFloat(plot.price).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Dimensions</p>
+                                <p className="font-medium">{plot.dimensions}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Facing</p>
+                                <p className="font-medium">{plot.facing}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-sm text-muted-foreground">Address</p>
+                                <p className="font-medium">{plot.plotAddress}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Customer Details */}
+                          <div>
+                            <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm">
+                              <UserCheck className="h-4 w-4 text-muted-foreground" />
+                              Customer Details
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Name</p>
+                                <p className="font-medium">{plot.customerName}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Phone</p>
+                                <p className="font-medium">{plot.phoneNumber}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Email</p>
+                                <p className="font-medium">{plot.email}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Aadhaar</p>
+                                <p className="font-medium">{plot.aadhaarNumber}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-sm text-muted-foreground">Address</p>
+                                <p className="font-medium">{plot.address}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <ShoppingCart className="h-6 w-6 text-gray-500" />
+              </div>
+              <h3 className="mt-4 text-lg font-medium">No Sold Plots</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                There are no sold plots to display.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

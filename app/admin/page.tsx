@@ -9,13 +9,13 @@ interface DashboardMetrics {
   overall: {
     totalUsers: number;
     totalSales: number;
-    conversionRate: string;
+    averagePlotPrice: string;
     totalRevenue: number;
   };
   monthly: {
     newUsers: number;
     sales: number;
-    conversionRate: string;
+    averagePlotPrice: string;
     revenue: number;
   };
 }
@@ -155,16 +155,16 @@ export default function AdminDashboard() {
         <div className="admin-stat-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="admin-stat-title">Conversion Rate</p>
+              <p className="admin-stat-title">Average Plot Price</p>
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
               ) : (
-                <p className="admin-stat-value">{metrics?.overall?.conversionRate || '0'}%</p>
+                <p className="admin-stat-value">₹{metrics?.overall?.averagePlotPrice || '0'}</p>
               )}
-              <p className="text-xs text-gray-500 mt-1">User to sales conversion</p>
+              <p className="text-xs text-gray-500 mt-1">Overall average price per plot</p>
             </div>
             <div className="admin-stat-icon">
-              <ActivitySquare className="h-5 w-5" />
+              <IndianRupee className="h-5 w-5" />
             </div>
           </div>
         </div>

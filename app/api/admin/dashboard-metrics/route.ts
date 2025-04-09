@@ -8,13 +8,13 @@ export async function GET() {
     overall: {
       totalUsers: 0,
       totalSales: 0,
-      conversionRate: 0,
+      averagePlotPrice: 0,
       totalRevenue: 0
     },
     monthly: {
       newUsers: 0,
       sales: 0,
-      conversionRate: 0,
+      averagePlotPrice: 0,
       revenue: 0
     }
   };
@@ -85,33 +85,33 @@ export async function GET() {
       return sum;
     }, 0);
 
+    // Calculate average plot prices
+    const overallAveragePlotPrice = totalSalesResult > 0 
+      ? (totalRevenue / totalSalesResult).toFixed(0)
+      : '0';
+
+    const monthlyAveragePlotPrice = monthlySalesResult > 0
+      ? (monthlyRevenue / monthlySalesResult).toFixed(0)
+      : '0';
+
     // Extract values
     const totalUsers = totalUsersResult;
     const totalSales = totalSalesResult;
     const monthlyNewUsers = monthlyNewUsersResult;
     const monthlySales = monthlySalesResult;
 
-    // Calculate conversion rates as percentages (capped at 100%)
-    const overallConversionRate = totalUsers > 0 
-      ? Math.min(((totalSales / totalUsers) * 100), 100).toFixed(1)
-      : '0';
-
-    const monthlyConversionRate = monthlyNewUsers > 0
-      ? Math.min(((monthlySales / monthlyNewUsers) * 100), 100).toFixed(1)
-      : '0';
-
     // Build response
     const response = {
       overall: {
         totalUsers,
         totalSales,
-        conversionRate: overallConversionRate,
+        averagePlotPrice: overallAveragePlotPrice,
         totalRevenue
       },
       monthly: {
         newUsers: monthlyNewUsers,
         sales: monthlySales,
-        conversionRate: monthlyConversionRate,
+        averagePlotPrice: monthlyAveragePlotPrice,
         revenue: monthlyRevenue
       }
     };

@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         groupingFunction = (date: Date) => format(date, 'MMM yyyy');
     }
 
-    // Get all sold plots within the date range
+    // Get all sold plots with detailed information
     const soldPlots = await db.soldPlot.findMany({
       where: {
         soldAt: {
@@ -44,11 +44,29 @@ export async function GET(request: Request) {
         },
       },
       select: {
-        soldAt: true,
+        id: true,
+        plotNumber: true,
+        customerName: true,
         price: true,
+        soldAt: true,
+        size: true,
+        dimensions: true,
+        facing: true,
+        plotAddress: true,
+        phoneNumber: true,
+        email: true,
+        address: true,
+        aadhaarNumber: true,
+        employeeName: true,
+        commissions: {
+          select: {
+            employeeRole: true
+          },
+          take: 1
+        }
       },
       orderBy: {
-        soldAt: 'asc',
+        soldAt: 'desc',
       },
     });
 
@@ -107,9 +125,15 @@ export async function GET(request: Request) {
       totalSales,
       totalRevenue,
       data: filledData,
+      soldPlots: soldPlots.map(plot => ({
+        ...plot,
+        price: plot.price.toString(),
+        soldAt: plot.soldAt.toISOString(),
+        employeeRole: plot.commissions[0]?.employeeRole
+      })),
     });
   } catch (error) {
-    console.error('Error fetching sales data:', error);
+    console.error('Error in sales data:', error);
     return NextResponse.json(
       { error: 'Failed to fetch sales data' },
       { status: 500 }
