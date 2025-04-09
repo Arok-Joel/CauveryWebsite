@@ -18,6 +18,7 @@ interface EmployeeNode {
   hierarchyLevel?: number;
   reportsToId?: string | null;
   children: EmployeeNode[];
+  isTeamLeader?: boolean;
 }
 
 const roleOrder = {
@@ -52,6 +53,7 @@ async function getEmployees() {
       const directors: EmployeeNode[] = [];
       const jointDirectors: EmployeeNode[] = [];
       const fieldOfficers: EmployeeNode[] = [];
+      const executiveDirectors: EmployeeNode[] = [];
 
       team.members.forEach(member => {
         const node: EmployeeNode = {
@@ -65,9 +67,13 @@ async function getEmployees() {
           reportsToId: member.reportsToId,
           hierarchyLevel: member.hierarchyLevel,
           children: [],
-        };
+          isTeamLeader: false
+        } as any; // Type assertion to avoid TS conflicts
 
         switch (member.employeeRole) {
+          case 'EXECUTIVE_DIRECTOR':
+            executiveDirectors.push(node);
+            break;
           case 'DIRECTOR':
             directors.push(node);
             break;
@@ -79,6 +85,20 @@ async function getEmployees() {
             break;
         }
       });
+      
+      // Add team leader as root node
+      const executiveNode: EmployeeNode = {
+        id: team.leader.id,
+        user: {
+          id: team.leader.user.id,
+          name: team.leader.user.name,
+          email: team.leader.user.email
+        },
+        employeeRole: team.leader.employeeRole,
+        hierarchyLevel: team.leader.hierarchyLevel,
+        children: [],
+        isTeamLeader: true
+      } as any; // Type assertion to avoid TS conflicts
 
       // Build the hierarchy based on reporting relationships
       // First, check each Field Officer
@@ -97,6 +117,13 @@ async function getEmployees() {
             reportingDirector.children.push(fo);
             return; // Skip to next Field Officer
           }
+          
+          // Check if reports to another Executive Director
+          const reportingED = executiveDirectors.find(ed => fo.reportsToId === ed.id);
+          if (reportingED) {
+            reportingED.children.push(fo);
+            return; // Skip to next Field Officer
+          }
         }
       });
 
@@ -110,38 +137,57 @@ async function getEmployees() {
             return; // Skip to next Joint Director
           }
           
-          // Check if reports directly to Executive Director
+          // Check if reports to another Executive Director
+          const reportingED = executiveDirectors.find(ed => jd.reportsToId === ed.id);
+          if (reportingED) {
+            reportingED.children.push(jd);
+            return; // Skip to next Joint Director
+          }
+          
+          // Check if reports directly to Executive Director (team leader)
           if (jd.reportsToId === team.leader.id) {
             return;
           }
         }
       });
+      
+      // Check each Director
+      directors.forEach(director => {
+        if (director.reportsToId) {
+          // Check if reports to another Executive Director (not team leader)
+          const reportingED = executiveDirectors.find(ed => director.reportsToId === ed.id);
+          if (reportingED) {
+            reportingED.children.push(director);
+            return; // Skip this Director since it's now a child of another ED
+          }
+        }
+      });
 
-      // Get "orphaned" employees
+      // Get "orphaned" employees (those who don't have their manager in the hierarchy)
       const orphanedJDs = jointDirectors.filter(jd => 
-        !directors.some(d => d.children.some(child => child.id === jd.id))
+        !directors.some(d => d.children.some(child => child.id === jd.id)) &&
+        !executiveDirectors.some(ed => ed.children.some(child => child.id === jd.id))
       );
       
       const orphanedFOs = fieldOfficers.filter(fo => 
         !jointDirectors.some(jd => jd.children.some(child => child.id === fo.id)) &&
-        !directors.some(d => d.children.some(child => child.id === fo.id))
+        !directors.some(d => d.children.some(child => child.id === fo.id)) &&
+        !executiveDirectors.some(ed => ed.children.some(child => child.id === fo.id))
+      );
+      
+      const orphanedDirectors = directors.filter(d => 
+        !executiveDirectors.some(ed => ed.children.some(child => child.id === d.id))
       );
 
       // Add Directors and orphaned employees directly to Executive Director
-      return {
-        id: team.leader.id,
-        user: {
-          id: team.leader.user.id,
-          name: team.leader.user.name,
-          email: team.leader.user.email
-        },
-        employeeRole: team.leader.employeeRole,
-        children: [
-          ...directors, 
-          ...orphanedJDs,
-          ...orphanedFOs
-        ],
-      };
+      executiveNode.children = [
+        ...executiveDirectors, // Add other EDs as children of the team leader
+        ...orphanedDirectors,  // Add Directors that don't report to other EDs
+        ...orphanedJDs,
+        ...orphanedFOs
+      ];
+      
+      return executiveNode;
     });
 
     // Create nodes for unassigned employees
@@ -156,7 +202,7 @@ async function getEmployees() {
       reportsToId: emp.reportsToId,
       hierarchyLevel: emp.hierarchyLevel,
       children: [],
-    }));
+    }) as any); // Type assertion to avoid TS conflicts
 
     // Sort all levels by name
     const sortByName = (a: EmployeeNode, b: EmployeeNode) => a.user.name.localeCompare(b.user.name);
@@ -164,17 +210,23 @@ async function getEmployees() {
     executives.sort(sortByName);
     executives.forEach(exec => {
       exec.children.sort(sortByName);
-      exec.children.forEach(director => {
-        director.children.sort(sortByName);
-        director.children.forEach(jd => {
-          jd.children.sort(sortByName);
-        });
+      exec.children.forEach(child => {
+        if (child.children) {
+          child.children.sort(sortByName);
+          child.children.forEach(grandchild => {
+            if (grandchild.children) {
+              grandchild.children.sort(sortByName);
+            }
+          });
+        }
       });
     });
 
     // Sort unassigned by role first, then name
-    unassigned.sort((a, b) => {
-      const roleDiff = roleOrder[a.employeeRole] - roleOrder[b.employeeRole];
+    unassigned.sort((a: any, b: any) => {
+      const roleOrderA = roleOrder[a.employeeRole as EmployeeRole] || 99;
+      const roleOrderB = roleOrder[b.employeeRole as EmployeeRole] || 99;
+      const roleDiff = roleOrderA - roleOrderB;
       return roleDiff !== 0 ? roleDiff : a.user.name.localeCompare(b.user.name);
     });
 
@@ -207,7 +259,7 @@ async function EmployeeList() {
             {executives.map((executive, index) => (
               <EmployeeNodeComponent 
                 key={`exec-${executive.id}-${index}`} 
-                employee={executive} 
+                employee={executive as any} 
                 showTeamBadge={true}
                 parentId={`executive-section`}
               />
@@ -228,7 +280,7 @@ async function EmployeeList() {
               {unassigned.map((employee, index) => (
                 <EmployeeNodeComponent 
                   key={`unassigned-${employee.id}-${index}`} 
-                  employee={employee}
+                  employee={employee as any}
                   parentId={`unassigned-section`} 
                 />
               ))}

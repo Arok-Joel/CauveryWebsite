@@ -11,6 +11,7 @@ interface EmployeeNode {
   employeeRole: EmployeeRole;
   reportsTo?: string | null;
   children: EmployeeNode[];
+  isTeamLeader?: boolean;
 }
 
 const roleOrder = {
@@ -78,6 +79,9 @@ export function EmployeeNodeComponent({
     router.push(`/admin/employees/${employee.id}`);
   };
 
+  // Determine if this is a team leader
+  const isTeamLeader = employee.isTeamLeader || false;
+
   return (
     <div
       className="relative"
@@ -121,7 +125,7 @@ export function EmployeeNodeComponent({
           </div>
 
           <div className="flex items-center space-x-2">
-            {showTeamBadge && employee.employeeRole === 'EXECUTIVE_DIRECTOR' && (
+            {showTeamBadge && employee.employeeRole === 'EXECUTIVE_DIRECTOR' && isTeamLeader && (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
                 Team Leader
               </span>

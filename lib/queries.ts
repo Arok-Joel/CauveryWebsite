@@ -123,7 +123,40 @@ export const getEmployeeHierarchy = cache(async () => {
       ]
     });
 
-    return { teams, unassignedEmployees };
+    // Track processed employee IDs to avoid duplication
+    const processedEmployeeIds = new Set<string>();
+    const processedTeams = [];
+
+    // Process each team, but ensure each team is only represented once
+    // and each Executive Director appears only once
+    for (const team of teams) {
+      // Skip teams we've already processed
+      if (processedEmployeeIds.has(team.leader.id)) {
+        continue;
+      }
+
+      // Mark the team leader as processed
+      processedEmployeeIds.add(team.leader.id);
+
+      // Filter team members to exclude those already processed
+      // and exclude the leader who we'll handle separately
+      const filteredMembers = team.members.filter(member => 
+        !processedEmployeeIds.has(member.id) && member.id !== team.leader.id
+      );
+
+      // Mark all filtered members as processed
+      filteredMembers.forEach(member => {
+        processedEmployeeIds.add(member.id);
+      });
+
+      // Add this team with filtered members
+      processedTeams.push({
+        ...team,
+        members: filteredMembers
+      });
+    }
+
+    return { teams: processedTeams, unassignedEmployees };
   } catch (error) {
     console.error('Error fetching employee hierarchy:', error);
     throw error;

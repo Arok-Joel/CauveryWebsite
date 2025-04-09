@@ -118,16 +118,42 @@ export async function POST(
         } 
         else if (employee.employeeRole === 'JOINT_DIRECTOR' && promotionRequest.targetRole === 'DIRECTOR') {
           // Scenario: Joint Director -> Director
-          // New Director should report to the Executive Director
-          const executiveDirector = await tx.employee.findFirst({
-            where: { 
-              teamId: employee.teamId,
-              employeeRole: 'EXECUTIVE_DIRECTOR' 
+          // Find the current reporting manager (should be a Director)
+          if (employee.reportsToId) {
+            const currentManager = await tx.employee.findUnique({
+              where: { id: employee.reportsToId },
+              include: { reportsTo: true }
+            });
+            
+            // If current manager exists and has a manager (Executive Director)
+            if (currentManager && currentManager.reportsToId) {
+              // New Director should report to the same Executive Director as their previous Director
+              newReportsToId = currentManager.reportsToId;
+            } else {
+              // Fallback: find any Executive Director in the team
+              const executiveDirector = await tx.employee.findFirst({
+                where: { 
+                  teamId: employee.teamId,
+                  employeeRole: 'EXECUTIVE_DIRECTOR' 
+                }
+              });
+              
+              if (executiveDirector) {
+                newReportsToId = executiveDirector.id;
+              }
             }
-          });
-          
-          if (executiveDirector) {
-            newReportsToId = executiveDirector.id;
+          } else {
+            // If no current manager, find any Executive Director in the team
+            const executiveDirector = await tx.employee.findFirst({
+              where: { 
+                teamId: employee.teamId,
+                employeeRole: 'EXECUTIVE_DIRECTOR' 
+              }
+            });
+            
+            if (executiveDirector) {
+              newReportsToId = executiveDirector.id;
+            }
           }
           
           // Joint Directors who reported to this employee's manager should now report to this employee
@@ -150,13 +176,11 @@ export async function POST(
           // Top of hierarchy - no manager needed
           newReportsToId = null;
           
-          // Should be assigned as leader of the team
-          if (employee.teamId) {
-            await tx.team.update({
-              where: { id: employee.teamId },
-              data: { leaderId: employee.id }
-            });
-          }
+          // We no longer assign the promoted Director as team leader
+          // The existing team leader will remain unchanged
+          
+          // No changes to reporting structure for subordinates
+          // All current subordinates continue reporting to this employee
         }
 
         // Update the employee's role, reporting relationship, and hierarchy level

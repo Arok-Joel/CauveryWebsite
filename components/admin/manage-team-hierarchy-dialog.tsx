@@ -61,7 +61,13 @@ export function ManageTeamHierarchyDialog({
           if (response.ok) {
             const data = await response.json();
             
-            // Combine leader with members
+            // Filter out any members who are already Executive Directors to avoid duplication
+            const filteredMembers = members.filter(member => 
+              // Keep the member if it's not an Executive Director or if it's an ED but not the leader
+              member.employeeRole !== 'EXECUTIVE_DIRECTOR' || member.id !== data.leader.id
+            );
+            
+            // Combine leader with filtered members
             const allTeamMembers = [
               // Add leader with EXECUTIVE_DIRECTOR role
               {
@@ -74,7 +80,7 @@ export function ManageTeamHierarchyDialog({
                   email: data.leader.user.email
                 }
               },
-              ...members
+              ...filteredMembers
             ];
             
             setTeamData(allTeamMembers);
@@ -221,9 +227,9 @@ export function ManageTeamHierarchyDialog({
             {executiveDirectors.length > 0 && (
               <div className="space-y-4">
                 <h3 className="font-medium">Executive Directors</h3>
-                {executiveDirectors.map(executiveDirector => (
+                {executiveDirectors.map((executiveDirector, index) => (
                   <div
-                    key={executiveDirector.id}
+                    key={`${executiveDirector.id}-${index}`}
                     className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
                   >
                     <div>
@@ -231,7 +237,7 @@ export function ManageTeamHierarchyDialog({
                       <p className="text-sm text-gray-500">{executiveDirector.user.email}</p>
                       <p className="text-xs text-gray-400">Level: {executiveDirector.hierarchyLevel ?? 'not set'}</p>
                     </div>
-                    <span className="text-sm text-green-700 font-medium">Team Leader</span>
+                    {index === 0 && <span className="text-sm text-green-700 font-medium">Team Leader</span>}
                   </div>
                 ))}
               </div>

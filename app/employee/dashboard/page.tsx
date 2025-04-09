@@ -16,7 +16,11 @@ import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { GitStyleOrgChart } from '@/app/components/GitStyleOrgChart';
+import { EmployeeOrgChart } from '@/app/components/EmployeeOrgChart';
+import { AdminStyleOrgChart } from '@/app/components/AdminStyleOrgChart';
+import { TeamHierarchyView } from '@/app/components/TeamHierarchyView';
 import { PromotionCard } from '@/app/components/PromotionCard';
+import { redirect } from 'next/navigation';
 
 interface Announcement {
   id: string;
@@ -249,10 +253,10 @@ export default function EmployeeDashboard() {
         
         {node.children && node.children.length > 0 && (
           <div className="org-chart-children">
-            {node.children.map(child => (
-              <TeamHierarchyNode 
-                key={child.id} 
-                node={child} 
+            {node.children.map((child) => (
+              <TeamHierarchyNode
+                key={`${child.id}-${currentEmployeeId}`}
+                node={child}
                 currentEmployeeId={currentEmployeeId}
               />
             ))}
@@ -422,11 +426,11 @@ export default function EmployeeDashboard() {
                 <div className="space-y-4">
                   {/* Team Hierarchy Section */}
                   {reportingStructure.teamHierarchy && (
-                    <div>
-                      <h3 className="text-sm font-medium mb-2 text-[#3C5A3E]">Team Hierarchy</h3>
-                      <GitStyleOrgChart 
+                    <div className="border rounded-lg p-2 max-h-[450px] overflow-y-auto">
+                      <TeamHierarchyView 
                         data={reportingStructure.teamHierarchy}
                         currentUserId={reportingStructure.self.id}
+                        title=""
                       />
                     </div>
                   )}

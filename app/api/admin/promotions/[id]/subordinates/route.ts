@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
 
     // Verify admin authentication
     const cookieStore = await cookies();
@@ -90,64 +91,9 @@ export async function GET(
 
     // Find potential new managers (depends on the employee's current role)
     let potentialManagers: any[] = [];
-    
-    // If Joint Director being promoted to Director, find other Joint Directors in the same team
-    if (currentRole === EmployeeRole.JOINT_DIRECTOR && promotionRequest.targetRole === EmployeeRole.DIRECTOR) {
-      potentialManagers = await db.employee.findMany({
-        where: {
-          teamId: teamId,
-          employeeRole: EmployeeRole.JOINT_DIRECTOR,
-          id: { not: employee.id }, // Exclude the employee being promoted
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-            }
-          },
-          // Include count of current subordinates to help with distribution
-          subordinates: {
-            select: {
-              id: true,
-            }
-          }
-        },
-        orderBy: {
-          user: {
-            name: 'asc',
-          }
-        }
-      });
-    }
-    // If Director being promoted to Executive Director, find other Directors in the same team
-    else if (currentRole === EmployeeRole.DIRECTOR && promotionRequest.targetRole === EmployeeRole.EXECUTIVE_DIRECTOR) {
-      potentialManagers = await db.employee.findMany({
-        where: {
-          teamId: teamId,
-          employeeRole: EmployeeRole.DIRECTOR,
-          id: { not: employee.id }, // Exclude the employee being promoted
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-            }
-          },
-          subordinates: {
-            select: {
-              id: true,
-            }
-          }
-        },
-        orderBy: {
-          user: {
-            name: 'asc',
-          }
-        }
-      });
-    }
+
+    // We no longer need to find potential managers for any promotion type
+    // All subordinates will continue reporting to their promoted manager
 
     return NextResponse.json({
       employeeBeingPromoted: {
@@ -163,13 +109,7 @@ export async function GET(
         email: sub.user.email,
         role: sub.employeeRole,
       })),
-      potentialManagers: potentialManagers.map(manager => ({
-        id: manager.id,
-        name: manager.user.name,
-        email: manager.user.email,
-        role: manager.employeeRole,
-        currentSubordinatesCount: manager.subordinates.length,
-      })),
+      potentialManagers: [],
     });
     
   } catch (error) {
