@@ -4,34 +4,36 @@ import Image from 'next/image';
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen w-full p-0 m-0 overflow-hidden">
       {/* Hero Section */}
-      <section className="relative h-[90vh] flex items-center">
-        <div className="absolute inset-0 bg-black/40 z-10" />
+      <section className="relative h-screen min-h-[700px] w-full flex items-center">
+        <div className="absolute inset-0 bg-black/50 z-10" />
         <div className="absolute inset-0">
           <Image
             src="/hero-bg.jpg"
             alt="Royal Cauvery Farms"
             fill
-            className="object-cover"
+            className="object-cover object-center"
             priority
+            sizes="100vw"
+            quality={100}
           />
         </div>
         <div className="container relative z-20 mx-auto px-4">
           <div className="max-w-3xl">
-            <h1 className="text-5xl font-bold text-white mb-6">Welcome to Royal Cauvery Farms</h1>
-            <p className="text-xl text-white/90 mb-8">
+            <h1 className="text-6xl font-bold text-white mb-6 text-shadow-lg">Welcome to Royal Cauvery Farms</h1>
+            <p className="text-2xl text-white mb-8 text-shadow-md">
               Your gateway to premium plots in Sri Sai Nagar. Experience the perfect blend of nature
               and modern living.
             </p>
-            <Button asChild size="lg" className="mr-4">
+            <Button asChild size="lg" className="mr-4 text-lg px-6 py-3">
               <Link href="/plots">Browse Plots</Link>
             </Button>
             <Button
               asChild
               variant="outline"
               size="lg"
-              className="bg-white/10 text-white hover:bg-white/20"
+              className="bg-white/20 text-white hover:bg-white/30 text-lg px-6 py-3"
             >
               <Link href="/contact">Contact Us</Link>
             </Button>

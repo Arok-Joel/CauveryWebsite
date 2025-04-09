@@ -18,7 +18,8 @@ import {
   MessagesSquare,
   Map,
   Store,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -100,6 +101,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: "Messages",
       href: "/admin/messages",
       icon: MessagesSquare,
+    },
+    {
+      name: "Profile",
+      href: "/admin/profile",
+      icon: User,
     },
   ];
 

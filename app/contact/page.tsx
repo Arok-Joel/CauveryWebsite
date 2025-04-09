@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -17,7 +17,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const contactFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -28,8 +29,44 @@ const contactFormSchema = z.object({
 
 type ContactFormValues = z.infer<typeof contactFormSchema>;
 
+interface PhoneNumber {
+  id: string;
+  number: string;
+  isDefault: boolean;
+}
+
+interface AdminContactInfo {
+  id: string;
+  address: string;
+  email: string;
+  phoneNumbers: PhoneNumber[];
+}
+
 export default function ContactPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [adminContactInfo, setAdminContactInfo] = useState<AdminContactInfo | null>(null);
+  const [isLoadingContactInfo, setIsLoadingContactInfo] = useState(true);
+
+  // Fetch admin contact information
+  useEffect(() => {
+    const fetchAdminContactInfo = async () => {
+      try {
+        setIsLoadingContactInfo(true);
+        const response = await fetch('/api/contact/info');
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAdminContactInfo(data);
+        }
+      } catch (error) {
+        console.error('Error fetching contact information:', error);
+      } finally {
+        setIsLoadingContactInfo(false);
+      }
+    };
+    
+    fetchAdminContactInfo();
+  }, []);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
@@ -66,27 +103,52 @@ export default function ContactPage() {
     }
   }
 
-  const contactInfo = [
+  // Format address for display
+  const getAddressLines = () => {
+    if (!adminContactInfo?.address) {
+      return [];
+    }
+    
+    return adminContactInfo.address.split('\n');
+  };
+
+  // Get phone numbers, with default first
+  const getPhoneNumbers = () => {
+    if (!adminContactInfo?.phoneNumbers?.length) {
+      return [];
+    }
+    
+    // Sort the phone numbers so default is first
+    return adminContactInfo.phoneNumbers
+      .sort((a, b) => (a.isDefault ? -1 : b.isDefault ? 1 : 0))
+      .map(phone => phone.number);
+  };
+
+  // Get email addresses
+  const getEmailAddresses = () => {
+    if (!adminContactInfo?.email) {
+      return [];
+    }
+    
+    return [adminContactInfo.email];
+  };
+
+  // Prepare contact info sections
+  const contactInfoSections = [
     {
       icon: MapPin,
       title: "Visit Us",
-      details: [
-        "117, 5th Street",
-        "Indian Bank Colony",
-        "K K Nagar",
-        "Tiruchirappalli - 620021",
-        "Tamil Nadu, India"
-      ],
+      details: getAddressLines(),
     },
     {
       icon: Phone,
       title: 'Call Us',
-      details: ['+91 98765 43210', '+91 98765 43211'],
+      details: getPhoneNumbers(),
     },
     {
       icon: Mail,
       title: 'Email Us',
-      details: ['info@royalcauveryfarms.com', 'sales@royalcauveryfarms.com'],
+      details: getEmailAddresses(),
     },
     {
       icon: Clock,
@@ -109,21 +171,43 @@ export default function ContactPage() {
         <div className="grid lg:grid-cols-2 gap-8 mb-16">
           {/* Contact Information */}
           <div className="grid sm:grid-cols-2 gap-6">
-            {contactInfo.map((info, index) => (
-              <Card key={index}>
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 bg-[#3C5A3E]/10 rounded-full flex items-center justify-center mb-4">
-                    <info.icon className="w-6 h-6 text-[#3C5A3E]" />
-                  </div>
-                  <CardTitle className="text-lg mb-2">{info.title}</CardTitle>
-                  {info.details.map((detail, idx) => (
-                    <p key={idx} className="text-gray-600">
-                      {detail}
-                    </p>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
+            {isLoadingContactInfo ? (
+              // Show skeletons while loading
+              Array(4).fill(0).map((_, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center mb-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                    </div>
+                    <Skeleton className="h-6 w-32 mb-4" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              // Only show contact info when data is loaded
+              contactInfoSections.map((info, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-6">
+                    <div className="w-12 h-12 bg-[#3C5A3E]/10 rounded-full flex items-center justify-center mb-4">
+                      <info.icon className="w-6 h-6 text-[#3C5A3E]" />
+                    </div>
+                    <CardTitle className="text-lg mb-2">{info.title}</CardTitle>
+                    {info.details.length > 0 ? (
+                      info.details.map((detail, idx) => (
+                        <p key={idx} className="text-gray-600">{detail}</p>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 italic">Information not available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
 
           {/* Contact Form */}
@@ -198,7 +282,14 @@ export default function ContactPage() {
                     className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Sending...' : 'Send Message'}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Message'
+                    )}
                   </Button>
                 </form>
               </Form>
