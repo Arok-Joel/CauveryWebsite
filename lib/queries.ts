@@ -74,6 +74,17 @@ export const getEmployeeHierarchy = cache(async () => {
                 hierarchyLevel: true
               }
             }
+          },
+          orderBy: [
+            { employeeRole: 'asc' },
+            { user: { name: 'asc' } }
+          ]
+        }
+      },
+      orderBy: {
+        leader: {
+          user: {
+            name: 'asc'
           }
         }
       }
@@ -101,7 +112,11 @@ export const getEmployeeHierarchy = cache(async () => {
             hierarchyLevel: true
           }
         }
-      }
+      },
+      orderBy: [
+        { employeeRole: 'asc' },
+        { user: { name: 'asc' } }
+      ]
     });
 
     return { teams, unassignedEmployees };

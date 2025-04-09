@@ -75,12 +75,7 @@ export function EmployeeNodeComponent({
 
   const handleClick = () => {
     console.log('Navigating to employee:', employee.id);
-    try {
-      // Use window.location for direct navigation as a fallback
-      window.location.href = `/admin/employees/${employee.id}`;
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
+    router.push(`/admin/employees/${employee.id}`);
   };
 
   return (

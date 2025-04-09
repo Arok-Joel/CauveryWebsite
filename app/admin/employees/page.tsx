@@ -153,6 +153,13 @@ async function getEmployees() {
     return { executives, unassigned };
   } catch (error) {
     console.error('Error fetching employees:', error);
+    // Return empty arrays but log the specific error
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+      if (error.stack) {
+        console.error('Error stack:', error.stack);
+      }
+    }
     return { executives: [], unassigned: [] };
   }
 }
