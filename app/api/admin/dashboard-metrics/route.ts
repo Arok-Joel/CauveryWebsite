@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+                                                                                                                                                                                                                                                                              import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
@@ -11,7 +11,7 @@ export async function GET() {
       averagePlotPrice: 0,
       totalRevenue: 0
     },
-    monthly: {
+    monthly: {                                                                                                                                              
       newUsers: 0,
       sales: 0,
       averagePlotPrice: 0,
