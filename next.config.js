@@ -8,6 +8,9 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Ensure static files in public directory are served
   experimental: {

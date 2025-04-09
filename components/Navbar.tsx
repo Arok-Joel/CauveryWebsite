@@ -1,18 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from './ui/button';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Menu, User, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -132,31 +137,19 @@ export function Navbar() {
     { name: 'Contact', href: '/contact' },
   ];
 
-  // Get display name based on role and profile data
-  const getDisplayName = () => {
-    if (user?.role === 'ADMIN') return 'Admin';
-    if (user?.role === 'EMPLOYEE' && profile?.user?.name) return profile.user.name;
-    if (user?.role === 'USER' && userProfile?.user?.name) return userProfile.user.name;
-    return user?.name || '';
-  };
-
-  const displayName = getDisplayName();
-  const profileImage = user?.role === 'EMPLOYEE' ? profile?.user?.profileImage : userProfile?.user?.profileImage;
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  };
-
   return (
     <nav className="bg-[#3C5A3E] text-white py-4">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold">
-            Royal Cauvery Farms
+          <Link href="/" className="flex items-center">
+            <Image 
+              src="/logo.svg" 
+              alt="Royal Cauvery Farms"
+              width={180}
+              height={32}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -183,17 +176,9 @@ export function Navbar() {
                       <Button variant="outline" className="relative flex items-center gap-2 bg-white/10 text-white hover:bg-white/20 h-9 px-3">
                         <Avatar className="h-6 w-6">
                           {user.role === 'EMPLOYEE' && profile?.user.profileImage ? (
-                            <img 
-                              src={profile.user.profileImage} 
-                              alt={profile.user.name} 
-                              className="h-full w-full object-cover rounded-full"
-                            />
+                            <AvatarImage src={profile.user.profileImage} alt={profile.user.name} />
                           ) : user.role === 'USER' && userProfile?.user.profileImage ? (
-                            <img 
-                              src={userProfile.user.profileImage} 
-                              alt={userProfile.user.name} 
-                              className="h-full w-full object-cover rounded-full"
-                            />
+                            <AvatarImage src={userProfile.user.profileImage} alt={userProfile.user.name} />
                           ) : (
                             <AvatarFallback className="bg-[#3C5A3E] text-white text-xs">
                               {user.role === 'ADMIN' ? 'A' : user.name ? user.name[0].toUpperCase() : 'U'}
@@ -293,27 +278,25 @@ export function Navbar() {
                       )}
                       {user.role === 'EMPLOYEE' && (
                         <Link href="/employee/dashboard" className="text-lg flex items-center gap-2">
-                          {profileImage ? (
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={profileImage} alt="Profile" />
-                              <AvatarFallback>{displayName[0]?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <User className="h-4 w-4" />
-                          )}
+                          <Avatar className="h-6 w-6">
+                            {profile?.user.profileImage ? (
+                              <AvatarImage src={profile.user.profileImage} alt={profile.user.name} />
+                            ) : (
+                              <AvatarFallback>{profile?.user.name[0]?.toUpperCase()}</AvatarFallback>
+                            )}
+                          </Avatar>
                           Employee Dashboard
                         </Link>
                       )}
                       {user.role === 'USER' && (
                         <Link href="/user/profile" className="text-lg flex items-center gap-2">
-                          {profileImage ? (
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={profileImage} alt="Profile" />
-                              <AvatarFallback>{displayName[0]?.toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <User className="h-4 w-4" />
-                          )}
+                          <Avatar className="h-6 w-6">
+                            {userProfile?.user.profileImage ? (
+                              <AvatarImage src={userProfile.user.profileImage} alt={userProfile.user.name} />
+                            ) : (
+                              <AvatarFallback>{userProfile?.user.name[0]?.toUpperCase()}</AvatarFallback>
+                            )}
+                          </Avatar>
                           My Profile
                         </Link>
                       )}
