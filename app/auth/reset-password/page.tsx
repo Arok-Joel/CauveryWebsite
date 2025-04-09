@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -33,7 +33,7 @@ const passwordSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,66 +87,78 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[#FAF9F6]">
-      <div className="w-full max-w-lg mx-4">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Reset Password</h1>
-            <p className="text-gray-600">Enter your new password</p>
-            <p className="text-sm text-gray-500 mt-2">{email}</p>
-          </div>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Enter new password"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Confirm new password"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Resetting Password...' : 'Reset Password'}
-              </Button>
-            </form>
-          </Form>
+    <div className="w-full max-w-lg mx-4">
+      <div className="bg-white p-8 rounded-lg shadow-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold mb-2">Reset Password</h1>
+          <p className="text-gray-600">Enter your new password</p>
+          <p className="text-sm text-gray-500 mt-2">{email}</p>
         </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Enter new password"
+                      {...field}
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password"
+                      {...field}
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Resetting Password...' : 'Reset Password'}
+            </Button>
+          </form>
+        </Form>
       </div>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[#FAF9F6]">
+      <Suspense fallback={
+        <div className="w-full max-w-lg mx-4 p-8 bg-white rounded-lg shadow-sm text-center">
+          <p>Loading reset password form...</p>
+        </div>
+      }>
+        <ResetPasswordForm />
+      </Suspense>
     </main>
   );
 } 

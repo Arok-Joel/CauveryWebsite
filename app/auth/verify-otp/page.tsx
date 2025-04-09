@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export default function VerifyOTPPage() {
+function VerifyOTPForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
@@ -152,77 +152,89 @@ export default function VerifyOTPPage() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[#FAF9F6]">
-      <div className="w-full max-w-lg mx-4">
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Verify OTP</h1>
-            <p className="text-gray-600">Enter the OTP sent to your email</p>
-            <p className="text-sm text-gray-500 mt-2">{email}</p>
-            <div className="mt-4 text-sm font-medium">
-              Time remaining: <span className={timeLeft <= 60 ? 'text-red-500' : 'text-[#3C5A3E]'}>{formatTime(timeLeft)}</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex justify-center gap-2">
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]"
-                  maxLength={1}
-                  className="w-12 h-12 text-center text-lg font-semibold border rounded-lg focus:border-[#3C5A3E] focus:ring-1 focus:ring-[#3C5A3E] focus:outline-none"
-                  value={digit}
-                  onChange={(e) => handleInputChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={handlePaste}
-                  disabled={isLoading}
-                />
-              ))}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
-              disabled={isLoading || timeLeft === 0}
-            >
-              {isLoading ? 'Verifying...' : 'Verify OTP'}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center space-y-2">
-            <p className="text-sm text-gray-600">
-              {timeLeft === 0 ? (
-                <button
-                  onClick={handleResendOTP}
-                  disabled={isLoading}
-                  className="text-[#3C5A3E] hover:underline font-medium"
-                >
-                  Resend OTP
-                </button>
-              ) : (
-                <span>
-                  Didn't receive OTP? You can resend in {formatTime(timeLeft)}
-                </span>
-              )}
-            </p>
-            <p className="text-sm text-gray-600">
-              Remember your password?{' '}
-              <Link
-                href={type === 'EMPLOYEE' ? '/auth/employee/login' : '/auth/login'}
-                className="text-[#3C5A3E] hover:underline font-medium"
-              >
-                Login here
-              </Link>
-            </p>
+    <div className="w-full max-w-lg mx-4">
+      <div className="bg-white p-8 rounded-lg shadow-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold mb-2">Verify OTP</h1>
+          <p className="text-gray-600">Enter the OTP sent to your email</p>
+          <p className="text-sm text-gray-500 mt-2">{email}</p>
+          <div className="mt-4 text-sm font-medium">
+            Time remaining: <span className={timeLeft <= 60 ? 'text-red-500' : 'text-[#3C5A3E]'}>{formatTime(timeLeft)}</span>
           </div>
         </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center gap-2">
+            {otp.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => {
+                  inputRefs.current[index] = el;
+                }}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]"
+                maxLength={1}
+                className="w-12 h-12 text-center text-lg font-semibold border rounded-lg focus:border-[#3C5A3E] focus:ring-1 focus:ring-[#3C5A3E] focus:outline-none"
+                value={digit}
+                onChange={(e) => handleInputChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
+                disabled={isLoading}
+              />
+            ))}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-[#3C5A3E] hover:bg-[#2A3F2B] text-white"
+            disabled={isLoading || timeLeft === 0}
+          >
+            {isLoading ? 'Verifying...' : 'Verify OTP'}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-gray-600">
+            {timeLeft === 0 ? (
+              <button
+                onClick={handleResendOTP}
+                disabled={isLoading}
+                className="text-[#3C5A3E] hover:underline font-medium"
+              >
+                Resend OTP
+              </button>
+            ) : (
+              <span>
+                Didn't receive OTP? You can resend in {formatTime(timeLeft)}
+              </span>
+            )}
+          </p>
+          <p className="text-sm text-gray-600">
+            Remember your password?{' '}
+            <Link
+              href={type === 'EMPLOYEE' ? '/auth/employee/login' : '/auth/login'}
+              className="text-[#3C5A3E] hover:underline font-medium"
+            >
+              Login here
+            </Link>
+          </p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+export default function VerifyOTPPage() {
+  return (
+    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-[#FAF9F6]">
+      <Suspense fallback={
+        <div className="w-full max-w-lg mx-4 p-8 bg-white rounded-lg shadow-sm text-center">
+          <p>Loading verification form...</p>
+        </div>
+      }>
+        <VerifyOTPForm />
+      </Suspense>
     </main>
   );
 } 
