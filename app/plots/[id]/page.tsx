@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
 import Link from "next/link";
-import { ContactSalesDialog } from "@/components/ContactSalesDialog";
 import { use } from 'react';
 
 interface PlotData {
@@ -36,7 +35,6 @@ interface PageProps {
 
 export default function PlotPage({ params }: PageProps) {
   const { id } = use(params);
-  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [plot, setPlot] = useState<PlotData | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -398,17 +396,15 @@ export default function PlotPage({ params }: PageProps) {
                 )}
                 <div className="mt-4">
                   <Button 
-                    onClick={() => setIsContactDialogOpen(true)}
                     className="w-full"
                     size="lg"
+                    asChild
                   >
-                    Contact Sales Team
+                    <Link href="/contact">
+                      Contact Sales Team
+                    </Link>
                   </Button>
                 </div>
-                <Button variant="outline" className="w-full" size="lg">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Request Details
-                </Button>
               </div>
 
               <div className="border-t pt-4">
@@ -435,13 +431,6 @@ export default function PlotPage({ params }: PageProps) {
           </Card>
         </div>
       </div>
-      
-      <ContactSalesDialog
-        isOpen={isContactDialogOpen}
-        onClose={() => setIsContactDialogOpen(false)}
-        plotId={id}
-        plotNumber={plot.plotNumber}
-      />
     </div>
   );
 } 

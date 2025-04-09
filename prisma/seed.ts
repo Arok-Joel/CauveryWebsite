@@ -4,6 +4,33 @@ import { ROLE_HIERARCHY_LEVELS } from '../lib/employee-roles';
 
 const prisma = new PrismaClient();
 
+async function seedAdminContactInfo() {
+  // Check if admin contact info already exists
+  const existingContactInfo = await prisma.adminContactInfo.findFirst();
+  
+  if (!existingContactInfo) {
+    console.log('Seeding admin contact information...');
+    
+    // Create admin contact info with default values
+    await prisma.adminContactInfo.create({
+      data: {
+        address: "117, 5th Street\nIndian Bank Colony\nK K Nagar\nTiruchirappalli - 620021\nTamil Nadu, India",
+        email: "info@royalcauveryfarms.com",
+        phoneNumbers: {
+          create: [
+            { number: "+91 98765 43210", isDefault: true },
+            { number: "+91 98765 43211", isDefault: false }
+          ]
+        }
+      }
+    });
+    
+    console.log('Admin contact information seeded successfully');
+  } else {
+    console.log('Admin contact information already exists, skipping seed');
+  }
+}
+
 async function main() {
   console.log('Start seeding...');
 
@@ -85,6 +112,9 @@ async function main() {
       }
     });
   }
+
+  // Seed admin contact info
+  await seedAdminContactInfo();
 }
 
 main()

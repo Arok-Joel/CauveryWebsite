@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -194,6 +193,25 @@ model InquiryStatus {
   inquiry         CustomerInquiry @relation(fields: [inquiryId], references: [id])
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+}
+
+model AdminContactInfo {
+  id          String        @id @default(cuid())
+  address     String
+  email       String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  phoneNumbers PhoneNumber[]
+}
+
+model PhoneNumber {
+  id               String           @id @default(cuid())
+  number           String
+  isDefault        Boolean          @default(false)
+  adminContactInfo AdminContactInfo @relation(fields: [adminContactInfoId], references: [id], onDelete: Cascade)
+  adminContactInfoId String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 enum UserRole {
