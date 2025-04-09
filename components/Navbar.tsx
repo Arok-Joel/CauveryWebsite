@@ -141,15 +141,8 @@ export function Navbar() {
     <nav className="bg-[#3C5A3E] text-white py-4">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <Image 
-              src="/logo.svg" 
-              alt="Royal Cauvery Farms"
-              width={180}
-              height={32}
-              priority
-              className="h-8 w-auto"
-            />
+          <Link href="/" className="text-xl font-bold">
+            Royal Cauvery Farms
           </Link>
 
           {/* Desktop Navigation */}

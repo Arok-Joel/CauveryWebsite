@@ -8,9 +8,6 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Ensure static files in public directory are served
   experimental: {
@@ -22,7 +19,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: true, // Disable Next.js built-in ESLint to use our custom config
+    ignoreDuringBuilds: true,
   },
   webpack(config) {
     return config;
