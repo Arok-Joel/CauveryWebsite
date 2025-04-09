@@ -1,14 +1,22 @@
+import { Suspense } from 'react';
 import { getEmployeeHierarchy } from '@/lib/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmployeeNodeComponent } from '@/components/admin/employee-node';
 import { EmployeeRole, User } from '@prisma/client';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface EmployeeUser {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface EmployeeNode {
   id: string;
-  user: User;
+  user: EmployeeUser;
   employeeRole: EmployeeRole;
   hierarchyLevel?: number;
-  reportsTo?: string | null;
+  reportsToId?: string | null;
   children: EmployeeNode[];
 }
 
@@ -18,6 +26,21 @@ const roleOrder = {
   JOINT_DIRECTOR: 3,
   FIELD_OFFICER: 4,
 } as const;
+
+// Loading component for employee nodes
+function EmployeeNodeSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-[200px]" />
+          <Skeleton className="h-4 w-[150px]" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 async function getEmployees() {
   try {
@@ -33,9 +56,13 @@ async function getEmployees() {
       team.members.forEach(member => {
         const node: EmployeeNode = {
           id: member.id,
-          user: member.user,
+          user: {
+            id: member.user.id,
+            name: member.user.name,
+            email: member.user.email
+          },
           employeeRole: member.employeeRole,
-          reportsTo: member.reportsTo?.id,
+          reportsToId: member.reportsToId,
           hierarchyLevel: member.hierarchyLevel,
           children: [],
         };
@@ -56,48 +83,41 @@ async function getEmployees() {
       // Build the hierarchy based on reporting relationships
       // First, check each Field Officer
       fieldOfficers.forEach(fo => {
-        if (fo.reportsTo) {
+        if (fo.reportsToId) {
           // Check if reports to a Joint Director
-          const reportingJD = jointDirectors.find(jd => fo.reportsTo === jd.id);
+          const reportingJD = jointDirectors.find(jd => fo.reportsToId === jd.id);
           if (reportingJD) {
             reportingJD.children.push(fo);
             return; // Skip to next Field Officer
           }
           
           // Check if reports to a Director (skipping Joint Director)
-          const reportingDirector = directors.find(d => fo.reportsTo === d.id);
+          const reportingDirector = directors.find(d => fo.reportsToId === d.id);
           if (reportingDirector) {
             reportingDirector.children.push(fo);
             return; // Skip to next Field Officer
           }
         }
-        
-        // Field Officer with no reporting relationship stays at root level
-        // This will be handled later
       });
 
       // Check each Joint Director
       jointDirectors.forEach(jd => {
-        if (jd.reportsTo) {
+        if (jd.reportsToId) {
           // Check if reports to a Director
-          const reportingDirector = directors.find(d => jd.reportsTo === d.id);
+          const reportingDirector = directors.find(d => jd.reportsToId === d.id);
           if (reportingDirector) {
             reportingDirector.children.push(jd);
             return; // Skip to next Joint Director
           }
           
-          // Check if reports directly to Executive Director (not common, but possible)
-          if (jd.reportsTo === team.leader.id) {
-            // Will be added directly to executive's children later
+          // Check if reports directly to Executive Director
+          if (jd.reportsToId === team.leader.id) {
             return;
           }
         }
-        
-        // Joint Director with no reporting relationship
-        // Will be added directly to executive's children later
       });
 
-      // Get "orphaned" employees (not added to anyone's children yet)
+      // Get "orphaned" employees
       const orphanedJDs = jointDirectors.filter(jd => 
         !directors.some(d => d.children.some(child => child.id === jd.id))
       );
@@ -110,7 +130,11 @@ async function getEmployees() {
       // Add Directors and orphaned employees directly to Executive Director
       return {
         id: team.leader.id,
-        user: team.leader.user,
+        user: {
+          id: team.leader.user.id,
+          name: team.leader.user.name,
+          email: team.leader.user.email
+        },
         employeeRole: team.leader.employeeRole,
         children: [
           ...directors, 
@@ -119,6 +143,20 @@ async function getEmployees() {
         ],
       };
     });
+
+    // Create nodes for unassigned employees
+    const unassigned = unassignedEmployees.map(emp => ({
+      id: emp.id,
+      user: {
+        id: emp.user.id,
+        name: emp.user.name,
+        email: emp.user.email
+      },
+      employeeRole: emp.employeeRole,
+      reportsToId: emp.reportsToId,
+      hierarchyLevel: emp.hierarchyLevel,
+      children: [],
+    }));
 
     // Sort all levels by name
     const sortByName = (a: EmployeeNode, b: EmployeeNode) => a.user.name.localeCompare(b.user.name);
@@ -134,16 +172,6 @@ async function getEmployees() {
       });
     });
 
-    // Create nodes for unassigned employees
-    const unassigned = unassignedEmployees.map(emp => ({
-      id: emp.id,
-      user: emp.user,
-      employeeRole: emp.employeeRole,
-      reportsTo: emp.reportsTo?.id,
-      hierarchyLevel: emp.hierarchyLevel,
-      children: [],
-    }));
-
     // Sort unassigned by role first, then name
     unassigned.sort((a, b) => {
       const roleDiff = roleOrder[a.employeeRole] - roleOrder[b.employeeRole];
@@ -153,7 +181,6 @@ async function getEmployees() {
     return { executives, unassigned };
   } catch (error) {
     console.error('Error fetching employees:', error);
-    // Return empty arrays but log the specific error
     if (error instanceof Error) {
       console.error('Error details:', error.message);
       if (error.stack) {
@@ -164,14 +191,11 @@ async function getEmployees() {
   }
 }
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-export default async function EmployeesPage() {
+async function EmployeeList() {
   const { executives, unassigned } = await getEmployees();
 
   return (
-    <div className="space-y-6">
+    <>
       {/* Executive Directors Section */}
       <Card>
         <CardHeader>
@@ -212,6 +236,34 @@ export default async function EmployeesPage() {
           </CardContent>
         </Card>
       )}
+    </>
+  );
+}
+
+// Remove force-dynamic and revalidate
+export const dynamic = 'auto';
+export const revalidate = 60; // Cache for 1 minute
+
+export default function EmployeesPage() {
+  return (
+    <div className="space-y-6">
+      <Suspense fallback={
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Executive Directors & Their Teams</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-8">
+                <EmployeeNodeSkeleton />
+                <EmployeeNodeSkeleton />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }>
+        <EmployeeList />
+      </Suspense>
     </div>
   );
 }

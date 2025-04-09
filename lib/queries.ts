@@ -47,7 +47,7 @@ export const getTeamsWithDetails = cache(async () => {
 
 export const getEmployeeHierarchy = cache(async () => {
   try {
-    // Get all teams with their leaders and members
+    // Get all teams with their leaders and members in a single optimized query
     const teams = await db.team.findMany({
       include: {
         leader: {
@@ -55,8 +55,13 @@ export const getEmployeeHierarchy = cache(async () => {
             id: true,
             employeeRole: true,
             hierarchyLevel: true,
-            userId: true,
-            user: true
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
           }
         },
         members: {
@@ -65,32 +70,33 @@ export const getEmployeeHierarchy = cache(async () => {
             employeeRole: true,
             hierarchyLevel: true,
             reportsToId: true,
-            userId: true,
-            user: true,
-            reportsTo: {
+            user: {
               select: {
                 id: true,
-                employeeRole: true,
-                hierarchyLevel: true
+                name: true,
+                email: true
+              }
+            },
+            reportsTo: {
+              select: {
+                id: true
               }
             }
           },
           orderBy: [
-            { employeeRole: 'asc' },
+            { hierarchyLevel: 'asc' },
             { user: { name: 'asc' } }
           ]
         }
       },
       orderBy: {
         leader: {
-          user: {
-            name: 'asc'
-          }
+          hierarchyLevel: 'asc'
         }
       }
     });
 
-    // Get all employees who are not in any team
+    // Get unassigned employees in a separate query
     const unassignedEmployees = await db.employee.findMany({
       where: {
         AND: [
@@ -103,18 +109,16 @@ export const getEmployeeHierarchy = cache(async () => {
         employeeRole: true,
         hierarchyLevel: true,
         reportsToId: true,
-        userId: true,
-        user: true,
-        reportsTo: {
+        user: {
           select: {
             id: true,
-            employeeRole: true,
-            hierarchyLevel: true
+            name: true,
+            email: true
           }
         }
       },
       orderBy: [
-        { employeeRole: 'asc' },
+        { hierarchyLevel: 'asc' },
         { user: { name: 'asc' } }
       ]
     });
