@@ -27,6 +27,7 @@ import { EmployeeRoleSelect } from "@/components/admin/employee-role-select";
 import { format } from 'date-fns';
 import { Employee, Plot, Commission, SoldPlot, Team, User as PrismaUser } from '@prisma/client';
 import { use } from 'react';
+import { EmployeeSoldPlots } from "@/app/components/employee/EmployeeSoldPlots";
 
 interface PageProps {
   params: {
@@ -274,15 +275,16 @@ async function getEmployeeCommissions(employeeId: string) {
 
   console.log(`Found ${commissions.length} commissions for employee ${employeeId}`);
   
-  // Map the commissions to the expected format for the UI
+  // Map the commissions to the expected format for the UI and convert Decimal values to strings
   return commissions.map(commission => ({
-    ...commission,
+    id: commission.id,
+    amount: commission.amount.toString(),
+    percentage: commission.percentage.toString(),
     soldPlot: {
-      ...commission.soldPlot,
-      // Ensure all required fields are available for the UI
+      id: commission.soldPlot.id,
       plotNumber: commission.soldPlot.plotNumber || '',
       size: commission.soldPlot.size || '',
-      price: commission.soldPlot.price || '0',
+      price: commission.soldPlot.plot?.price?.toString() || '0',
       dimensions: commission.soldPlot.dimensions || '',
       facing: commission.soldPlot.facing || '',
       plotAddress: commission.soldPlot.plotAddress || '',
@@ -338,33 +340,18 @@ function formatDate(date: string | Date) {
 }
 
 export default async function EmployeePage({ params }: PageProps) {
-  // Await params to ensure it's resolved before accessing properties
-  const resolvedParams = await Promise.resolve(params);
-  const id = resolvedParams.id;
+  const id = params.id;
+  const [employee, commissions] = await Promise.all([
+    getEmployee(id),
+    getEmployeeCommissions(id)
+  ]);
 
-  const employee = await getEmployee(id);
   if (!employee) {
-    return notFound();
+    notFound();
   }
   
-  // Fetch commissions separately
-  const commissions = await getEmployeeCommissions(id);
-  console.log(`Fetched ${commissions.length} commissions for employee ${id}`);
-
-  // Calculate total commission with proper type checking and error handling
-  const totalCommission = commissions && Array.isArray(commissions)
-    ? commissions.reduce((sum: number, commission: any) => 
-        sum + (commission.amount ? parseFloat(commission.amount.toString()) : 0), 0)
-    : 0;
-
-  // Pre-format dates to avoid date manipulation in JSX
-  const formattedDates = {
-    dateOfBirth: formatDate(employee.dateOfBirth),
-    dateOfJoining: formatDate(employee.dateOfJoining),
-  };
-
   return (
-    <div className="space-y-8 pt-4 pb-8">
+    <div className="container mx-auto py-8 space-y-8">
       {/* Back Button */}
       <Link
         href="/admin/employees"
@@ -401,7 +388,8 @@ export default async function EmployeePage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Team Information */}
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Contact Information */}
         <Card>
           <CardHeader>
@@ -446,7 +434,7 @@ export default async function EmployeePage({ params }: PageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Date of Birth</p>
-                <p className="font-medium">{formattedDates.dateOfBirth}</p>
+                <p className="font-medium">{formatDate(employee.dateOfBirth)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Age</p>
@@ -469,7 +457,7 @@ export default async function EmployeePage({ params }: PageProps) {
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Joining Date</p>
-                <p className="font-medium">{formattedDates.dateOfJoining}</p>
+                <p className="font-medium">{formatDate(employee.dateOfJoining)}</p>
               </div>
             </div>
             {employee.reportsTo && (
@@ -984,126 +972,11 @@ export default async function EmployeePage({ params }: PageProps) {
       </div>
 
       {/* Sold Plots Information */}
-      <Card className="col-span-2 mt-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BadgeIndianRupee className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Sold Plots</CardTitle>
-            </div>
-            {commissions && commissions.length > 0 && (
-              <div className="flex items-center gap-12">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Sales</p>
-                  <p className="text-xl font-bold">{commissions.length} plots</p>
-                </div>
-                <div className="border-l pl-12">
-                  <p className="text-sm text-muted-foreground">Total Commission</p>
-                  <p className="text-xl font-bold text-green-600">₹{totalCommission.toLocaleString()}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {commissions && commissions.length > 0 ? (
-            <div className="space-y-6">
-              {commissions.map((commission, index) => (
-                <Collapsible key={commission.id}>
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-3 group">
-                    <div className="font-medium">{commission.soldPlot.plotNumber}</div>
-                    <div className="text-center text-green-600 font-medium">₹{parseFloat(commission.amount.toString()).toLocaleString()}</div>
-                    <div className="text-center font-medium">{(parseFloat(commission.percentage.toString()) * 100).toFixed(1)}%</div>
-                    <div className="font-medium">{formatDate(commission.soldPlot.soldAt)}</div>
-                    <div className="flex justify-end">
-                      <CollapsibleTrigger className="h-6 w-6 p-1 hover:bg-muted rounded">
-                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </CollapsibleTrigger>
-                    </div>
-                  </div>
-                  <CollapsibleContent>
-                    <div className="border-t bg-muted/50 py-4">
-                      <div className="px-6">
-                        <div className="grid grid-cols-2 gap-8">
-                          {/* Plot Details */}
-                          <div>
-                            <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm">
-                              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                              Plot Details
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-sm text-muted-foreground">Size</p>
-                                <p className="font-medium">{commission.soldPlot.size} sq ft</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Price</p>
-                                <p className="font-medium">₹{parseFloat(commission.soldPlot.price).toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Dimensions</p>
-                                <p className="font-medium">{commission.soldPlot.dimensions}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Facing</p>
-                                <p className="font-medium">{commission.soldPlot.facing}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-sm text-muted-foreground">Address</p>
-                                <p className="font-medium">{commission.soldPlot.plotAddress}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Customer Details */}
-                          <div>
-                            <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm">
-                              <UserCheck className="h-4 w-4 text-muted-foreground" />
-                              Customer Details
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-sm text-muted-foreground">Name</p>
-                                <p className="font-medium">{commission.soldPlot.customerName}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Phone</p>
-                                <p className="font-medium">{commission.soldPlot.phoneNumber}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Email</p>
-                                <p className="font-medium">{commission.soldPlot.email}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Aadhaar</p>
-                                <p className="font-medium">{commission.soldPlot.aadhaarNumber}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-sm text-muted-foreground">Address</p>
-                                <p className="font-medium">{commission.soldPlot.address}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
-            </div>
-          ) : (
-            <div className="py-8 text-center">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                <BadgeIndianRupee className="h-6 w-6 text-gray-500" />
-              </div>
-              <h3 className="mt-4 text-lg font-medium">No Sold Plots</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                This employee hasn't sold any plots yet.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <EmployeeSoldPlots 
+        initialCommissions={commissions} 
+        employeeId={id}
+        employeeName={employee.user.name}
+      />
     </div>
   );
-} 
+}

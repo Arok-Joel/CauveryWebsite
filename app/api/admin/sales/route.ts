@@ -3,13 +3,16 @@ import { db } from '@/lib/db';
 import { 
   startOfYear, endOfYear, subYears,
   startOfQuarter, endOfQuarter,
-  format, parse, 
+  format, parse,
+  subWeeks, startOfWeek, endOfWeek,
+  subMonths, startOfMonth, endOfMonth,
 } from 'date-fns';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const timeFilter = searchParams.get('timeFilter') || 'months';
+    const plotsFilter = searchParams.get('plotsFilter') || 'lastMonth';
 
     // Calculate date range based on filter
     const currentDate = new Date();
@@ -17,6 +20,29 @@ export async function GET(request: Request) {
     let endDate: Date = currentDate;
     let groupingFunction: (date: Date) => string;
 
+    // Handle plots filter for the sold plots section
+    let plotsStartDate: Date;
+    let plotsEndDate: Date = currentDate;
+
+    switch (plotsFilter) {
+      case 'lastWeek':
+        plotsStartDate = subWeeks(currentDate, 1);
+        plotsEndDate = currentDate;
+        break;
+      case 'lastMonth':
+        plotsStartDate = subMonths(currentDate, 1);
+        plotsEndDate = currentDate;
+        break;
+      case 'lastYear':
+        plotsStartDate = subYears(currentDate, 1);
+        plotsEndDate = currentDate;
+        break;
+      default:
+        plotsStartDate = subMonths(currentDate, 1);
+        plotsEndDate = currentDate;
+    }
+
+    // Handle time filter for the charts section
     switch (timeFilter) {
       case 'months':
         startDate = startOfYear(currentDate);
@@ -27,7 +53,7 @@ export async function GET(request: Request) {
         groupingFunction = (date: Date) => `Q${Math.floor(date.getMonth() / 3) + 1}`;
         break;
       case 'years':
-        startDate = startOfYear(subYears(currentDate, 4)); // Last 5 years
+        startDate = startOfYear(subYears(currentDate, 4));
         groupingFunction = (date: Date) => format(date, 'yyyy');
         break;
       default:
@@ -35,12 +61,12 @@ export async function GET(request: Request) {
         groupingFunction = (date: Date) => format(date, 'MMM yyyy');
     }
 
-    // Get all sold plots with detailed information
+    // Get all sold plots with detailed information using the plots filter
     const soldPlots = await db.soldPlot.findMany({
       where: {
         soldAt: {
-          gte: startDate,
-          lte: endDate,
+          gte: plotsStartDate,
+          lte: plotsEndDate,
         },
       },
       select: {
@@ -70,12 +96,26 @@ export async function GET(request: Request) {
       },
     });
 
-    // Calculate total sales and revenue
-    const totalSales = soldPlots.length;
-    const totalRevenue = soldPlots.reduce((sum, plot) => sum + parseFloat(plot.price), 0);
+    // Get chart data using the time filter
+    const chartPlots = await db.soldPlot.findMany({
+      where: {
+        soldAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        soldAt: true,
+        price: true,
+      },
+    });
+
+    // Calculate total sales and revenue from chart data
+    const totalSales = chartPlots.length;
+    const totalRevenue = chartPlots.reduce((sum, plot) => sum + parseFloat(plot.price), 0);
 
     // Group data based on the selected time filter
-    const groupedData = soldPlots.reduce((acc, plot) => {
+    const groupedData = chartPlots.reduce((acc, plot) => {
       const label = groupingFunction(new Date(plot.soldAt));
       const existingGroup = acc.find(item => item.label === label);
       

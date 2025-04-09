@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LabelList } from 'recharts';
-import { Loader2, TrendingUp, IndianRupee, LineChart, ShoppingCart, ChevronDown, LayoutGrid, UserCheck } from 'lucide-react';
+import { Loader2, TrendingUp, IndianRupee, LineChart, ShoppingCart, ChevronDown, LayoutGrid, UserCheck, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Collapsible,
@@ -12,6 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
 
 interface SalesData {
   totalSales: number;
@@ -56,14 +57,20 @@ const getTimeFilterLabel = (filter: string) => {
 export default function SalesPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [timeFilter, setTimeFilter] = useState('months');
+  const [plotsFilter, setPlotsFilter] = useState('lastMonth');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFilterChange = (value: string) => {
+    setPlotsFilter(value);
+    fetchSalesData();
+  };
 
   const fetchSalesData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`/api/admin/sales?timeFilter=${timeFilter}&t=${Date.now()}`);
+      const response = await fetch(`/api/admin/sales?timeFilter=${timeFilter}&plotsFilter=${plotsFilter}&t=${Date.now()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch sales data');
       }
@@ -76,7 +83,7 @@ export default function SalesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [timeFilter]);
+  }, [timeFilter, plotsFilter]);
 
   useEffect(() => {
     fetchSalesData();
@@ -90,6 +97,65 @@ export default function SalesPage() {
   const calculateAverageRevenue = (sales: number, revenue: number) => {
     if (sales === 0) return 0;
     return revenue / sales;
+  };
+
+  const downloadCSV = () => {
+    if (!salesData?.soldPlots) return;
+
+    // Create CSV headers
+    const headers = [
+      'Plot Number',
+      'Employee Name',
+      'Employee Role',
+      'Price (₹)',
+      'Sale Date',
+      'Size (sq ft)',
+      'Dimensions',
+      'Facing',
+      'Plot Address',
+      'Customer Name',
+      'Phone Number',
+      'Email',
+      'Aadhaar Number',
+      'Customer Address'
+    ].join(',');
+
+    // Create CSV rows
+    const rows = salesData.soldPlots.map(plot => [
+      plot.plotNumber,
+      plot.employeeName,
+      plot.employeeRole?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ') || '',
+      plot.price,  // Raw price without formatting for Excel compatibility
+      format(new Date(plot.soldAt), 'yyyy-MM-dd'),  // ISO date format for Excel compatibility
+      plot.size,
+      plot.dimensions,
+      plot.facing,
+      plot.plotAddress,
+      plot.customerName,
+      plot.phoneNumber,
+      plot.email,
+      plot.aadhaarNumber,
+      plot.address
+    ].map(value => {
+      // Escape and quote strings that might contain commas
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    }).join(','));
+
+    // Combine headers and rows
+    const csvContent = [headers, ...rows].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `company-sold-plots-${plotsFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const LoadingState = () => (
@@ -288,6 +354,33 @@ export default function SalesPage() {
               <ShoppingCart className="h-5 w-5 text-muted-foreground" />
               <CardTitle>Company Sold Plots Overview</CardTitle>
             </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <Select defaultValue="lastMonth" onValueChange={(value) => handleFilterChange(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lastWeek">Last Week</SelectItem>
+                  <SelectItem value="lastMonth">Last Month</SelectItem>
+                  <SelectItem value="lastYear">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
+              {!isLoading && salesData?.soldPlots && salesData.soldPlots.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={downloadCSV}
+                >
+                  <Download className="h-4 w-4" />
+                  Download CSV
+                </Button>
+              )}
+            </div>
             {!isLoading && (
               <div className="flex items-center gap-12">
                 <div>
@@ -308,8 +401,6 @@ export default function SalesPage() {
               </div>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
