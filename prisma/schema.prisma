@@ -18,6 +18,8 @@ model User {
   pincode       String?
   profileImage  String?        @db.Text
   role          UserRole       @default(USER)
+  resetToken    String?        @unique
+  resetExpires  DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   announcements Announcement[]

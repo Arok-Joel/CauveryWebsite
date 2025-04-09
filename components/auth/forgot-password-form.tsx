@@ -1,7 +1,8 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,42 +15,35 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import Link from 'next/link';
 
-const loginFormSchema = z.object({
+const forgotPasswordSchema = z.object({
   email: z.string().email({
     message: 'Please enter a valid email address.',
   }),
-  password: z.string().min(1, 'Password is required'),
 });
 
-type LoginFormValues = z.infer<typeof loginFormSchema>;
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
-export function LoginForm() {
+export function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser } = useAuth();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+  const form = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
       email: '',
-      password: '',
     },
   });
 
-  async function onSubmit(data: LoginFormValues) {
+  async function onSubmit(data: ForgotPasswordFormValues) {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -59,11 +53,8 @@ export function LoginForm() {
         throw new Error(result.error || 'Something went wrong');
       }
 
-      // Update auth context with the user data
-      setUser(result.user);
-
-      toast.success('Login successful!');
-      router.push('/');
+      toast.success('Password reset link has been sent to your email');
+      router.push('/auth/login');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Something went wrong');
     } finally {
@@ -81,42 +72,26 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john@example.com" {...field} />
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  {...field}
+                  className={`h-12 ${form.formState.errors.email ? 'border-red-500' : ''}`}
+                />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-sm text-red-500" />
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="********" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
         <Button
           type="submit"
           className="w-full h-12 bg-[#3C5A3E] hover:bg-[#2D4530]"
           disabled={isLoading}
         >
-          {isLoading ? 'Signing in...' : 'Sign in'}
+          {isLoading ? 'Sending...' : 'Send Reset Link'}
         </Button>
-
-        <p className="px-8 text-center text-sm text-muted-foreground">
-          <Link
-            href="/auth/forgot-password"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            Forgot your password?
-          </Link>
-        </p>
       </form>
     </Form>
   );
-}
+} 
