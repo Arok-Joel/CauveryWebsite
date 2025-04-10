@@ -11,7 +11,8 @@ export async function PATCH(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
     const body = await req.json();
     const { leaderId } = updateTeamLeaderSchema.parse(body);
 
@@ -60,7 +61,7 @@ export async function PATCH(
     const updatedTeam = await db.team.update({
       where: { id: teamId },
       data: {
-        leaderId: leaderId, // Directly update the leaderId
+        leaderId, // Directly update the leaderId
       },
       include: {
         leader: {

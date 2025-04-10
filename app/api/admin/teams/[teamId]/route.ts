@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
 
     const team = await db.team.findUnique({
       where: {
@@ -52,7 +53,8 @@ export async function DELETE(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
 
     // First, get all team members to reset their reporting relationships
     const team = await db.team.findUnique({
@@ -76,7 +78,7 @@ export async function DELETE(
     if (team.members.length > 0) {
       await db.employee.updateMany({
         where: {
-          teamId: teamId,
+          teamId,
         },
         data: {
           reportsToId: null,

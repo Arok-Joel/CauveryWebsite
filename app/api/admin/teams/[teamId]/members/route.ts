@@ -6,7 +6,8 @@ export async function POST(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
     const { employeeId } = await req.json();
 
     // Add employee to team
@@ -31,14 +32,15 @@ export async function DELETE(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
     const { employeeId } = await req.json();
 
     // Remove employee from team and reset reporting relationship
     await db.employee.update({
       where: {
         id: employeeId,
-        teamId: teamId, // Ensure employee belongs to this team
+        teamId, // Ensure employee belongs to this team
       },
       data: {
         teamId: null,

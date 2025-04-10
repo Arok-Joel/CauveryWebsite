@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const teamId = params.teamId;
+    // Extract and handle teamId
+    const { teamId } = params;
     console.log('Fetching available employees for team:', teamId);
 
     // Get all employees who are not part of this team and are not executive directors
