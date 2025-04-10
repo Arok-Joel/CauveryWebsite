@@ -12,12 +12,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ): Promise<Response> {
   try {
+    // Extract and await the id parameter
+    const employeeId = params.id;
+    
     const body = await req.json();
     const { role } = roleUpdateSchema.parse(body);
 
     // Get the employee with their current role and team information
     const employee = await db.employee.findUnique({
-      where: { id: params.id },
+      where: { id: employeeId },
       include: {
         leadsTeam: true,
         user: {
@@ -48,7 +51,7 @@ export async function PATCH(
 
     // Check if the employee is a member of a team (not leading it)
     const teamMembership = await db.employee.findUnique({
-      where: { id: params.id },
+      where: { id: employeeId },
       select: { teamId: true },
     });
 
@@ -64,7 +67,7 @@ export async function PATCH(
 
     // Update employee with new role and corresponding hierarchy level
     const updatedEmployee = await db.employee.update({
-      where: { id: params.id },
+      where: { id: employeeId },
       data: { 
         employeeRole: role,
         hierarchyLevel: getHierarchyLevelForRole(role)

@@ -10,10 +10,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('Fetching employee with ID:', params.id);
+    const employeeId = params.id;
+    console.log('Fetching employee with ID:', employeeId);
     
     const employee = await db.employee.findUnique({
-      where: { id: params.id },
+      where: { id: employeeId },
       include: {
         user: {
           select: {
@@ -24,7 +25,7 @@ export async function GET(
     });
 
     if (!employee) {
-      console.log('Employee not found:', params.id);
+      console.log('Employee not found:', employeeId);
       return NextResponse.json(
         { error: "Employee not found" },
         { status: 404 }
@@ -54,7 +55,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const employeeId = params.id;
     
     // Verify admin authentication
     const cookieStore = await cookies();
@@ -81,7 +82,7 @@ export async function PUT(
     
     // Check if employee exists
     const existingEmployee = await db.employee.findUnique({
-      where: { id },
+      where: { id: employeeId },
     });
     
     if (!existingEmployee) {
@@ -101,7 +102,7 @@ export async function PUT(
     
     // Update employee
     const updatedEmployee = await db.employee.update({
-      where: { id },
+      where: { id: employeeId },
       data: updateData,
       include: {
         user: {

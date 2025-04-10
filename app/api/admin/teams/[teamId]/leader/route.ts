@@ -35,13 +35,6 @@ export async function PATCH(
       );
     }
 
-    if (newLeader.leadsTeam || newLeader.memberOfTeam) {
-      return NextResponse.json(
-        { error: 'This Executive Director is already part of a team' },
-        { status: 400 }
-      );
-    }
-
     // Get current team and leader
     const currentTeam = await db.team.findUnique({
       where: { id: teamId },
@@ -53,6 +46,14 @@ export async function PATCH(
 
     if (!currentTeam) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    // Allow transfers within the same team
+    if (newLeader.leadsTeam || (newLeader.memberOfTeam && newLeader.memberOfTeam.id !== teamId)) {
+      return NextResponse.json(
+        { error: 'This Executive Director is already part of a different team' },
+        { status: 400 }
+      );
     }
 
     // Update the team with the new leader

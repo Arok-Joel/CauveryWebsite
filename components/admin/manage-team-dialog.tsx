@@ -104,6 +104,11 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
     try {
       setIsLoading(true);
       console.log('Fetching available leaders for team:', teamId);
+      
+      // Fetch team members first
+      await fetchTeamMembers();
+      
+      // Fetch external Executive Directors
       const response = await fetch('/api/admin/employees/executive-directors');
       const data = await response.json();
 
@@ -112,13 +117,32 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
         throw new Error(data.error || 'Failed to fetch available leaders');
       }
 
-      // Filter out the current leader
-      const filteredLeaders = (data.executiveDirectors || []).filter(
+      // Filter out the current leader from external directors
+      const externalDirectors = (data.executiveDirectors || []).filter(
         (director: Director) => director.id !== currentLeaderId
       );
 
-      console.log('Fetched leaders:', filteredLeaders.length);
-      setAvailableLeaders(filteredLeaders);
+      // Get Executive Directors who are team members
+      const teamEDs = teamMembers
+        .filter(member => 
+          member.employeeRole === 'EXECUTIVE_DIRECTOR' && 
+          member.id !== currentLeaderId
+        )
+        .map(member => ({
+          id: member.id,
+          name: member.user.name
+        }));
+
+      // Combine both lists
+      const allAvailableLeaders = [
+        ...teamEDs,  // Prioritize team members
+        ...externalDirectors.filter((dir: Director) => 
+          !teamEDs.some(teamDir => teamDir.id === dir.id)
+        )
+      ];
+
+      console.log('Fetched leaders:', allAvailableLeaders.length);
+      setAvailableLeaders(allAvailableLeaders);
     } catch (error) {
       console.error('Error in fetchAvailableLeaders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch available leaders');
@@ -130,8 +154,10 @@ export function ManageTeamDialog({ teamId, currentLeaderId }: ManageTeamDialogPr
   const onOpenChange = (open: boolean) => {
     setOpen(open);
     if (open) {
-      fetchAvailableLeaders();
-      fetchTeamMembers();
+      // Fetch team members first, then available leaders will be fetched in callback
+      fetchTeamMembers().then(() => {
+        fetchAvailableLeaders();
+      });
     }
   };
 

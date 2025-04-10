@@ -11,13 +11,16 @@ export async function PATCH(
   context: { params: { id: string } }
 ) {
   try {
+    // Extract the employee ID from context params
+    const employeeId = context.params.id;
+    
     const body = await req.json();
     const { reportsToId } = updateReportsToSchema.parse(body);
 
     // Get both employees to verify hierarchy levels
     const [employee, manager] = await Promise.all([
       db.employee.findUnique({
-        where: { id: context.params.id },
+        where: { id: employeeId },
         include: { user: true },
       }),
       db.employee.findUnique({
@@ -43,7 +46,7 @@ export async function PATCH(
 
     // Update the reporting relationship
     const updatedEmployee = await db.employee.update({
-      where: { id: context.params.id },
+      where: { id: employeeId },
       data: { reportsToId },
       include: {
         user: true,

@@ -8,6 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Extract the booking ID from params
+    const bookingId = params.id;
+    
     // Get auth token from cookies
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
@@ -25,7 +28,7 @@ export async function GET(
 
     // Get booking details
     const booking = await db.soldPlot.findUnique({
-      where: { id: params.id },
+      where: { id: bookingId },
       include: {
         plot: true,
       },

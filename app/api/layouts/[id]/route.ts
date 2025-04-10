@@ -6,8 +6,11 @@ export async function GET(
   context: { params: { id: string } }
 ) {
   try {
+    // Extract the layout ID from context.params
+    const layoutId = context.params.id;
+    
     const layout = await prisma.layout.findUnique({
-      where: { id: context.params.id },
+      where: { id: layoutId },
       include: {
         Plot: true,
       },
