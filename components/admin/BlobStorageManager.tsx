@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { uploadToBlob, isBlobUrl } from '@/lib/blob-helpers';
 import { toast } from 'sonner';
-import { Upload, Trash2, FileImage, RefreshCw } from 'lucide-react';
+import { Upload, Trash2, FileImage, RefreshCw, MoveRight } from 'lucide-react';
 
 interface BlobItem {
   url: string;
@@ -30,6 +30,11 @@ export default function BlobStorageManager() {
   const [uploadedImages, setUploadedImages] = useState<ImageItem[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [homepageImages, setHomepageImages] = useState<string[]>([
+    '/hero-bg.jpg',
+    '/plot-layout.jpg'
+  ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -146,6 +151,70 @@ export default function BlobStorageManager() {
     }
   };
 
+  const migrateHomepageImages = async () => {
+    if (!confirm('This will upload all homepage images to Blob storage. Continue?')) {
+      return;
+    }
+    
+    setIsMigrating(true);
+    const results: { success: boolean; path: string; url?: string }[] = [];
+    
+    try {
+      for (const imagePath of homepageImages) {
+        try {
+          // Skip if already a blob URL
+          if (isBlobUrl(imagePath)) {
+            results.push({ success: true, path: imagePath, url: imagePath });
+            continue;
+          }
+          
+          // Fetch the image
+          const response = await fetch(imagePath);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${imagePath}`);
+          }
+          
+          // Convert to file
+          const blob = await response.blob();
+          const file = new File([blob], imagePath.split('/').pop() || 'image.jpg', { type: blob.type });
+          
+          // Upload to blob storage
+          const blobUrl = await uploadToBlob(file, '/');
+          if (!blobUrl) {
+            throw new Error('Failed to upload to Blob storage');
+          }
+          
+          results.push({ success: true, path: imagePath, url: blobUrl });
+          
+          // Add to our list of uploaded images
+          const newImage: ImageItem = {
+            id: Date.now().toString(),
+            url: blobUrl,
+            name: file.name,
+            uploadedAt: new Date(),
+          };
+          
+          setUploadedImages((prev) => [newImage, ...prev]);
+        } catch (error) {
+          console.error(`Error migrating ${imagePath}:`, error);
+          results.push({ success: false, path: imagePath });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      if (successCount === homepageImages.length) {
+        toast.success(`Successfully migrated all ${successCount} images`);
+      } else {
+        toast.warning(`Migrated ${successCount} of ${homepageImages.length} images`);
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+      toast.error('Failed to complete migration');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -196,6 +265,35 @@ export default function BlobStorageManager() {
               Only images for the homepage will be stored in Vercel Blob storage.
               The URL will be in format: <code>*.public.blob.vercel-storage.com</code>
             </p>
+          </div>
+          
+          {/* Migration section */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-md font-medium mb-2">Migrate Homepage Images</h3>
+            <div className="text-sm text-gray-500 mb-3">
+              This will upload the standard homepage images to Blob storage.
+            </div>
+            <Button
+              variant="outline"
+              onClick={migrateHomepageImages}
+              disabled={isMigrating}
+              className="w-full"
+            >
+              {isMigrating ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                  Migrating...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <MoveRight className="h-4 w-4" />
+                  Migrate Homepage Images
+                </span>
+              )}
+            </Button>
+            <div className="mt-2 text-xs text-gray-500">
+              Images to migrate: {homepageImages.join(', ')}
+            </div>
           </div>
         </div>
         

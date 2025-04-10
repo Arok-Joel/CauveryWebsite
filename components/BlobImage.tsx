@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import Image, { ImageProps } from 'next/image';
 import { usePathname } from 'next/navigation';

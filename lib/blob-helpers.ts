@@ -43,11 +43,10 @@ export function isBlobUrl(url: string): boolean {
 }
 
 /**
- * Convert a local image path to a Blob URL if needed
- * This function can be used to migrate existing images to Blob storage
+ * This function simply returns the original path without trying to upload
+ * Use this for displaying images, not for migration
  * @param imagePath The current image path
  * @param pathname The current pathname
- * @returns A promise that resolves to the Blob URL or the original path if conversion fails
  */
 export async function getOrCreateBlobUrl(imagePath: string, pathname: string = '/'): Promise<string> {
   // If we're not on the home page, return the original path
@@ -60,25 +59,7 @@ export async function getOrCreateBlobUrl(imagePath: string, pathname: string = '
     return imagePath;
   }
   
-  // If it's an external URL (not a local image), return it
-  if (imagePath.startsWith('http')) {
-    return imagePath;
-  }
-  
-  try {
-    // Fetch the local image and upload it to Blob storage
-    const response = await fetch(imagePath);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${imagePath}`);
-    }
-    
-    const blob = await response.blob();
-    const file = new File([blob], imagePath.split('/').pop() || 'image.jpg', { type: blob.type });
-    
-    const blobUrl = await uploadToBlob(file, pathname);
-    return blobUrl || imagePath;
-  } catch (error) {
-    console.error('Error converting to blob URL:', error);
-    return imagePath;
-  }
+  // For now, just return the original path
+  // The actual migration should be done through the admin panel
+  return imagePath;
 } 
