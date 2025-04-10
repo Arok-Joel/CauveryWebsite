@@ -29,6 +29,8 @@ export async function uploadToBlob(file: File, pathname: string = '/'): Promise<
         if (errorData.existingImages) {
           (error as any).existingImages = errorData.existingImages;
         }
+        // Don't log this as an error since it's an expected condition
+        (error as any).expected = true;
         throw error;
       } else if (response.status === 400) {
         throw new Error(errorData.error || 'Invalid file. Please check the file and try again.');
@@ -43,7 +45,10 @@ export async function uploadToBlob(file: File, pathname: string = '/'): Promise<
     return blob.url;
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error uploading to blob:', error.message);
+      // Only log unexpected errors to console
+      if (!(error as any).expected) {
+        console.error('Error uploading to blob:', error.message);
+      }
       throw error; // Let the component handle the specific error
     } else {
       console.error('Error uploading to blob:', error);

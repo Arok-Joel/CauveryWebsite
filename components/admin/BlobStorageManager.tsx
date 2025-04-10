@@ -223,7 +223,32 @@ export default function BlobStorageManager() {
             
             setUploadedImages((prev) => [newImage, ...prev]);
           } catch (uploadError) {
-            if (uploadError instanceof Error) {
+            // If this is a duplicate error, consider it a success and use the existing image
+            if (uploadError instanceof Error && 
+                uploadError.message.includes('similar image already exists') && 
+                (uploadError as any).existingImages?.length > 0) {
+              
+              const existingUrl = (uploadError as any).existingImages[0].url;
+              results.push({ 
+                success: true, 
+                path: imagePath, 
+                url: existingUrl,
+                error: 'Used existing image' 
+              });
+              
+              // Still add to our list, but mark it as an existing image
+              const newImage: ImageItem = {
+                id: Date.now().toString(),
+                url: existingUrl,
+                name: file.name + ' (existing)',
+                uploadedAt: new Date(),
+              };
+              
+              // Don't add duplicate entry to the list if using an existing image
+              if (!uploadedImages.some(img => img.url === existingUrl)) {
+                setUploadedImages((prev) => [newImage, ...prev]);
+              }
+            } else if (uploadError instanceof Error) {
               results.push({ success: false, path: imagePath, error: uploadError.message });
             } else {
               results.push({ success: false, path: imagePath, error: 'Unknown upload error' });
@@ -235,6 +260,9 @@ export default function BlobStorageManager() {
           results.push({ success: false, path: imagePath, error: errorMessage });
         }
       }
+      
+      // Update UI after all operations are complete
+      fetchBlobs(); // Refresh the list to make sure we have the latest data
       
       const successCount = results.filter(r => r.success).length;
       if (successCount === homepageImages.length) {
