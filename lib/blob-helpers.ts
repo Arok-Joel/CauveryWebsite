@@ -24,7 +24,12 @@ export async function uploadToBlob(file: File, pathname: string = '/'): Promise<
       
       // Handle specific error cases
       if (response.status === 409) {
-        throw new Error(errorData.error || 'This image already exists. Please try a different image or rename it.');
+        const error = new Error(errorData.error || 'This image already exists. Please try a different image or rename it.');
+        // Add existing images to the error object if available
+        if (errorData.existingImages) {
+          (error as any).existingImages = errorData.existingImages;
+        }
+        throw error;
       } else if (response.status === 400) {
         throw new Error(errorData.error || 'Invalid file. Please check the file and try again.');
       } else if (response.status === 403) {

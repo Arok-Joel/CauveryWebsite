@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { uploadToBlob, isBlobUrl } from '@/lib/blob-helpers';
 import { toast } from 'sonner';
-import { Upload, Trash2, FileImage, RefreshCw, MoveRight } from 'lucide-react';
+import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle } from 'lucide-react';
 
 interface BlobItem {
   url: string;
@@ -24,6 +24,10 @@ interface ImageItem {
   uploadedAt: Date;
 }
 
+interface DuplicateError extends Error {
+  existingImages?: { url: string; uploadedAt: string }[];
+}
+
 export default function BlobStorageManager() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +40,10 @@ export default function BlobStorageManager() {
     '/plot-layout.jpg'
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [duplicateError, setDuplicateError] = useState<{ 
+    message: string; 
+    images: { url: string; uploadedAt: string }[]
+  } | null>(null);
 
   useEffect(() => {
     fetchBlobs();
@@ -87,7 +95,10 @@ export default function BlobStorageManager() {
       return;
     }
 
+    // Reset any previous duplicate errors
+    setDuplicateError(null);
     setIsUploading(true);
+    
     try {
       const blobUrl = await uploadToBlob(file, '/');
       if (!blobUrl) {
@@ -111,8 +122,19 @@ export default function BlobStorageManager() {
       toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Upload error:', error);
+      
+      // Check if this is a duplicate error (409 status)
       if (error instanceof Error) {
-        toast.error(error.message);
+        const dupError = error as DuplicateError;
+        if (error.message.includes('similar image already exists') && dupError.existingImages) {
+          setDuplicateError({
+            message: error.message,
+            images: dupError.existingImages
+          });
+          toast.error('This image already exists. See below for existing versions.');
+        } else {
+          toast.error(error.message);
+        }
       } else {
         toast.error('Failed to upload image');
       }
@@ -272,6 +294,44 @@ export default function BlobStorageManager() {
                 alt="Preview"
                 className="w-full h-full object-contain"
               />
+            </div>
+          )}
+          
+          {duplicateError && (
+            <div className="mt-4 p-3 border border-orange-200 bg-orange-50 rounded-md">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-orange-700">{duplicateError.message}</p>
+                  <p className="text-xs text-orange-600 mt-1">
+                    The following similar images already exist in storage:
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {duplicateError.images.map((img, index) => (
+                      <div key={index} className="border border-orange-200 rounded p-2 bg-white">
+                        <div className="h-16 bg-gray-100 rounded overflow-hidden">
+                          <img 
+                            src={img.url} 
+                            alt="Existing image" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-xs truncate mt-1 text-gray-500">
+                          {new Date(img.uploadedAt).toLocaleString()}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-1 h-7 text-xs"
+                          onClick={() => handleCopyUrl(img.url)}
+                        >
+                          Copy URL
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 import { handleAuth } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
@@ -31,9 +31,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Blob storage is only enabled for the home page' }, { status: 403 });
     }
 
+    // Check if file with same name already exists (excluding timestamp)
+    const originalName = file.name;
+    const baseFileName = originalName.includes('.') 
+      ? originalName.substring(0, originalName.lastIndexOf('.'))
+      : originalName;
+    
+    // Get all existing blobs
+    const { blobs } = await list();
+    
+    // Check if any existing blob matches this file name pattern
+    const similarBlobs = blobs.filter(blob => {
+      const blobName = blob.url.split('/').pop() || '';
+      return blobName.startsWith(baseFileName) || 
+             blobName.replace(/-\d+\.\w+$/, '') === baseFileName;
+    });
+    
+    if (similarBlobs.length > 0) {
+      return NextResponse.json(
+        { 
+          error: 'A similar image already exists',
+          existingImages: similarBlobs.map(blob => ({
+            url: blob.url,
+            uploadedAt: blob.uploadedAt 
+          }))
+        }, 
+        { status: 409 }
+      );
+    }
+
     // Add timestamp to filename to avoid conflicts
     const timestamp = Date.now();
-    const originalName = file.name;
     const fileExt = originalName.includes('.') ? originalName.split('.').pop() : '';
     const baseName = originalName.includes('.') ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
     const uniqueFilename = `${baseName}-${timestamp}.${fileExt}`;
@@ -46,21 +74,11 @@ export async function POST(request: Request) {
       
       return NextResponse.json(blob);
     } catch (uploadError) {
-      // Try with allowOverwrite if we got an error
-      console.error('Initial upload failed, trying with allowOverwrite:', uploadError);
-      try {
-        const blob = await put(uniqueFilename, file, {
-          access: 'public',
-          addRandomSuffix: true,
-        });
-        
-        return NextResponse.json(blob);
-      } catch (finalError) {
-        return NextResponse.json(
-          { error: 'This image already exists. Please try a different image or rename it.' },
-          { status: 409 }
-        );
-      }
+      console.error('Upload error:', uploadError);
+      return NextResponse.json(
+        { error: 'Failed to upload image. Please try again.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('Error uploading to Vercel Blob:', error);
