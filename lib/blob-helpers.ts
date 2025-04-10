@@ -67,8 +67,8 @@ export function isBlobUrl(url: string): boolean {
 }
 
 /**
- * This function simply returns the original path without trying to upload
- * Use this for displaying images, not for migration
+ * This function checks if a local image has already been migrated to Blob storage
+ * and returns the Blob URL if available
  * @param imagePath The current image path
  * @param pathname The current pathname
  */
@@ -83,7 +83,31 @@ export async function getOrCreateBlobUrl(imagePath: string, pathname: string = '
     return imagePath;
   }
   
-  // For now, just return the original path
-  // The actual migration should be done through the admin panel
-  return imagePath;
+  // If it's an external URL, return it
+  if (imagePath.startsWith('http') && !imagePath.startsWith(window.location.origin)) {
+    return imagePath;
+  }
+  
+  try {
+    // Check if this image has already been migrated to blob storage
+    const response = await fetch(`/api/upload/get-url?path=${encodeURIComponent(imagePath)}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to check blob URL');
+    }
+    
+    const data = await response.json();
+    
+    // If we found a blob URL, use it
+    if (data.isBlob && data.url) {
+      return data.url;
+    }
+    
+    // Otherwise, return the original path
+    return imagePath;
+  } catch (error) {
+    console.error('Error checking blob URL:', error);
+    // Return the original path if there was an error
+    return imagePath;
+  }
 } 
