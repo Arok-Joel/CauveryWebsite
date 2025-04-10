@@ -31,16 +31,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Blob storage is only enabled for the home page' }, { status: 403 });
     }
 
-    // Upload to Vercel Blob
-    const blob = await put(file.name, file, {
-      access: 'public',
-    });
+    // Add timestamp to filename to avoid conflicts
+    const timestamp = Date.now();
+    const originalName = file.name;
+    const fileExt = originalName.includes('.') ? originalName.split('.').pop() : '';
+    const baseName = originalName.includes('.') ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+    const uniqueFilename = `${baseName}-${timestamp}.${fileExt}`;
 
-    return NextResponse.json(blob);
+    try {
+      // Upload to Vercel Blob with unique filename
+      const blob = await put(uniqueFilename, file, {
+        access: 'public',
+      });
+      
+      return NextResponse.json(blob);
+    } catch (uploadError) {
+      // Try with allowOverwrite if we got an error
+      console.error('Initial upload failed, trying with allowOverwrite:', uploadError);
+      try {
+        const blob = await put(uniqueFilename, file, {
+          access: 'public',
+          addRandomSuffix: true,
+        });
+        
+        return NextResponse.json(blob);
+      } catch (finalError) {
+        return NextResponse.json(
+          { error: 'This image already exists. Please try a different image or rename it.' },
+          { status: 409 }
+        );
+      }
+    }
   } catch (error) {
     console.error('Error uploading to Vercel Blob:', error);
     return NextResponse.json(
-      { error: 'Error uploading file' },
+      { error: 'Error uploading file. Please try again later.' },
       { status: 500 }
     );
   }

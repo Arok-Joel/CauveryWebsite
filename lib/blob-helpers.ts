@@ -20,16 +20,30 @@ export async function uploadToBlob(file: File, pathname: string = '/'): Promise<
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error uploading to blob:', error);
-      return null;
+      const errorData = await response.json();
+      
+      // Handle specific error cases
+      if (response.status === 409) {
+        throw new Error(errorData.error || 'This image already exists. Please try a different image or rename it.');
+      } else if (response.status === 400) {
+        throw new Error(errorData.error || 'Invalid file. Please check the file and try again.');
+      } else if (response.status === 403) {
+        throw new Error(errorData.error || 'You are not allowed to upload to this location.');
+      } else {
+        throw new Error(errorData.error || 'Failed to upload image. Please try again later.');
+      }
     }
     
     const blob = await response.json();
     return blob.url;
   } catch (error) {
-    console.error('Error uploading to blob:', error);
-    return null;
+    if (error instanceof Error) {
+      console.error('Error uploading to blob:', error.message);
+      throw error; // Let the component handle the specific error
+    } else {
+      console.error('Error uploading to blob:', error);
+      throw new Error('Failed to upload image. Please try again later.');
+    }
   }
 }
 

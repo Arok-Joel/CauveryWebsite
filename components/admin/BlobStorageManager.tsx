@@ -111,7 +111,11 @@ export default function BlobStorageManager() {
       toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to upload image');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -157,7 +161,7 @@ export default function BlobStorageManager() {
     }
     
     setIsMigrating(true);
-    const results: { success: boolean; path: string; url?: string }[] = [];
+    const results: { success: boolean; path: string; url?: string; error?: string }[] = [];
     
     try {
       for (const imagePath of homepageImages) {
@@ -179,25 +183,34 @@ export default function BlobStorageManager() {
           const file = new File([blob], imagePath.split('/').pop() || 'image.jpg', { type: blob.type });
           
           // Upload to blob storage
-          const blobUrl = await uploadToBlob(file, '/');
-          if (!blobUrl) {
-            throw new Error('Failed to upload to Blob storage');
+          try {
+            const blobUrl = await uploadToBlob(file, '/');
+            if (!blobUrl) {
+              throw new Error('Failed to upload to Blob storage');
+            }
+            
+            results.push({ success: true, path: imagePath, url: blobUrl });
+            
+            // Add to our list of uploaded images
+            const newImage: ImageItem = {
+              id: Date.now().toString(),
+              url: blobUrl,
+              name: file.name,
+              uploadedAt: new Date(),
+            };
+            
+            setUploadedImages((prev) => [newImage, ...prev]);
+          } catch (uploadError) {
+            if (uploadError instanceof Error) {
+              results.push({ success: false, path: imagePath, error: uploadError.message });
+            } else {
+              results.push({ success: false, path: imagePath, error: 'Unknown upload error' });
+            }
           }
-          
-          results.push({ success: true, path: imagePath, url: blobUrl });
-          
-          // Add to our list of uploaded images
-          const newImage: ImageItem = {
-            id: Date.now().toString(),
-            url: blobUrl,
-            name: file.name,
-            uploadedAt: new Date(),
-          };
-          
-          setUploadedImages((prev) => [newImage, ...prev]);
         } catch (error) {
           console.error(`Error migrating ${imagePath}:`, error);
-          results.push({ success: false, path: imagePath });
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          results.push({ success: false, path: imagePath, error: errorMessage });
         }
       }
       
@@ -205,11 +218,31 @@ export default function BlobStorageManager() {
       if (successCount === homepageImages.length) {
         toast.success(`Successfully migrated all ${successCount} images`);
       } else {
-        toast.warning(`Migrated ${successCount} of ${homepageImages.length} images`);
+        // If any failed, show a more detailed toast with errors
+        const failedItems = results.filter(r => !r.success);
+        if (failedItems.length > 0) {
+          const errorMessages = failedItems.map(item => 
+            `${item.path.split('/').pop()}: ${item.error || 'Failed to upload'}`
+          );
+          
+          toast.warning(
+            <div>
+              <p>Migrated {successCount} of {homepageImages.length} images</p>
+              <ul className="mt-2 text-sm list-disc pl-4">
+                {errorMessages.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        } else {
+          toast.warning(`Migrated ${successCount} of ${homepageImages.length} images`);
+        }
       }
     } catch (error) {
       console.error('Migration error:', error);
-      toast.error('Failed to complete migration');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to complete migration: ${errorMessage}`);
     } finally {
       setIsMigrating(false);
     }
