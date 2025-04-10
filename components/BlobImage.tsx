@@ -23,6 +23,7 @@ export function BlobImage({
   const [imageInfo, setImageInfo] = useState<{
     isBlob: boolean;
     original: string;
+    error?: string;
   }>({
     isBlob: isBlobUrl(src),
     original: src
@@ -35,6 +36,8 @@ export function BlobImage({
         try {
           setIsLoading(true);
           const blobUrl = await getOrCreateBlobUrl(src, pathname);
+          console.log(`[BlobImage] Original: ${src}, Resolved: ${blobUrl}, isBlob: ${isBlobUrl(blobUrl)}`);
+          
           setImageSrc(blobUrl);
           setImageInfo({
             isBlob: isBlobUrl(blobUrl),
@@ -44,6 +47,11 @@ export function BlobImage({
           console.error('Error loading blob URL:', error);
           // Fallback to original source
           setImageSrc(src);
+          setImageInfo({
+            isBlob: false,
+            original: src,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
         } finally {
           setIsLoading(false);
         }
@@ -71,9 +79,32 @@ export function BlobImage({
     );
   }
   
+  // Override loader for blob URLs to avoid Next.js optimization
+  const imageProps = { ...props };
+  if (isBlobUrl(imageSrc)) {
+    imageProps.loader = ({ src }) => src;
+    imageProps.unoptimized = true;
+  }
+  
   return (
     <div className="relative">
-      <Image src={imageSrc} {...props} />
+      <Image 
+        src={imageSrc} 
+        {...imageProps} 
+        onError={(e) => {
+          console.error(`[BlobImage] Error loading image: ${imageSrc}`);
+          if (imageInfo.isBlob && !src.startsWith('blob:')) {
+            // If blob URL fails, try falling back to the original
+            console.log(`[BlobImage] Falling back to original: ${src}`);
+            setImageSrc(src);
+            setImageInfo({
+              isBlob: false,
+              original: src,
+              error: 'Failed to load blob image, using original'
+            });
+          }
+        }}
+      />
       
       {/* Debug overlay - only shown in development mode by default */}
       {showDebug && (
@@ -88,7 +119,7 @@ export function BlobImage({
             <span className="font-bold mr-1">Path:</span>
             <span className="opacity-80">
               {imageInfo.isBlob 
-                ? imageSrc.substring(0, 20) + '...' 
+                ? imageSrc.substring(0, 25) + '...' 
                 : imageSrc}
             </span>
           </div>
@@ -96,6 +127,12 @@ export function BlobImage({
             <div className="truncate" title={imageInfo.original}>
               <span className="font-bold mr-1">Original:</span>
               <span className="opacity-80">{imageInfo.original}</span>
+            </div>
+          )}
+          {imageInfo.error && (
+            <div className="truncate text-red-400" title={imageInfo.error}>
+              <span className="font-bold mr-1">Error:</span>
+              <span>{imageInfo.error}</span>
             </div>
           )}
         </div>
