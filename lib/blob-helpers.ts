@@ -85,6 +85,53 @@ function getBasename(filename: string): string {
 }
 
 /**
+ * Get the direct URL of a blob by its filename
+ * This function fetches all blobs and finds one with a matching filename
+ */
+export async function getDirectBlobUrl(filename: string): Promise<string | null> {
+  try {
+    // Get a list of all blobs
+    const response = await fetch('/api/upload/list-all');
+    if (!response.ok) {
+      throw new Error('Failed to fetch blob list');
+    }
+    
+    const data = await response.json();
+    const blobs: Array<{url: string; size: number; uploadedAt: string}> = data.blobs || [];
+    
+    // Get base name for matching
+    const baseName = filename.includes('.')
+      ? filename.substring(0, filename.lastIndexOf('.'))
+      : filename;
+    
+    // Find matching blobs
+    const matchingBlobs = blobs.filter(blob => {
+      const blobName = blob.url.split('/').pop() || '';
+      const blobBaseName = blobName.includes('.')
+        ? blobName.substring(0, blobName.lastIndexOf('.'))
+        : blobName;
+      
+      return blobBaseName.includes(baseName) || 
+             blobBaseName.startsWith(baseName) || 
+             baseName.includes(blobBaseName);
+    });
+    
+    if (matchingBlobs.length > 0) {
+      // Sort by date and take the newest
+      matchingBlobs.sort((a, b) => 
+        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      );
+      return matchingBlobs[0].url;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting direct blob URL:', error);
+    return null;
+  }
+}
+
+/**
  * This function checks if a local image has already been migrated to Blob storage
  * and returns the Blob URL if available
  * @param imagePath The current image path
@@ -112,13 +159,17 @@ export async function getOrCreateBlobUrl(imagePath: string, pathname: string = '
   try {
     console.log(`[getOrCreateBlobUrl] Checking if ${imagePath} has a blob URL`);
     
-    // Get the filename and base name
+    // Get the filename from the path
     const filename = getFilenameFromPath(imagePath);
-    const basename = getBasename(filename);
     
-    console.log(`[getOrCreateBlobUrl] Filename: ${filename}, Basename: ${basename}`);
+    // First try to get a direct URL match from our blobs
+    const directUrl = await getDirectBlobUrl(filename);
+    if (directUrl) {
+      console.log(`[getOrCreateBlobUrl] Found direct blob URL: ${directUrl}`);
+      return directUrl;
+    }
     
-    // Check if this image has already been migrated to blob storage
+    // If that fails, try our API endpoint
     const response = await fetch(`/api/upload/get-url?path=${encodeURIComponent(imagePath)}`);
     
     if (!response.ok) {

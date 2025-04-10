@@ -79,18 +79,51 @@ export function BlobImage({
     );
   }
   
-  // Override loader for blob URLs to avoid Next.js optimization
-  const imageProps = { ...props };
+  // For blob URLs, we need to directly use the URL without Next.js image optimization
   if (isBlobUrl(imageSrc)) {
-    imageProps.loader = ({ src }) => src;
-    imageProps.unoptimized = true;
+    return (
+      <div className="relative">
+        {/* We completely bypass Next.js Image component for blob URLs to avoid optimization issues */}
+        <div
+          className={props.className || ''}
+          style={{
+            position: props.fill ? 'absolute' : 'relative',
+            width: props.width || '100%',
+            height: props.height || '100%', 
+            inset: props.fill ? 0 : undefined,
+            backgroundImage: `url(${imageSrc})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        
+        {/* Debug overlay */}
+        {showDebug && (
+          <div className="absolute top-0 left-0 bg-black/70 text-white text-xs p-1 max-w-full overflow-hidden z-50">
+            <div>
+              <span className="font-bold mr-1">Source:</span>
+              <span className="text-green-400">Blob Storage</span>
+            </div>
+            <div className="truncate" title={imageSrc}>
+              <span className="font-bold mr-1">Path:</span>
+              <span className="opacity-80">{imageSrc.substring(0, 25)}...</span>
+            </div>
+            <div className="truncate" title={imageInfo.original}>
+              <span className="font-bold mr-1">Original:</span>
+              <span className="opacity-80">{imageInfo.original}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
   
+  // For regular images, use the Next.js Image component
   return (
     <div className="relative">
       <Image 
         src={imageSrc} 
-        {...imageProps} 
+        {...props} 
         onError={(e) => {
           console.error(`[BlobImage] Error loading image: ${imageSrc}`);
           if (imageInfo.isBlob && !src.startsWith('blob:')) {
@@ -111,24 +144,12 @@ export function BlobImage({
         <div className="absolute top-0 left-0 bg-black/70 text-white text-xs p-1 max-w-full overflow-hidden z-50">
           <div>
             <span className="font-bold mr-1">Source:</span>
-            <span className={imageInfo.isBlob ? "text-green-400" : "text-yellow-400"}>
-              {imageInfo.isBlob ? 'Blob Storage' : 'Local File'}
-            </span>
+            <span className="text-yellow-400">Local File</span>
           </div>
           <div className="truncate" title={imageSrc}>
             <span className="font-bold mr-1">Path:</span>
-            <span className="opacity-80">
-              {imageInfo.isBlob 
-                ? imageSrc.substring(0, 25) + '...' 
-                : imageSrc}
-            </span>
+            <span className="opacity-80">{imageSrc}</span>
           </div>
-          {imageInfo.isBlob && (
-            <div className="truncate" title={imageInfo.original}>
-              <span className="font-bold mr-1">Original:</span>
-              <span className="opacity-80">{imageInfo.original}</span>
-            </div>
-          )}
           {imageInfo.error && (
             <div className="truncate text-red-400" title={imageInfo.error}>
               <span className="font-bold mr-1">Error:</span>
