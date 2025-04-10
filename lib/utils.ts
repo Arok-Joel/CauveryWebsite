@@ -231,15 +231,15 @@ export function getDeviceType(userAgent: string): string {
 }
 
 /**
- * Format a number as currency (USD)
+ * Format a number as currency (INR)
  * @param amount The amount to format
  * @returns Formatted currency string
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
