@@ -63,12 +63,65 @@ export async function uploadToBlob(file: File, pathname: string = '/'): Promise<
  * @returns True if the URL is a Vercel Blob URL
  */
 export function isBlobUrl(url: string): boolean {
-  return url.includes('.public.blob.vercel-storage.com');
+  return url?.includes?.('.public.blob.vercel-storage.com') || false;
+}
+
+// Store known mappings from local paths to blob URLs
+// This can be populated from the API when needed
+const blobCache: Record<string, string> = {};
+
+// Function to fetch all blobs and update the cache
+export async function fetchBlobMappings(): Promise<Record<string, string>> {
+  try {
+    const response = await fetch('/api/upload/mapping');
+    if (!response.ok) {
+      throw new Error('Failed to fetch blob mappings');
+    }
+    
+    const data = await response.json();
+    
+    // Update cache with the mappings from the API
+    if (data.mappings) {
+      Object.assign(blobCache, data.mappings);
+    }
+    
+    return data.mappings || {};
+  } catch (error) {
+    console.error('Error fetching blob mappings:', error);
+    return {};
+  }
+}
+
+// Function to get a specific blob URL mapping
+export async function fetchBlobForPath(path: string): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/upload/mapping?path=${encodeURIComponent(path)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch blob mapping');
+    }
+    
+    const data = await response.json();
+    
+    if (data.found && data.blobUrl) {
+      // Update cache
+      blobCache[path] = data.blobUrl;
+      return data.blobUrl;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error fetching blob for path ${path}:`, error);
+    return null;
+  }
+}
+
+// Initialize the cache when module loads
+if (typeof window !== 'undefined') {
+  fetchBlobMappings().catch(console.error);
 }
 
 /**
- * This function simply returns the original path without trying to upload
- * Use this for displaying images, not for migration
+ * Get the blob URL for an image if it exists
  * @param imagePath The current image path
  * @param pathname The current pathname
  */
@@ -83,7 +136,21 @@ export async function getOrCreateBlobUrl(imagePath: string, pathname: string = '
     return imagePath;
   }
   
-  // For now, just return the original path
-  // The actual migration should be done through the admin panel
+  // If we already have a mapping in the cache, use it
+  if (blobCache[imagePath]) {
+    return blobCache[imagePath];
+  }
+  
+  // If not in cache, try to fetch the specific mapping
+  try {
+    const blobUrl = await fetchBlobForPath(imagePath);
+    if (blobUrl) {
+      return blobUrl;
+    }
+  } catch (error) {
+    console.error('Error getting blob URL for path:', error);
+  }
+  
+  // Return original path if no blob URL found
   return imagePath;
 } 
