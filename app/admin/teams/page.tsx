@@ -89,9 +89,9 @@ export default async function TeamsPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
           {teams.map(team => (
-            <Card key={team.id} className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+            <Card key={team.id} className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col w-full">
               <div className="bg-gradient-to-r from-[#3C5A3E]/90 to-[#2A3F2B] text-white p-4 sm:p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
@@ -159,8 +159,8 @@ export default async function TeamsPage() {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 px-4 sm:px-6 py-4 flex items-center justify-between border-t border-gray-100 mt-auto">
-                  <div className="flex gap-2 sm:gap-3">
+                <div className="bg-gray-50 px-4 sm:px-6 py-4 flex items-center justify-between border-t border-gray-100 mt-auto w-full">
+                  <div className="flex items-center gap-4">
                     <ManageTeamHierarchyDialog
                       teamId={team.id}
                       teamName={`Team ${team.leader.user.name}`}
@@ -173,7 +173,7 @@ export default async function TeamsPage() {
                     />
                   </div>
                   
-                  <div className="flex gap-2 sm:gap-3">
+                  <div className="flex items-center gap-4">
                     <AssignTeamMemberDialog
                       teamId={team.id}
                       teamName={`Team ${team.leader.user.name}`}
