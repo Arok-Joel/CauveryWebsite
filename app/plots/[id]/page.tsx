@@ -40,6 +40,7 @@ export default function PlotPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [parsedImages, setParsedImages] = useState<PlotImage[]>([]);
+  const [imagesLoaded, setImagesLoaded] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,7 +85,7 @@ export default function PlotPage({ params }: PageProps) {
   useEffect(() => {
     if (!plot) return;
     
-    // Simplified image parsing
+    // Improved image parsing logic
     const parseImages = () => {
       if (!plot.images || typeof plot.images !== 'string' || plot.images.trim() === '') {
         setParsedImages([]);
@@ -92,31 +93,86 @@ export default function PlotPage({ params }: PageProps) {
       }
       
       try {
-        // Try a single parse operation with better error handling
+        // Get the raw image data string
         const imagesData = plot.images.trim();
-        const parsed = JSON.parse(imagesData);
-        const imageArray = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
         
+        // Parse as JSON once, handling both formats consistently
+        let imageArray;
+        try {
+          // First attempt to parse
+          const parsed = JSON.parse(imagesData);
+          
+          // Check if the parsed result is a string (double-encoded JSON)
+          if (typeof parsed === 'string') {
+            imageArray = JSON.parse(parsed);
+          } else if (Array.isArray(parsed)) {
+            // Already an array, use directly
+            imageArray = parsed;
+          } else {
+            // Not recognized format
+            console.error('Unrecognized image data format:', typeof parsed);
+            setParsedImages([]);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing image JSON:', error);
+          setParsedImages([]);
+          return;
+        }
+        
+        // Ensure we have an array and extract valid images
         if (Array.isArray(imageArray)) {
           const validImages = imageArray
-            .filter(img => img && img.url)
+            .filter(img => img && typeof img === 'object' && img.url)
             .map(img => ({
               url: img.url,
               caption: img.caption || `Plot ${plot.plotNumber}`
             }));
           
-          setParsedImages(validImages);
+          // Set images only if we have valid ones to prevent flickering
+          if (validImages.length > 0) {
+            // Sanitize URLs to prevent layout shifts
+            const sanitizedImages = validImages.map(img => ({
+              ...img,
+              url: img.url.trim() // Trim any whitespace that might cause rendering issues
+            }));
+            
+            setParsedImages(sanitizedImages);
+          } else {
+            setParsedImages([]);
+          }
         } else {
           setParsedImages([]);
         }
       } catch (error) {
-        console.error('Error parsing images:', error);
+        console.error('Error in image parsing process:', error);
         setParsedImages([]);
       }
     };
     
+    // Call the parse function
     parseImages();
   }, [plot]);
+
+  // Helper function to check if an image exists
+  const isValidImageUrl = (url: string) => {
+    if (!url || url.trim() === '') return false;
+    // Basic URL validation
+    try {
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Update image loading state
+  const handleImageLoad = (url: string) => {
+    setImagesLoaded(prev => ({
+      ...prev,
+      [url]: true
+    }));
+  };
 
   if (loading) {
     return (
@@ -198,17 +254,32 @@ export default function PlotPage({ params }: PageProps) {
         <div className="md:col-span-2 space-y-6">
           {/* Hero Section */}
           <div className="relative">
-            {parsedImages.length > 0 ? (
+            {parsedImages.length > 0 && isValidImageUrl(parsedImages[0].url) ? (
               <div className="relative w-full h-[500px] rounded-xl overflow-hidden">
                 <Image
                   src={parsedImages[0].url}
                   alt={parsedImages[0].caption || `Plot ${plot.plotNumber} main view`}
                   fill
-                  className="object-cover"
+                  className="object-contain" 
                   priority={true}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
                   placeholder="blur"
                   blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAEggI73Jt/8QAAAABJRU5ErkJggg=="
+                  onLoad={() => handleImageLoad(parsedImages[0].url)}
+                  onError={(e) => {
+                    console.error('Image failed to load:', parsedImages[0].url);
+                    // Prevent infinite error loops with a fallback
+                    e.currentTarget.src = '/placeholder-plot.jpg'; 
+                  }}
+                  style={{ 
+                    objectFit: 'contain',
+                    maxHeight: '500px',
+                    width: '100%',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)'
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-8 w-full">
@@ -333,21 +404,33 @@ export default function PlotPage({ params }: PageProps) {
           </div>
 
           {/* Gallery */}
-          {parsedImages.length > 1 && (
+          {parsedImages.length > 1 && parsedImages.slice(1).some(img => isValidImageUrl(img.url)) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Plot Gallery</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {parsedImages.slice(1).map((image, index) => (
+                  {parsedImages.slice(1)
+                    .filter(img => isValidImageUrl(img.url))
+                    .map((image, index) => (
                     <div key={index} className="group relative">
                       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
                         <Image
                           src={image.url}
                           alt={image.caption || `Plot image ${index + 2}`}
                           fill
-                          className="object-cover transition-transform group-hover:scale-105"
+                          className="object-contain transition-transform group-hover:scale-105"
+                          onLoad={() => handleImageLoad(image.url)}
+                          onError={(e) => {
+                            console.error('Gallery image failed to load:', image.url);
+                            e.currentTarget.src = '/placeholder-plot.jpg'; 
+                          }}
+                          style={{
+                            objectFit: 'contain',
+                            maxHeight: '100%',
+                            width: '100%'
+                          }}
                         />
                       </div>
                       {image.caption && (
