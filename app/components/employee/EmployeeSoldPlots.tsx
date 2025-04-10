@@ -166,7 +166,7 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
               </div>
               <div className="border-l pl-12">
                 <p className="text-sm text-muted-foreground">Total Commission</p>
-                <p className="text-xl font-bold text-green-600">₹{totalCommission.toLocaleString()}</p>
+                <p className="text-xl font-bold text-green-600">₹{totalCommission.toLocaleString('en-IN')}</p>
               </div>
             </div>
           )}
@@ -190,7 +190,7 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
               <Collapsible key={commission.id}>
                 <div className="grid grid-cols-[1fr_1fr_1fr_1fr_40px] gap-6 items-center py-3 group">
                   <div className="font-medium">{commission.soldPlot.plotNumber}</div>
-                  <div className="text-center text-green-600 font-medium">₹{parseFloat(commission.amount.toString()).toLocaleString()}</div>
+                  <div className="text-center text-green-600 font-medium">₹{parseFloat(commission.amount.toString()).toLocaleString('en-IN')}</div>
                   <div className="text-center font-medium">{(parseFloat(commission.percentage.toString()) * 100).toFixed(1)}%</div>
                   <div className="font-medium">{format(new Date(commission.soldPlot.soldAt), 'MMM d, yyyy')}</div>
                   <div className="flex justify-end">
@@ -216,7 +216,7 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Price</p>
-                              <p className="font-medium">₹{parseFloat(commission.soldPlot.price).toLocaleString()}</p>
+                              <p className="font-medium">₹{parseFloat(commission.soldPlot.price).toLocaleString('en-IN')}</p>
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Dimensions</p>

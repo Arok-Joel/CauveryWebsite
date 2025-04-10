@@ -225,7 +225,7 @@ export default function SalesPage() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold">₹{salesData?.totalRevenue.toLocaleString() || 0}</div>
+                <div className="text-2xl font-bold">₹{salesData?.totalRevenue.toLocaleString('en-IN') || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   Total revenue from sales
                 </p>
@@ -247,7 +247,7 @@ export default function SalesPage() {
                   ₹{calculateAverageRevenue(
                     salesData?.totalSales || 0,
                     salesData?.totalRevenue || 0
-                  ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Average revenue per plot
@@ -315,10 +315,16 @@ export default function SalesPage() {
                     label={{ value: 'Revenue (₹)', angle: -90, position: 'insideLeft', offset: -35 }}
                     axisLine={{ stroke: '#E5E7EB' }}
                     tickLine={false}
-                    tickFormatter={(value) => `₹${(value/1000000).toFixed(1)}M`}
+                    tickFormatter={(value) => {
+                      if (value >= 10000000) {
+                        return `₹${(value/10000000).toFixed(1)}Cr`;
+                      } else {
+                        return `₹${(value/100000).toFixed(1)}L`;
+                      }
+                    }}
                   />
                   <Tooltip
-                    formatter={(value: any) => ['₹' + parseInt(value).toLocaleString(), 'Revenue']}
+                    formatter={(value: any) => ['₹' + parseInt(value).toLocaleString('en-IN'), 'Revenue']}
                     cursor={{ fill: 'rgba(60, 90, 62, 0.1)' }}
                   />
                   <Bar 
@@ -330,7 +336,13 @@ export default function SalesPage() {
                     <LabelList 
                       dataKey="revenue" 
                       position="top" 
-                      formatter={(value: number) => '₹' + (value/1000000).toFixed(1) + 'M'}
+                      formatter={(value: number) => {
+                        if (value >= 10000000) {
+                          return `₹${(value/10000000).toFixed(1)}Cr`;
+                        } else {
+                          return `₹${(value/100000).toFixed(1)}L`;
+                        }
+                      }}
                       style={{ 
                         fill: '#666',
                         fontSize: '12px',
@@ -389,14 +401,14 @@ export default function SalesPage() {
                 </div>
                 <div className="border-l pl-12">
                   <p className="text-sm text-muted-foreground">Total Revenue Generated</p>
-                  <p className="text-xl font-bold text-green-600">₹{salesData?.totalRevenue.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-green-600">₹{salesData?.totalRevenue.toLocaleString('en-IN') || 0}</p>
                 </div>
                 <div className="border-l pl-12">
                   <p className="text-sm text-muted-foreground">Average Revenue Per Plot</p>
                   <p className="text-xl font-bold text-green-600">₹{calculateAverageRevenue(
                     salesData?.totalSales || 0,
                     salesData?.totalRevenue || 0
-                  ).toLocaleString()}</p>
+                  ).toLocaleString('en-IN')}</p>
                 </div>
               </div>
             )}
@@ -424,7 +436,7 @@ export default function SalesPage() {
                         {plot.employeeRole?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                       </div>
                     </div>
-                    <div className="text-center text-green-600 font-medium">₹{parseFloat(plot.price).toLocaleString()}</div>
+                    <div className="text-center text-green-600 font-medium">₹{parseFloat(plot.price).toLocaleString('en-IN')}</div>
                     <div className="font-medium">{format(new Date(plot.soldAt), 'MMM d, yyyy')}</div>
                     <div className="flex justify-end">
                       <CollapsibleTrigger className="h-6 w-6 p-1 hover:bg-muted rounded">
@@ -449,7 +461,7 @@ export default function SalesPage() {
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">Price</p>
-                                <p className="font-medium">₹{parseFloat(plot.price).toLocaleString()}</p>
+                                <p className="font-medium">₹{parseFloat(plot.price).toLocaleString('en-IN')}</p>
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">Dimensions</p>
