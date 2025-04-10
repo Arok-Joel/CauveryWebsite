@@ -67,6 +67,48 @@ async function hasEligibleSubordinates(employeeId: string, role: EmployeeRole): 
   return promotedSubordinates >= 2;
 }
 
+// Function to automatically apply for promotion when eligible
+async function autoApplyForPromotion(employeeId: string, currentRole: EmployeeRole, targetRole: EmployeeRole, condition: string) {
+  try {
+    // Check for existing pending request
+    const existingRequest = await db.promotionRequest.findFirst({
+      where: {
+        employeeId: employeeId,
+        status: 'PENDING',
+      },
+    });
+
+    if (existingRequest) {
+      console.log('Employee already has a pending promotion request');
+      return false;
+    }
+
+    // Create the promotion request with properly typed data
+    const promotionData = {
+      employeeId: employeeId,
+      currentRole: currentRole,
+      targetRole: targetRole,
+      condition,
+    };
+    
+    // Add autoApplied field using Prisma's create with additional data
+    const promotionRequest = await db.promotionRequest.create({
+      data: {
+        ...promotionData,
+        // Add the autoApplied field as additional data that will be parsed by Prisma
+        // @ts-ignore - We know this field exists in the database
+        autoApplied: true,
+      },
+    });
+
+    console.log('Automatically applied for promotion', promotionRequest);
+    return true;
+  } catch (error) {
+    console.error('Error auto-applying for promotion:', error);
+    return false;
+  }
+}
+
 export async function GET() {
   try {
     // Verify authentication
@@ -136,10 +178,16 @@ export async function GET() {
     });
 
     if (existingRequest) {
+      // Type assertion to access autoApplied property
+      const wasAutoApplied = (existingRequest as any).autoApplied || false;
+      
       return NextResponse.json({
         eligible: true,
         applied: true,
-        message: 'You have already applied for promotion',
+        autoApplied: wasAutoApplied,
+        message: wasAutoApplied 
+          ? 'Congratulations! You are eligible for promotion and a request has been automatically submitted.'
+          : 'You have already applied for promotion',
         role: currentRole,
         nextRole,
       });
@@ -198,11 +246,25 @@ export async function GET() {
         eligible = false;
     }
 
+    // If the employee is eligible, automatically apply for promotion
+    let autoApplied = false;
+    if (eligible && conditionMet) {
+      autoApplied = await autoApplyForPromotion(
+        employee.id,
+        currentRole,
+        nextRole,
+        conditionMet
+      );
+    }
+
     return NextResponse.json({
       eligible,
-      applied: false,
+      applied: autoApplied,
+      autoApplied,
       message: eligible 
-        ? 'You are eligible for promotion' 
+        ? autoApplied 
+          ? 'Congratulations! You are eligible for promotion and a request has been automatically submitted.'
+          : 'You are eligible for promotion' 
         : `You need to meet promotion criteria: ${plotsRequired} plots sold`,
       role: currentRole,
       nextRole,

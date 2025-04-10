@@ -156,6 +156,7 @@ model PromotionRequest {
   targetRole   EmployeeRole
   status       RequestStatus @default(PENDING)
   condition    String        // Description of the condition met (e.g., "20 plots sold", "50 plots sold", "2 field officers promoted")
+  autoApplied  Boolean       @default(false)  // Flag to indicate if the request was auto-generated
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   reviewedAt   DateTime?

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface PromotionEligibilityData {
   eligible: boolean;
   applied: boolean;
+  autoApplied?: boolean;
   message: string;
   role: string;
   nextRole?: string;
@@ -20,7 +21,6 @@ interface PromotionEligibilityData {
 export function PromotionCard() {
   const [eligibilityData, setEligibilityData] = useState<PromotionEligibilityData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isApplying, setIsApplying] = useState(false);
   const [isAddingCommissions, setIsAddingCommissions] = useState(false);
   
   // Only show dev tools in development environment
@@ -39,6 +39,7 @@ export function PromotionCard() {
         }
 
         const data = await response.json();
+        console.log('Eligibility data:', data); // Add logging to debug
         setEligibilityData(data);
       } catch (error) {
         console.error('Error checking promotion eligibility:', error);
@@ -50,42 +51,6 @@ export function PromotionCard() {
 
     checkEligibility();
   }, []);
-
-  async function handleApplyForPromotion() {
-    if (!eligibilityData?.eligible || eligibilityData.applied) {
-      return;
-    }
-
-    try {
-      setIsApplying(true);
-      const response = await fetch('/api/employee/promotion/apply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          condition: eligibilityData.conditionMet,
-        }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to apply for promotion');
-      }
-
-      const data = await response.json();
-      toast.success('Promotion request submitted successfully');
-      
-      // Update the local state to show as applied
-      setEligibilityData(prev => prev ? { ...prev, applied: true } : null);
-    } catch (error) {
-      console.error('Error applying for promotion:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to apply for promotion');
-    } finally {
-      setIsApplying(false);
-    }
-  }
 
   async function handleAddTestCommissions() {
     try {
@@ -150,8 +115,53 @@ export function PromotionCard() {
 
   // Don't show the card if not eligible and the employee is not a field officer, joint director, or director
   if (!eligibilityData?.eligible && 
-      !['FIELD_OFFICER', 'JOINT_DIRECTOR', 'DIRECTOR'].includes(eligibilityData?.role || '')) {
+      !['FIELD_OFFICER', 'JOINT_DIRECTOR', 'DIRECTOR', 'EXECUTIVE_DIRECTOR'].includes(eligibilityData?.role || '')) {
     return null;
+  }
+
+  // Show a special message for Executive Directors
+  if (eligibilityData?.role === 'EXECUTIVE_DIRECTOR') {
+    return (
+      <Card className="bg-gradient-to-r from-blue-50 to-white">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Milestone className="mr-2 h-5 w-5 text-[#3C5A3E]" />
+            Career Achievement
+          </CardTitle>
+          <CardDescription>
+            You've reached the highest role in the organization
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Current Role:</span>
+              <Badge className="bg-blue-600 hover:bg-blue-700">
+                {formatRole(eligibilityData.role)}
+              </Badge>
+            </div>
+            
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-md">
+              <p className="text-md text-blue-700 font-medium">
+                Congratulations on reaching the top!
+              </p>
+              <p className="text-sm text-blue-600 mt-2">
+                As an Executive Director, you've achieved the highest position in our organization. 
+                Your leadership and dedication are invaluable to our success.
+              </p>
+            </div>
+            
+            {eligibilityData.plotsSold !== undefined && (
+              <div className="mt-2 flex items-center">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {eligibilityData.plotsSold} Total Plots Sold
+                </Badge>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -210,20 +220,52 @@ export function PromotionCard() {
             {eligibilityData.eligible && (
               <div>
                 {eligibilityData.applied ? (
-                  <Button
-                    disabled
-                    className="bg-[#3C5A3E]/50 hover:bg-[#3C5A3E]/50 cursor-not-allowed"
-                  >
-                    Applied for Promotion
-                  </Button>
+                  eligibilityData.autoApplied === true ? (
+                    <div className="mt-2 p-3 bg-green-50 border border-green-100 rounded-md">
+                      <p className="text-sm text-green-700 font-medium">
+                        Congratulations! You're eligible for promotion
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Your promotion request has been automatically submitted to the admin
+                      </p>
+                      {eligibilityData.conditionMet && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Criteria met: {eligibilityData.conditionMet}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      disabled
+                      className="bg-[#3C5A3E]/50 hover:bg-[#3C5A3E]/50 cursor-not-allowed"
+                    >
+                      Applied for Promotion
+                    </Button>
+                  )
                 ) : (
-                  <Button
-                    onClick={handleApplyForPromotion}
-                    disabled={isApplying}
-                    className="bg-[#3C5A3E] hover:bg-[#3C5A3E]/90"
-                  >
-                    {isApplying ? 'Applying...' : 'Apply for Promotion'}
-                  </Button>
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-100 rounded-md">
+                    <p className="text-sm text-amber-700 font-medium">
+                      You're eligible for promotion!
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Your promotion request will be automatically submitted once you refresh this page.
+                    </p>
+                    {eligibilityData.conditionMet && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Criteria met: {eligibilityData.conditionMet}
+                      </p>
+                    )}
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs border-amber-200 text-amber-700 hover:bg-amber-100"
+                        onClick={() => window.location.reload()}
+                      >
+                        Refresh Now
+                      </Button>
+                    </div>
+                  </div>
                 )}
                 
                 {eligibilityData.conditionMet && !eligibilityData.applied && (

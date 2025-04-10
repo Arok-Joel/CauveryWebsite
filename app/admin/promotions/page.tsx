@@ -34,6 +34,7 @@ interface PromotionRequest {
   targetRole: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   condition: string;
+  autoApplied: boolean;
   createdAt: string;
   updatedAt: string;
   reviewedAt: string | null;
@@ -229,6 +230,13 @@ export default function AdminPromotionsPage() {
                         <div>
                           <div>{request.employee?.user?.name || 'Unknown'}</div>
                           <div className="text-xs text-muted-foreground">{request.employeeId}</div>
+                          {request.autoApplied && (
+                            <div className="mt-1">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                                Auto-generated
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
