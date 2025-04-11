@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
+  import { BlobImage } from '@/components/BlobImage';
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       <section className="relative h-screen min-h-[700px] w-full flex items-center">
         <div className="absolute inset-0 bg-black/50 z-10" />
         <div className="absolute inset-0">
-          <Image
+          <BlobImage
             src="/hero-bg.jpg"
             alt="Royal Cauvery Farms"
             fill
@@ -17,6 +17,7 @@ export default function Home() {
             priority
             sizes="100vw"
             quality={100}
+            useBlobStorage={true}
           />
         </div>
         <div className="container relative z-20 mx-auto px-4">
@@ -60,11 +61,12 @@ export default function Home() {
               </ul>
             </div>
             <div className="relative h-[400px]">
-              <Image
+              <BlobImage
                 src="/plot-layout.jpg"
                 alt="Sri Sai Nagar Layout"
                 fill
                 className="object-cover rounded-lg"
+                useBlobStorage={true}
               />
             </div>
           </div>
