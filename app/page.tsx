@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { BlobImage } from '@/components/BlobImage';
+  import { BlobImage } from '@/components/BlobImage';
 
 export default function Home() {
   return (

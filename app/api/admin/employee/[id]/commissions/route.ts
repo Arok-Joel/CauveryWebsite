@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'lastMonth';
-    const employeeId = params.id;
+    const { id: employeeId } = await params;
 
     // Calculate date range based on filter
     const currentDate = new Date();

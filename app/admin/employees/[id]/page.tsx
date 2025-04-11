@@ -449,7 +449,7 @@ function formatDate(date: string | Date) {
 }
 
 export default async function EmployeePage({ params }: PageProps) {
-  const id = params.id;
+  const { id } = await params;
   const [employee, commissions] = await Promise.all([
     getEmployee(id),
     getEmployeeCommissions(id)
