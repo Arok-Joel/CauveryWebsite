@@ -45,6 +45,20 @@ interface AdminContactInfo {
   topEmployeeRole: string;
 }
 
+interface ContactDetail {
+  name: string;
+  role: string;
+  phone: string;
+}
+
+type ContactSectionDetails = string[] | ContactDetail[];
+
+interface ContactSection {
+  icon: any;
+  title: string;
+  details: ContactSectionDetails;
+}
+
 export default function ContactPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [adminContactInfo, setAdminContactInfo] = useState<AdminContactInfo | null>(null);
@@ -119,7 +133,11 @@ export default function ContactPage() {
   const getPhoneNumbers = () => {
     // Only return the top employee phone number if it exists
     if (adminContactInfo?.topEmployeePhone) {
-      return [`${adminContactInfo.topEmployeeName} (${adminContactInfo.topEmployeeRole}) - ${adminContactInfo.topEmployeePhone}`];
+      return [{
+        name: adminContactInfo.topEmployeeName,
+        role: adminContactInfo.topEmployeeRole,
+        phone: adminContactInfo.topEmployeePhone
+      }];
     }
     
     return [];
@@ -135,7 +153,7 @@ export default function ContactPage() {
   };
 
   // Prepare contact info sections
-  const contactInfoSections = [
+  const contactInfoSections: ContactSection[] = [
     {
       icon: MapPin,
       title: "Visit Us",
@@ -199,9 +217,25 @@ export default function ContactPage() {
                     </div>
                     <CardTitle className="text-lg mb-2">{info.title}</CardTitle>
                     {info.details.length > 0 ? (
-                      info.details.map((detail, idx) => (
-                        <p key={idx} className="text-gray-600">{detail}</p>
-                      ))
+                      info.title === 'Call Us' ? (
+                        (info.details as ContactDetail[]).map((detail, idx) => (
+                          <div key={idx} className="space-y-3">
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center gap-2">
+                                <p className="text-gray-600 text-sm">{detail.name}</p>
+                                <span className="inline-flex items-center rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 whitespace-nowrap">
+                                  {detail.role.replace(/_/g, ' ')}
+                                </span>
+                              </div>
+                              <p className="text-gray-600 font-medium">{detail.phone}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        (info.details as string[]).map((detail, idx) => (
+                          <p key={idx} className="text-gray-600">{detail}</p>
+                        ))
+                      )
                     ) : (
                       <p className="text-gray-500 italic">Information not available</p>
                     )}
