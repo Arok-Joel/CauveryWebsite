@@ -150,6 +150,7 @@ function shouldReportTo(
 }
 
 async function getEmployee(id: string): Promise<EmployeeWithRelations> {
+  // Optimize query by selecting only needed fields and limiting join depth
   const employee = await db.employee.findUnique({
     where: { id },
     include: {
@@ -188,6 +189,8 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
             name: 'asc',
           },
         },
+        // Limit the number of subordinates fetched initially
+        take: 10,
       },
       memberOfTeam: {
         include: {
@@ -227,6 +230,8 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
                 name: 'asc',
               },
             },
+            // Limit the number of team members fetched
+            take: 15,
           },
         },
       },
@@ -257,6 +262,8 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
                 name: 'asc',
               },
             },
+            // Limit the number of team members fetched
+            take: 15,
           },
         },
       },
@@ -365,6 +372,7 @@ async function getEmployee(id: string): Promise<EmployeeWithRelations> {
   return employee as EmployeeWithRelations;
 }
 
+// Optimize the commissions query to use a limit and only retrieve necessary data
 async function getEmployeeCommissions(employeeId: string) {
   const commissions = await db.commission.findMany({
     where: {
@@ -373,16 +381,20 @@ async function getEmployeeCommissions(employeeId: string) {
     include: {
       soldPlot: {
         include: {
-          plot: true,
+          plot: {
+            select: {
+              price: true,
+            },
+          },
         },
       },
     },
     orderBy: {
       createdAt: 'desc',
     },
+    // Limit initial fetch to improve performance
+    take: 20,
   });
-
-  console.log(`Found ${commissions.length} commissions for employee ${employeeId}`);
   
   // Map the commissions to the expected format for the UI and convert Decimal values to strings
   return commissions.map(commission => ({
@@ -449,7 +461,7 @@ function formatDate(date: string | Date) {
 }
 
 export default async function EmployeePage({ params }: PageProps) {
-  const id = params.id;
+  const { id } = await params;
   const [employee, commissions] = await Promise.all([
     getEmployee(id),
     getEmployeeCommissions(id)

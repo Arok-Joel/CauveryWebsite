@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'lastMonth';
-    const employeeId = params.id;
+    const { id } = await params;
 
     // Calculate date range based on filter
     const currentDate = new Date();
@@ -30,10 +30,10 @@ export async function GET(
         startDate = subMonths(currentDate, 1);
     }
 
-    // Get filtered commissions
+    // Get filtered commissions - optimize query with pagination and selective fields
     const commissions = await db.commission.findMany({
       where: {
-        employeeId,
+        employeeId: id,
         soldPlot: {
           soldAt: {
             gte: startDate,
@@ -42,13 +42,30 @@ export async function GET(
         },
       },
       include: {
-        soldPlot: true,
+        soldPlot: {
+          select: {
+            plotNumber: true,
+            size: true,
+            price: true,
+            dimensions: true,
+            facing: true,
+            plotAddress: true,
+            customerName: true,
+            phoneNumber: true,
+            email: true,
+            address: true,
+            aadhaarNumber: true,
+            soldAt: true,
+          }
+        },
       },
       orderBy: {
         soldPlot: {
           soldAt: 'desc',
         },
       },
+      // Add pagination to improve performance
+      take: 20,
     });
 
     return NextResponse.json({
@@ -59,7 +76,7 @@ export async function GET(
         soldPlot: {
           plotNumber: commission.soldPlot.plotNumber,
           size: commission.soldPlot.size,
-          price: commission.soldPlot.price,
+          price: commission.soldPlot.price?.toString() || '0',
           dimensions: commission.soldPlot.dimensions,
           facing: commission.soldPlot.facing,
           plotAddress: commission.soldPlot.plotAddress,
