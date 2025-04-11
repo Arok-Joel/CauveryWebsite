@@ -40,6 +40,9 @@ interface AdminContactInfo {
   address: string;
   email: string;
   phoneNumbers: PhoneNumber[];
+  topEmployeePhone: string;
+  topEmployeeName: string;
+  topEmployeeRole: string;
 }
 
 export default function ContactPage() {
@@ -114,14 +117,12 @@ export default function ContactPage() {
 
   // Get phone numbers, with default first
   const getPhoneNumbers = () => {
-    if (!adminContactInfo?.phoneNumbers?.length) {
-      return [];
+    // Only return the top employee phone number if it exists
+    if (adminContactInfo?.topEmployeePhone) {
+      return [`${adminContactInfo.topEmployeeName} (${adminContactInfo.topEmployeeRole}) - ${adminContactInfo.topEmployeePhone}`];
     }
     
-    // Sort the phone numbers so default is first
-    return adminContactInfo.phoneNumbers
-      .sort((a, b) => (a.isDefault ? -1 : b.isDefault ? 1 : 0))
-      .map(phone => phone.number);
+    return [];
   };
 
   // Get email addresses
