@@ -50,14 +50,62 @@ interface Layout {
   Plot: Plot[];
 }
 
+// Custom CSS for arrow animation
+const arrowBounceStyle = `
+  @keyframes custom-bounce {
+    0%, 100% {
+      transform: translateY(0);
+      opacity: 0.9;
+    }
+    50% {
+      transform: translateY(-20px);
+      opacity: 1;
+    }
+  }
+  .arrow-bounce {
+    animation: custom-bounce 1.8s infinite ease-in-out;
+    transform-origin: center bottom;
+  }
+  @keyframes custom-pulse {
+    0% {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+  }
+  .marker-pulse {
+    animation: custom-pulse 2s infinite;
+  }
+  
+  .arrow-head {
+    stroke-width: 2;
+  }
+  
+  .arrow-stem {
+    stroke-width: 8;
+    stroke-linecap: round;
+  }
+`;
+
 export default function PlotsPage() {
   const [layouts, setLayouts] = useState<Layout[]>([]);
   const [selectedLayout, setSelectedLayout] = useState<Layout | null>(null);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [imageSize, setImageSize] = useState({ width: 1000, height: 800 });
+  const [svgViewBox, setSvgViewBox] = useState("0 0 1000 800"); // Separate state for SVG viewBox
   const [hoveredPlotId, setHoveredPlotId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"map" | "cards">("map");
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const [plotSearch, setPlotSearch] = useState(""); // Input value for search
+  const [searchQuery, setSearchQuery] = useState(""); // Actual search term (updated on button click)
+  const [foundPlots, setFoundPlots] = useState<Plot[]>([]); // Track found plots
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -81,6 +129,9 @@ export default function PlotsPage() {
   
   // Cache timeout - 10 minutes
   const CACHE_TIMEOUT = 10 * 60 * 1000;
+  
+  // Track image dimensions cache with layout ID
+  const imageDimensionsCache = React.useRef<Record<string, { width: number, height: number }>>({});
 
   useEffect(() => {
     fetchLayouts(1);
@@ -95,25 +146,49 @@ export default function PlotsPage() {
   // Separate effect for loading image dimensions
   useEffect(() => {
     if (selectedLayout && selectedLayout.image) {
+      // Check if we already have the dimensions in cache
+      if (imageDimensionsCache.current[selectedLayout.id]) {
+        const cachedDimensions = imageDimensionsCache.current[selectedLayout.id];
+        setImageSize(cachedDimensions);
+        // Don't update SVG viewBox when changing layouts to prevent jumping
+        return;
+      }
+      
       setIsImageLoading(true);
       
+      // Keep stable dimensions until new ones are fully loaded
       const img = new window.Image();
       
       img.onload = () => {
-        setImageSize({ width: img.width, height: img.height });
+        const newDimensions = { width: img.width, height: img.height };
+        setImageSize(newDimensions);
+        imageDimensionsCache.current[selectedLayout.id] = newDimensions;
+        
+        // Only set the SVG viewBox once during initial load
+        if (!imageDimensionsCache.current['initial_set']) {
+          setSvgViewBox(`0 0 ${img.width} ${img.height}`);
+          imageDimensionsCache.current['initial_set'] = { width: img.width, height: img.height };
+        }
+        
         setIsImageLoading(false);
       };
       
       img.onerror = () => {
         console.error('Error loading layout image');
-        setImageSize({ width: 1000, height: 800 });
+        const fallbackDimensions = { width: 1000, height: 800 };
+        setImageSize(fallbackDimensions);
+        imageDimensionsCache.current[selectedLayout.id] = fallbackDimensions;
         setIsImageLoading(false);
       };
       
+      // Set a longer timeout for large images
       const timeout = setTimeout(() => {
-        setImageSize({ width: 1000, height: 800 });
+        console.warn('Image loading timed out, using fallback dimensions');
+        const fallbackDimensions = { width: 1000, height: 800 };
+        setImageSize(fallbackDimensions);
+        imageDimensionsCache.current[selectedLayout.id] = fallbackDimensions;
         setIsImageLoading(false);
-      }, 5000);
+      }, 8000); // Increased timeout
       
       img.src = selectedLayout.image;
       
@@ -301,21 +376,70 @@ export default function PlotsPage() {
 
   // Debounced layout selection to prevent rapid re-renders
   const debouncedSetSelectedLayout = React.useCallback((layout: Layout | null) => {
+    if (!layout) {
+      setSelectedLayout(null);
+      return;
+    }
+    
     // Show loading indicator while image loads
     if (layout?.image) {
       setIsImageLoading(true);
+      
+      // If we already have dimensions in cache, use them immediately for the image
+      // but DO NOT change the SVG viewBox to prevent plot relocation
+      if (imageDimensionsCache.current[layout.id]) {
+        setImageSize(imageDimensionsCache.current[layout.id]);
+      }
     }
     
-    // Set layout after a small delay
-    setTimeout(() => {
+    // Set layout immediately to prevent jump
       setSelectedLayout(layout);
-    }, 100);
   }, []);
+
+  // Function to handle plot search
+  const handlePlotSearch = (event?: React.FormEvent) => {
+    // Prevent form submission default behavior if event exists
+    if (event) event.preventDefault();
+    
+    if (!selectedLayout) return;
+    
+    // Update the searchQuery state with the current plotSearch value
+    setSearchQuery(plotSearch);
+    
+    if (!plotSearch.trim()) {
+      setFoundPlots([]);
+      return;
+    }
+    
+    const normalizedSearch = plotSearch.trim().toLowerCase();
+    
+    // Find plots that exactly match the search term
+    const matches = selectedLayout.Plot.filter(plot => 
+      plot.plotNumber.toLowerCase() === normalizedSearch
+    );
+    
+    setFoundPlots(matches);
+  };
+
+  // Handle input change without searching
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPlotSearch(e.target.value);
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setPlotSearch("");
+    setSearchQuery("");
+    setFoundPlots([]);
+  };
 
   if (!selectedLayout) return null;
 
   return (
     <div className="min-h-screen flex">
+      {/* Add the custom CSS for animations */}
+      <style jsx global>{arrowBounceStyle}</style>
+      
       {/* Sidebar */}
       <div className="w-64 bg-[#3C5A3E]/10 border-r border-[#3C5A3E]/20">
         <div className="p-6">
@@ -354,6 +478,62 @@ export default function PlotsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Search box for plots */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-[#3C5A3E] uppercase tracking-wider">Find Plot</h3>
+                <form onSubmit={handlePlotSearch} className="space-y-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={plotSearch}
+                      onChange={handleSearchInputChange}
+                      placeholder="Enter exact plot number..."
+                      className="w-full p-2 pl-8 border border-[#3C5A3E] rounded-md bg-white/90 focus:outline-none focus:ring-2 focus:ring-[#3C5A3E]/30 focus:border-[#3C5A3E] text-sm"
+                    />
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-4 w-4 absolute top-3 left-2 text-[#3C5A3E]" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    {plotSearch && (
+                      <button
+                        type="button"
+                        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                        onClick={clearSearch}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2 px-4 bg-[#3C5A3E] text-white rounded-md hover:bg-[#2d4330] transition-colors text-sm font-medium"
+                  >
+                    Search Plot
+                  </button>
+                </form>
+                <div className="text-xs text-[#3C5A3E]">
+                  Must match plot number exactly
+                </div>
+                {/* Search results summary */}
+                {searchQuery && (
+                  <div className="text-sm">
+                    {foundPlots.length > 0 ? (
+                      <p className="text-[#3C5A3E]">Found {foundPlots.length} plot{foundPlots.length !== 1 ? 's' : ''}</p>
+                    ) : (
+                      <p className="text-red-500">No plots found</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-[#3C5A3E] uppercase tracking-wider">Plot Status</h3>
                 <div className="space-y-3">
@@ -386,6 +566,7 @@ export default function PlotsPage() {
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-[#3C5A3E] uppercase tracking-wider">View Mode</h3>
                 <div className="flex gap-2">
@@ -449,6 +630,74 @@ export default function PlotsPage() {
           </div>
         ) : viewMode === "map" ? (
           <div className="relative w-full h-[calc(100vh-64px)]">
+            {/* Display a search prompt if no plots are being shown */}
+            {searchQuery.trim() === "" && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 bg-white p-8 rounded-lg shadow-xl text-center max-w-md border-2 border-[#3C5A3E]">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#3C5A3E] text-white px-6 py-2 rounded-full font-bold text-lg">
+                  Search Plot
+                </div>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-16 w-16 mx-auto mb-4 text-[#3C5A3E]" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <h3 className="text-2xl font-bold text-[#3C5A3E] mb-3">Find Your Plot</h3>
+                <p className="text-gray-600 mb-6 text-lg">
+                  Enter the <span className="font-bold">exact</span> plot number to locate it on the layout.
+                </p>
+                <form onSubmit={handlePlotSearch} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={plotSearch}
+                      onChange={handleSearchInputChange}
+                      placeholder="Enter exact plot number..."
+                      className="w-full p-4 pl-12 border-2 border-[#3C5A3E] rounded-md bg-white focus:outline-none focus:ring-4 focus:ring-[#3C5A3E]/30 focus:border-[#3C5A3E] text-lg font-medium"
+                      autoFocus
+                    />
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-6 w-6 absolute top-4 left-3 text-[#3C5A3E]" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 bg-[#3C5A3E] text-white rounded-md hover:bg-[#2d4330] transition-colors text-lg font-medium"
+                  >
+                    Search
+                  </button>
+                </form>
+              </div>
+            )}
+            
+            {/* Search result notification */}
+            {searchQuery.trim() !== "" && (
+              <div className="absolute top-4 right-4 z-20">
+                <div className={`px-4 py-2 rounded-lg shadow-md ${
+                  foundPlots.length > 0 ? 'bg-[#E8EFE8] text-[#3C5A3E]' : 'bg-red-100 text-red-700'
+                }`}>
+                  {foundPlots.length > 0 ? (
+                    <span>
+                      Found <strong>{foundPlots.length}</strong> plot{foundPlots.length !== 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span>No plots found for "{searchQuery}"</span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Use a fixed position for the image container */}
+            <div className="absolute inset-0 z-0">
             {selectedLayout.image && (
               <div className="relative w-full h-full">
                 <Image
@@ -456,19 +705,29 @@ export default function PlotsPage() {
                   alt={selectedLayout.name}
                   fill
                   style={{ objectFit: 'contain' }}
-                  priority={false}
-                  loading="lazy"
+                    priority={true}
                   sizes="100vw"
                   placeholder="blur"
                   blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAEggI73Jt/8QAAAABJRU5ErkJggg=="
+                    onLoadingComplete={(img) => {
+                      // Update dimensions when image is loaded by Next.js Image component
+                      // but do NOT update the SVG viewBox to prevent plot relocation
+                      const newDimensions = { width: img.naturalWidth, height: img.naturalHeight };
+                      setImageSize(newDimensions);
+                      imageDimensionsCache.current[selectedLayout.id] = newDimensions;
+                      setIsImageLoading(false);
+                    }}
                 />
               </div>
             )}
+            </div>
             
+            {/* Fixed overlay for SVG plots that won't move */}
             <svg
-              className="absolute top-0 left-0 w-full h-full"
-              viewBox={`0 0 ${imageSize.width || 1000} ${imageSize.height || 800}`}
+              className="absolute top-0 left-0 w-full h-full z-10"
+              viewBox={svgViewBox}
               preserveAspectRatio="xMidYMid meet"
+              style={{ pointerEvents: 'auto' }}
             >
               <defs>
                 <filter id="hover-shadow">
@@ -476,10 +735,47 @@ export default function PlotsPage() {
                 </filter>
               </defs>
               
-              {selectedLayout.Plot.map((plot) => (
+              {/* Only render plots that match the search or when hovering */}
+              {selectedLayout.Plot.map((plot) => {
+                // Only show plots if they match the search or are hovered
+                const shouldShowPlot = 
+                  (searchQuery.trim() === "" && hoveredPlotId === plot.id) || // Show hovered plot even with no search
+                  (foundPlots.some(p => p.id === plot.id)); // Show if plot matches search
+                
+                if (!shouldShowPlot) return null;
+                
+                // Calculate center point for the plot (for arrow placement)
+                const calculateCenter = () => {
+                  if (plot.coordinates && Array.isArray(plot.coordinates) && plot.coordinates.length > 0) {
+                    const x = plot.coordinates.reduce((sum, p) => sum + p.x, 0) / plot.coordinates.length;
+                    const y = plot.coordinates.reduce((sum, p) => sum + p.y, 0) / plot.coordinates.length;
+                    return { x, y };
+                  }
+                  return null;
+                };
+                
+                const centerPoint = calculateCenter();
+                
+                return (
                 <g key={plot.id}>
                   {plot.coordinates && Array.isArray(plot.coordinates) && plot.coordinates.length > 0 ? (
                     <>
+                        {/* Add arrow pointer for found plots */}
+                        {foundPlots.some(p => p.id === plot.id) && centerPoint && (
+                          <g className="arrow-bounce">
+                            {/* Black triangle marker completely outside the plot boundary */}
+                            <polygon 
+                              points={`${centerPoint.x - 15},${centerPoint.y - 70} ${centerPoint.x},${centerPoint.y - 45} ${centerPoint.x + 15},${centerPoint.y - 70}`}
+                              fill="#000000"
+                              stroke="#000000"
+                              strokeWidth="1.5"
+                              style={{
+                                filter: "drop-shadow(0px 0px 2px rgba(0, 0, 0, 0.5))"
+                              }}
+                            />
+                          </g>
+                        )}
+                        
                       <polygon
                         points={plot.coordinates.map(p => `${p.x},${p.y}`).join(' ')}
                         fill={
@@ -487,19 +783,19 @@ export default function PlotsPage() {
                             ? hoveredPlotId === plot.id ? "rgba(255, 0, 0, 0.4)" : "rgba(255, 0, 0, 0.2)"
                             : plot.status === "reserved"
                             ? hoveredPlotId === plot.id ? "rgba(255, 165, 0, 0.4)" : "rgba(255, 165, 0, 0.2)"
-                            : hoveredPlotId === plot.id ? "rgba(60, 90, 62, 0.4)" : "rgba(60, 90, 62, 0.2)"
+                              : hoveredPlotId === plot.id ? "rgba(0, 166, 81, 0.4)" : "rgba(0, 166, 81, 0.2)" // More standard green
                         }
                         stroke={
                           plot.status === "sold"
                             ? "#ff0000"
                             : plot.status === "reserved"
                             ? "#ffa500"
-                            : "#3C5A3E"
+                              : "#00a651" // More standard green
                         }
-                        strokeWidth={hoveredPlotId === plot.id ? "2" : "1"}
+                          strokeWidth={foundPlots.some(p => p.id === plot.id) ? "3" : hoveredPlotId === plot.id ? "2" : "1"}
                         style={{
                           cursor: 'pointer',
-                          filter: hoveredPlotId === plot.id ? 'url(#hover-shadow)' : 'none',
+                            filter: hoveredPlotId === plot.id || foundPlots.some(p => p.id === plot.id) ? 'url(#hover-shadow)' : 'none',
                           transform: hoveredPlotId === plot.id ? 'translate(-2px, -2px)' : 'none',
                           transition: 'all 0.2s ease'
                         }}
@@ -534,12 +830,96 @@ export default function PlotsPage() {
                     </text>
                   )}
                 </g>
-              ))}
+                );
+              })}
             </svg>
           </div>
         ) : (
-          <div className="p-6 grid grid-cols-1 gap-6">
-            {selectedLayout.Plot.map((plot) => (
+          <div className="p-6">
+            {/* Show search prompt if no search is entered */}
+            {searchQuery.trim() === "" ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="bg-white p-8 rounded-lg shadow-xl text-center max-w-lg border-2 border-[#3C5A3E] relative">
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#3C5A3E] text-white px-6 py-2 rounded-full font-bold text-lg">
+                    Search Plot
+                  </div>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-16 w-16 mx-auto mb-6 text-[#3C5A3E]" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <h2 className="text-2xl font-bold text-[#3C5A3E] mb-3">Search for a Plot</h2>
+                  <p className="text-gray-600 mb-6 text-lg">
+                    Enter the <span className="font-bold">exact</span> plot number to view its details
+                  </p>
+                  <form onSubmit={handlePlotSearch} className="space-y-4">
+                    <div className="relative w-full max-w-md mx-auto">
+                      <input
+                        type="text"
+                        value={plotSearch}
+                        onChange={handleSearchInputChange}
+                        placeholder="Enter exact plot number..."
+                        className="w-full p-4 pl-12 border-2 border-[#3C5A3E] rounded-md bg-white focus:outline-none focus:ring-4 focus:ring-[#3C5A3E]/30 focus:border-[#3C5A3E] text-lg font-medium"
+                        autoFocus
+                      />
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-6 w-6 absolute top-4 left-3 text-[#3C5A3E]" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full max-w-md mx-auto py-3 px-4 bg-[#3C5A3E] text-white rounded-md hover:bg-[#2d4330] transition-colors text-lg font-medium flex items-center justify-center"
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-5 w-5 mr-2" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      Search Plot
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : foundPlots.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-16 w-16 mb-6 text-red-300" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="text-2xl font-medium text-gray-700 mb-3">No Plots Found</h2>
+                <p className="text-gray-500 text-center max-w-md mb-6">
+                  No plots matching "{searchQuery}" were found
+                </p>
+                <button 
+                  onClick={clearSearch}
+                  className="px-4 py-2 bg-[#3C5A3E] text-white rounded-md hover:bg-[#2d4330] transition-colors"
+                >
+                  Clear Search
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {/* Display found plots */}
+                {foundPlots.map((plot) => (
               <Card 
                 key={plot.id}
                 className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden group border-2 flex flex-row h-[200px]"
@@ -612,6 +992,8 @@ export default function PlotsPage() {
                 </div>
               </Card>
             ))}
+              </div>
+            )}
           </div>
         )}
       </div>

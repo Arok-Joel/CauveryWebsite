@@ -185,8 +185,8 @@ export default function PlotsAdminPage() {
                       </span>
                     </div>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link href={`/plots/${layout.id}/layout`}>
-                        View Layout
+                      <Link href={`/admin/plots/${layout.id}/edit`}>
+                        Edit Layout
                       </Link>
                     </Button>
                   </div>

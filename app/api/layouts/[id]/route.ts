@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import crypto from "crypto";
 
 export async function GET(
   request: Request,
@@ -28,6 +29,81 @@ export async function GET(
     console.error("Error fetching layout:", error);
     return NextResponse.json(
       { error: "Failed to fetch layout" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  context: { params: { id: string } }
+) {
+  try {
+    const { id } = context.params;
+    const { name, image, plots } = await request.json();
+
+    // First, update the layout details
+    const updatedLayout = await prisma.layout.update({
+      where: { id },
+      data: {
+        name,
+        image,
+      },
+    });
+
+    // For each plot, either update existing or create new
+    for (const plot of plots) {
+      if (plot.id) {
+        // Update existing plot - preserve the exact coordinates
+        await prisma.plot.update({
+          where: { id: plot.id },
+          data: {
+            plotNumber: plot.plotNumber,
+            size: plot.size,
+            plotAddress: plot.plotAddress,
+            price: parseFloat(plot.price) || 0,
+            dimensions: plot.dimensions,
+            facing: plot.facing,
+            status: plot.status,
+            // Store the exact coordinates without any transformations
+            coordinates: plot.points, 
+          },
+        });
+      } else {
+        // Create new plot with exact coordinates
+        await prisma.plot.create({
+          data: {
+            id: crypto.randomUUID(),
+            plotNumber: plot.plotNumber,
+            size: plot.size,
+            plotAddress: plot.plotAddress,
+            price: parseFloat(plot.price) || 0,
+            dimensions: plot.dimensions,
+            facing: plot.facing,
+            status: plot.status,
+            // Store the exact coordinates
+            coordinates: plot.points,
+            layoutId: id,
+            images: "", 
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // Return the updated layout with plots
+    const layout = await prisma.layout.findUnique({
+      where: { id },
+      include: {
+        Plot: true,
+      },
+    });
+
+    return NextResponse.json(layout);
+  } catch (error) {
+    console.error("Error updating layout:", error);
+    return NextResponse.json(
+      { error: "Failed to update layout" },
       { status: 500 }
     );
   }
