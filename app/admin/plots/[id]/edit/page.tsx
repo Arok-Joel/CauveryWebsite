@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Image from "next/image";
+import { use } from 'react';
 
 interface Point {
   x: number;
@@ -70,11 +72,27 @@ interface Plot {
   status: string;
   id?: string;
   images: PlotImage[];
+  coordinates?: Point[]; // For compatibility with API response
 }
 
-export default function CreateLayout() {
+interface Layout {
+  id: string;
+  name: string;
+  image: string;
+  Plot: any[];
+}
+
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function EditLayout({ params }: PageProps) {
+  const { id } = use(params);
+  const router = useRouter();
   const [layoutName, setLayoutName] = useState("");
-  const [selectedTool, setSelectedTool] = useState<"pen" | "move" | "select" | "details">("pen");
+  const [selectedTool, setSelectedTool] = useState<"pen" | "move" | "select" | "details">("select");
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [plots, setPlots] = useState<Plot[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -91,11 +109,141 @@ export default function CreateLayout() {
   const [hintPosition, setHintPosition] = useState<Point | null>(null);
   const [temporaryPolygon, setTemporaryPolygon] = useState<Point[] | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [loading, setLoading] = useState(true);
 
+  // Stabilize the draw function dependencies to prevent unwanted re-renders
+  const stableDependencies = JSON.stringify({
+    plotsLength: plots.length,
+    pointsLength: currentPoints.length,
+    zoom,
+    panX: pan.x,
+    panY: pan.y,
+    hasImage: !!layoutImage,
+    selectedPlotId: selectedPlot?.id
+  });
+
+  // Redraw the canvas only when important values change
   useEffect(() => {
     drawCanvas();
-  }, [currentPoints, plots, zoom, pan, layoutImage, selectedPlot]);
+  }, [stableDependencies]); // This replaces the previous dependency array
 
+  // Additional useEffect to ensure plot points stability
+  useEffect(() => {
+    // Deep copy the plots to ensure coordinate stability
+    if (plots.length > 0) {
+      const stabilizedPlots = plots.map(plot => {
+        // Ensure we have stable references to prevent unwanted mutations
+        return {
+          ...plot,
+          points: plot.points ? JSON.parse(JSON.stringify(plot.points)) : []
+        };
+      });
+      
+      // Only update state if there are differences to avoid render loops
+      const currentPlotsStr = JSON.stringify(plots);
+      const newPlotsStr = JSON.stringify(stabilizedPlots);
+      
+      if (currentPlotsStr !== newPlotsStr) {
+        setPlots(stabilizedPlots);
+      }
+    }
+  }, []); // Run only once after initial load
+
+  // Ensure canvas size and context are set up correctly
+  useEffect(() => {
+    const initializeCanvas = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // Make sure we have the exact pixel ratio
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      // Reset transform and scale to ensure we start clean
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      
+      // Initial draw
+      drawCanvas();
+    };
+    
+    initializeCanvas();
+  }, []);
+
+  // Fetch the layout data when component mounts
+  useEffect(() => {
+    const fetchLayout = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/layouts/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch layout');
+        }
+        const layout = await response.json();
+        
+        // Set layout details
+        setLayoutName(layout.name);
+        setLayoutImage(layout.image);
+        
+        // Convert Plot data to format used by editor
+        // Important: Correctly transform the coordinates without modifying their positions
+        const formattedPlots = layout.Plot.map((plot: any) => {
+          // Ensure we're getting the coordinates exactly as stored in the database without transformation
+          const coordinates = Array.isArray(plot.coordinates) ? plot.coordinates : [];
+          
+          return {
+            id: plot.id,
+            points: [...coordinates], // Create a new array to avoid reference issues
+            plotNumber: plot.plotNumber || "",
+            size: plot.size || "",
+            plotAddress: plot.plotAddress || "",
+            price: plot.price?.toString() || "",
+            dimensions: plot.dimensions || "",
+            facing: plot.facing || "North",
+            status: plot.status || "available",
+            images: plot.PlotImage?.map((img: any) => ({
+              url: img.url,
+              caption: img.caption
+            })) || []
+          };
+        });
+        
+        setPlots(formattedPlots);
+        toast.success("Layout loaded successfully");
+      } catch (error) {
+        console.error('Error fetching layout:', error);
+        toast.error("Failed to load layout");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLayout();
+  }, [id]);
+
+  // Ensure coordinates are preserved and not modified after loading
+  // Replace the existing coordinates fix effect with this improved version
+  useEffect(() => {
+    if (plots.length > 0) {
+      // Create a stable copy of the plots array to prevent unwanted re-rendering
+      const updatedPlots = plots.map(plot => {
+        // If coordinates exist but points are missing or empty, assign coordinates to points
+        if (plot.coordinates && plot.coordinates.length > 0 && (!plot.points || plot.points.length === 0)) {
+          return {
+            ...plot,
+            points: [...plot.coordinates] // Create a new array to avoid reference issues
+          };
+        }
+        return plot;
+      });
+      
+      // Only update the state if there's a difference to prevent render loops
+      if (JSON.stringify(updatedPlots) !== JSON.stringify(plots)) {
+        setPlots(updatedPlots);
+      }
+    }
+  }, [plots]);
+
+  // Setup canvas size on load and resize
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -106,13 +254,22 @@ export default function CreateLayout() {
         const displayWidth = container.clientWidth;
         const displayHeight = Math.min(800, window.innerHeight * 0.6);
         
+        // Set the display size
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
         
-        const dpr = 1;
+        // Set the internal canvas size
+        const dpr = window.devicePixelRatio || 1;
         canvas.width = displayWidth * dpr;
         canvas.height = displayHeight * dpr;
         
+        // Adjust the context scale for high DPI displays
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+        
+        // Redraw the canvas
         drawCanvas();
       }
     };
@@ -142,9 +299,9 @@ export default function CreateLayout() {
   };
 
   const renderPlotsAndPoints = (ctx: CanvasRenderingContext2D, scale: number, offsetX: number, offsetY: number) => {
-    // Draw existing plots
+    // Draw existing plots with precise coordinates
     plots.forEach((plot) => {
-      if (plot.points.length > 1) {
+      if (plot.points && plot.points.length > 1) {
         ctx.beginPath();
         const firstPoint = plot.points[0];
         const canvasX = firstPoint.x * scale + offsetX;
@@ -170,8 +327,9 @@ export default function CreateLayout() {
         ctx.stroke();
         
         if (plot.plotNumber) {
-          const centerX = plot.points.reduce((sum, point) => sum + point.x * scale + offsetX, 0) / plot.points.length;
-          const centerY = plot.points.reduce((sum, point) => sum + point.y * scale + offsetY, 0) / plot.points.length;
+          // Calculate the true center of the polygon for the label
+          const centerX = plot.points.reduce((sum, point) => sum + point.x, 0) / plot.points.length * scale + offsetX;
+          const centerY = plot.points.reduce((sum, point) => sum + point.y, 0) / plot.points.length * scale + offsetY;
           
           ctx.fillStyle = "#000";
           ctx.font = `${14 / zoom}px Arial`;
@@ -182,7 +340,7 @@ export default function CreateLayout() {
       }
     });
     
-    // Draw current points
+    // Draw current points being created
     if (currentPoints.length > 0) {
       ctx.beginPath();
       const firstPoint = currentPoints[0];
@@ -201,34 +359,34 @@ export default function CreateLayout() {
         const hintY = hintPosition.y * scale + offsetY;
         ctx.lineTo(hintX, hintY);
         ctx.lineTo(canvasX, canvasY);
-        ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
-        ctx.fill();
       }
       
-      ctx.strokeStyle = "#ff0000";
+      ctx.strokeStyle = "#ff4081";
       ctx.lineWidth = 2 / zoom;
       ctx.stroke();
       
-      if (isDrawingComplete) {
-        ctx.closePath();
-        ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
-        ctx.fill();
-      }
-      
-      currentPoints.forEach((point, index) => {
-        ctx.beginPath();
+      // Draw points as small circles
+      currentPoints.forEach((point) => {
         const x = point.x * scale + offsetX;
         const y = point.y * scale + offsetY;
-        
-        if (index === 0 && showCompletionHint) {
-          ctx.arc(x, y, 5 / zoom, 0, Math.PI * 2);
-          ctx.fillStyle = "#00ff00";
-        } else {
-          ctx.arc(x, y, 3 / zoom, 0, Math.PI * 2);
-          ctx.fillStyle = "#ff0000";
-        }
+        ctx.beginPath();
+        ctx.arc(x, y, 4 / zoom, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff4081";
         ctx.fill();
       });
+      
+      // Draw hint for completion
+      if (showCompletionHint && hintPosition) {
+        const x = hintPosition.x * scale + offsetX;
+        const y = hintPosition.y * scale + offsetY;
+        ctx.beginPath();
+        ctx.arc(x, y, 8 / zoom, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 64, 129, 0.3)";
+        ctx.fill();
+        ctx.strokeStyle = "#ff4081";
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+      }
     }
     
     // Draw temporary polygon for details tool hover
@@ -260,13 +418,13 @@ export default function CreateLayout() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Calculate scaling factors to fit image in canvas
-    const scaleX = canvas.width / img.width;
-    const scaleY = canvas.height / img.height;
+    const scaleX = canvas.width / img.naturalWidth;
+    const scaleY = canvas.height / img.naturalHeight;
     const scale = Math.min(scaleX, scaleY);
     
     // Calculate dimensions to maintain aspect ratio
-    const drawWidth = img.width * scale;
-    const drawHeight = img.height * scale;
+    const drawWidth = img.naturalWidth * scale;
+    const drawHeight = img.naturalHeight * scale;
     
     // Center the image
     const offsetX = (canvas.width - drawWidth) / 2;
@@ -297,12 +455,12 @@ export default function CreateLayout() {
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
+    
     if (layoutImage) {
-      const img = document.createElement('img');
+      const img = new window.Image();
       img.src = layoutImage;
       
       if (img.complete) {
@@ -313,23 +471,8 @@ export default function CreateLayout() {
         };
       }
     } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Calculate default scale for non-image case
-      const scale = 1;
-      const offsetX = 0;
-      const offsetY = 0;
-      
-      ctx.save();
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      ctx.translate(centerX, centerY);
-      ctx.scale(zoom, zoom);
-      ctx.translate(-centerX + pan.x / zoom, -centerY + pan.y / zoom);
-      
-      renderPlotsAndPoints(ctx, scale, offsetX, offsetY);
-      ctx.restore();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderPlotsAndPoints(ctx, 1, pan.x, pan.y);
     }
   };
 
@@ -346,14 +489,37 @@ export default function CreateLayout() {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     
-    // Calculate scaling factors to fit image in canvas
-    const imgScaleX = canvas.width / imageSize.width;
-    const imgScaleY = canvas.height / imageSize.height;
-    const scale = Math.min(imgScaleX, imgScaleY);
+    // Calculate image scaling factors
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
     
-    // Calculate image offset in canvas
-    const offsetX = (canvas.width - imageSize.width * scale) / 2;
-    const offsetY = (canvas.height - imageSize.height * scale) / 2;
+    if (layoutImage) {
+      const img = new window.Image();
+      img.src = layoutImage;
+      
+      if (img.complete && img.naturalWidth > 0) {
+        // Calculate scaling factors to fit image in canvas
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const canvasAspect = canvas.width / canvas.height;
+        
+        if (imgAspect > canvasAspect) {
+          // Image is wider than canvas proportionally
+          const drawWidth = canvas.width;
+          const drawHeight = canvas.width / imgAspect;
+          scale = drawWidth / img.naturalWidth;
+          offsetX = 0;
+          offsetY = (canvas.height - drawHeight) / 2;
+        } else {
+          // Image is taller than canvas proportionally
+          const drawHeight = canvas.height;
+          const drawWidth = canvas.height * imgAspect;
+          scale = drawHeight / img.naturalHeight;
+          offsetX = (canvas.width - drawWidth) / 2;
+          offsetY = 0;
+        }
+      }
+    }
     
     // Undo the zoom and pan transformations
     const worldX = ((canvasX - centerX) / zoom + centerX - pan.x / zoom - offsetX) / scale;
@@ -376,12 +542,6 @@ export default function CreateLayout() {
     
     // Convert to world coordinates
     const worldPos = screenToWorld(canvasX, canvasY, canvas);
-    
-    // Debug info
-    console.log("Click at canvas position:", canvasX, canvasY);
-    console.log("Transformed to world position:", worldPos.x, worldPos.y);
-    console.log("Current zoom:", zoom, "pan:", pan);
-    console.log("Image size:", imageSize);
 
     if (selectedTool === "pen") {
       // Check if we're closing the polygon by clicking near the first point
@@ -516,6 +676,8 @@ export default function CreateLayout() {
   };
   
   const isPointInPolygon = (point: Point, polygon: Point[]) => {
+    if (!polygon || polygon.length < 3) return false;
+    
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
       const xi = polygon[i].x;
@@ -523,9 +685,10 @@ export default function CreateLayout() {
       const xj = polygon[j].x;
       const yj = polygon[j].y;
 
+      // Exact algorithm for point-in-polygon test
       const intersect =
-        yi > point.y !== yj > point.y &&
-        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+        ((yi > point.y) !== (yj > point.y)) &&
+        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
 
       if (intersect) inside = !inside;
     }
@@ -538,149 +701,140 @@ export default function CreateLayout() {
     const plotNumber = formData.get("plotNumber") as string;
     const facing = formData.get("facing") as string;
     const status = formData.get("status") as string;
+    const price = formData.get("price") as string;
+    const size = formData.get("size") as string;
+    const plotAddress = formData.get("plotAddress") as string;
+    const dimensions = formData.get("dimensions") as string;
     const imageFiles = formData.getAll("plotImages") as File[];
     const imageCaptions = formData.getAll("imageCaptions[]") as string[];
     
     try {
-      // First, upload all images
-      const imageUploadPromises = imageFiles.map(async (file, index) => {
-        const imageFormData = new FormData();
-        imageFormData.append("file", file);
-        
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: imageFormData,
-        });
-        
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload image");
-        }
-        
-        const { url } = await uploadResponse.json();
-        return {
-          url,
-          caption: imageCaptions[index] || undefined
-        };
-      });
+      // Only upload images if files are selected
+      let uploadedImages: PlotImage[] = [];
       
-      const uploadedImages = await Promise.all(imageUploadPromises);
-
-      if (selectedPlot && selectedTool === "details") {
-        // Update existing plot
-        const updatedPlot: Plot = {
-          ...selectedPlot,
-          plotNumber: plotNumber || selectedPlot.plotNumber,
-          size: formData.get("size") as string || selectedPlot.size,
-          plotAddress: formData.get("plotAddress") as string || selectedPlot.plotAddress,
-          price: formData.get("price") as string || selectedPlot.price,
-          dimensions: formData.get("dimensions") as string || selectedPlot.dimensions,
-          facing: facing || selectedPlot.facing,
-          status: status || selectedPlot.status,
-          images: [...(selectedPlot.images || []), ...uploadedImages]
-        };
-        
-        const response = await fetch("/api/plots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: selectedPlot.id,
-            plotNumber: updatedPlot.plotNumber,
-            size: updatedPlot.size,
-            plotAddress: updatedPlot.plotAddress,
-            price: updatedPlot.price,
-            dimensions: updatedPlot.dimensions,
-            facing: updatedPlot.facing,
-            status: updatedPlot.status,
-            coordinates: updatedPlot.points,
-            images: updatedPlot.images
-          }),
+      if (imageFiles.length > 0 && imageFiles[0].size > 0) {
+        // First, upload all images
+        const imageUploadPromises = imageFiles.map(async (file, index) => {
+          const imageFormData = new FormData();
+          imageFormData.append("file", file);
+          
+          const uploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: imageFormData,
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload image");
+          }
+          
+          const { url } = await uploadResponse.json();
+          return {
+            url,
+            caption: imageCaptions[index] || undefined
+          };
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to save plot details");
-        }
+        uploadedImages = await Promise.all(imageUploadPromises);
+      }
+
+      // For editing existing plot
+      if (selectedTool === "details" && selectedPlot) {
+        // Create a copy of the plots array
+        const updatedPlots = plots.map(plot => {
+          if (plot === selectedPlot) {
+            return {
+              ...plot,
+              plotNumber,
+              facing,
+              status,
+              price,
+              size,
+              plotAddress,
+              dimensions,
+              // Append new images to existing ones
+              images: [...(plot.images || []), ...uploadedImages]
+            };
+          }
+          return plot;
+        });
         
-        setPlots(plots.map(p => p === selectedPlot ? updatedPlot : p));
-        setSelectedPlot(null);
+        setPlots(updatedPlots);
         setIsDialogOpen(false);
-        toast.success("Plot details saved successfully!");
-      } else {
-        // Create new plot
+        setSelectedPlot(null);
+        toast.success("Plot updated successfully!");
+        return;
+      }
+      
+      // For creating new plot
+      if (isDrawingComplete && currentPoints.length >= 3) {
         const newPlot: Plot = {
           points: currentPoints,
-          plotNumber: plotNumber,
-          size: formData.get("size") as string,
-          plotAddress: formData.get("plotAddress") as string,
-          price: formData.get("price") as string,
-          dimensions: formData.get("dimensions") as string,
-          facing: facing,
-          status: status || "available",
+          plotNumber,
+          facing,
+          status,
+          price,
+          size,
+          plotAddress,
+          dimensions,
           images: uploadedImages
         };
         
-        const response = await fetch("/api/plots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: Math.random().toString(36).substring(2, 9),
-            plotNumber: newPlot.plotNumber,
-            size: newPlot.size,
-            plotAddress: newPlot.plotAddress,
-            price: newPlot.price,
-            dimensions: newPlot.dimensions,
-            facing: newPlot.facing,
-            status: newPlot.status,
-            coordinates: newPlot.points,
-            images: newPlot.images
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to save plot details");
-        }
-
-        const savedPlot = await response.json();
-        setPlots([...plots, { ...newPlot, id: savedPlot.id }]);
+        setPlots([...plots, newPlot]);
+        setIsDialogOpen(false);
         setCurrentPoints([]);
         setIsDrawingComplete(false);
-        setIsDialogOpen(false);
-        toast.success("Plot details saved successfully!");
+        toast.success("Plot created successfully!");
       }
     } catch (error) {
-      console.error("Error saving plot:", error);
+      console.error("Error handling plot submission:", error);
       toast.error("Failed to save plot details");
     }
   };
 
-  const handleSaveLayout = async () => {
+  // Function to update layout in the database
+  const handleUpdateLayout = async () => {
     if (!layoutImage || plots.length === 0 || !layoutName) {
-      toast.error("Please upload an image, enter a layout name, and create at least one plot");
+      toast.error("Please ensure the layout has an image, name, and at least one plot");
       return;
     }
 
     try {
-      // Get all plot IDs
-      const plotIds = plots.map(plot => plot.id);
+      // Prepare plot data for API, ensuring coordinates are preserved exactly
+      const plotsData = plots.map(plot => ({
+        id: plot.id, // Include ID for existing plots
+        // Use exact coordinates without any transformations
+        points: plot.points.map(point => ({
+          x: point.x,
+          y: point.y
+        })),
+        plotNumber: plot.plotNumber,
+        facing: plot.facing,
+        status: plot.status,
+        price: plot.price,
+        size: plot.size,
+        plotAddress: plot.plotAddress,
+        dimensions: plot.dimensions,
+        images: plot.images
+      }));
       
-      const response = await fetch("/api/layouts", {
-        method: "POST",
+      const response = await fetch(`/api/layouts/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: layoutName,
           image: layoutImage,
-          plotIds: plotIds, // Only send the IDs of plots, not the full plot data
+          plots: plotsData,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save layout");
+      if (!response.ok) throw new Error("Failed to update layout");
 
-      toast.success("Layout saved successfully!");
+      toast.success("Layout updated successfully!");
+      router.push("/admin/plots");
     } catch (error) {
-      toast.error("Failed to save layout");
+      toast.error("Failed to update layout");
       console.error(error);
     }
   };
@@ -699,11 +853,11 @@ export default function CreateLayout() {
     setCurrentPoints([]);
     setIsDrawingComplete(false);
   };
-
+  
   const handleDeleteSelectedPlot = async () => {
     if (selectedPlot) {
       try {
-        // Only attempt to delete from database if the plot has an ID
+        // If the plot has an ID, it's stored in the database and needs to be deleted from there
         if (selectedPlot.id) {
           const response = await fetch(`/api/plots?id=${selectedPlot.id}`, {
             method: "DELETE",
@@ -712,12 +866,14 @@ export default function CreateLayout() {
           if (!response.ok) {
             throw new Error("Failed to delete plot from database");
           }
+          
+          toast.success("Plot deleted from database");
         }
         
         // Remove from local state
         setPlots(plots.filter(plot => plot !== selectedPlot));
         setSelectedPlot(null);
-        toast.success("Plot deleted successfully!");
+        toast.success("Plot deleted");
       } catch (error) {
         console.error("Error deleting plot:", error);
         toast.error("Failed to delete plot from database");
@@ -727,32 +883,24 @@ export default function CreateLayout() {
   
   const handleUndoLastPoint = () => {
     if (currentPoints.length > 0) {
-      if (drawingHistory.length > 0) {
-        const lastState = drawingHistory[drawingHistory.length - 1];
-        setCurrentPoints(lastState);
-        setDrawingHistory(drawingHistory.slice(0, -1));
-      } else {
-        setCurrentPoints([]);
-      }
+      const newPoints = [...currentPoints];
+      newPoints.pop();
+      setCurrentPoints(newPoints);
+    } else if (drawingHistory.length > 0) {
+      const lastState = drawingHistory[drawingHistory.length - 1];
+      setCurrentPoints(lastState);
+      setDrawingHistory(drawingHistory.slice(0, -1));
     }
   };
-
+  
   const handleZoomIn = () => {
-    setZoom(prevZoom => {
-      const newZoom = prevZoom * 1.2;
-      console.log("Zooming in:", prevZoom, "->", Math.min(newZoom, 5));
-      return Math.min(newZoom, 5);
-    });
+    setZoom(prevZoom => Math.min(prevZoom * 1.2, 10));
   };
-
+  
   const handleZoomOut = () => {
-    setZoom(prevZoom => {
-      const newZoom = prevZoom / 1.2;
-      console.log("Zooming out:", prevZoom, "->", Math.max(newZoom, 0.2));
-      return Math.max(newZoom, 0.2);
-    });
+    setZoom(prevZoom => Math.max(prevZoom / 1.2, 0.1));
   };
-
+  
   const handleMouseWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
     // Only prevent default to stop page scrolling
     event.preventDefault();
@@ -761,30 +909,23 @@ export default function CreateLayout() {
     // Zoom can only be performed using the Zoom In and Zoom Out buttons
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-900"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Create New Layout</h1>
+        <h1 className="text-3xl font-bold">Edit Layout: {layoutName}</h1>
         <div className="flex gap-4">
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={() => document.getElementById("imageUpload")?.click()}
-          >
-            <Upload className="h-4 w-4" />
-            Upload Layout
-          </Button>
-          <input
-            id="imageUpload"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageUpload}
-          />
           <Button 
             variant="default"
             className="flex items-center gap-2 bg-slate-800"
-            onClick={handleSaveLayout}
+            onClick={handleUpdateLayout}
           >
             <Save className="h-4 w-4" />
             Save Layout
@@ -988,10 +1129,15 @@ export default function CreateLayout() {
         </div>
       </div>
 
+      {/* Plot details dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{selectedTool === "details" && selectedPlot ? "Edit Plot Details" : "Enter Plot Details"}</DialogTitle>
+            <DialogTitle>
+              {selectedTool === "details" && selectedPlot
+                ? `Edit Plot: ${selectedPlot.plotNumber}`
+                : "Add New Plot"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePlotSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -1015,23 +1161,23 @@ export default function CreateLayout() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="plotAddress">Plot Address</Label>
-              <Input
-                id="plotAddress"
-                name="plotAddress"
-                className="border-slate-300"
-                defaultValue={selectedTool === "details" && selectedPlot ? selectedPlot.plotAddress : ""}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Price</Label>
+              <Label htmlFor="price">Price (₹)</Label>
               <Input
                 id="price"
                 name="price"
                 type="number"
                 className="border-slate-300"
                 defaultValue={selectedTool === "details" && selectedPlot ? selectedPlot.price : ""}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plotAddress">Plot Address</Label>
+              <Input
+                id="plotAddress"
+                name="plotAddress"
+                className="border-slate-300"
+                defaultValue={selectedTool === "details" && selectedPlot ? selectedPlot.plotAddress : ""}
                 required
               />
             </div>
@@ -1059,6 +1205,10 @@ export default function CreateLayout() {
                   <SelectItem value="South">South</SelectItem>
                   <SelectItem value="East">East</SelectItem>
                   <SelectItem value="West">West</SelectItem>
+                  <SelectItem value="North East">North East</SelectItem>
+                  <SelectItem value="North West">North West</SelectItem>
+                  <SelectItem value="South East">South East</SelectItem>
+                  <SelectItem value="South West">South West</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1140,9 +1290,23 @@ export default function CreateLayout() {
                 </div>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-slate-800">
-              {selectedTool === "details" && selectedPlot ? "Update Plot" : "Save Plot"}
-            </Button>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  if (isDrawingComplete) {
+                    setCurrentPoints([]);
+                    setIsDrawingComplete(false);
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
