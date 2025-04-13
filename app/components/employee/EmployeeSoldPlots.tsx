@@ -40,10 +40,10 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
   const [commissions, setCommissions] = useState<Commission[]>(initialCommissions);
   const [isLoading, setIsLoading] = useState(false);
   const [plotsFilter, setPlotsFilter] = useState('lastMonth');
-
-  const totalCommission = commissions.reduce((sum, commission) => 
-    sum + parseFloat(commission.amount.toString()), 0
-  );
+  const [totalStats, setTotalStats] = useState({
+    totalSales: 0,
+    totalCommission: 0
+  });
 
   const fetchFilteredCommissions = async () => {
     try {
@@ -52,6 +52,10 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
       if (!response.ok) throw new Error('Failed to fetch commissions');
       const data = await response.json();
       setCommissions(data.commissions);
+      setTotalStats({
+        totalSales: data.totalSales || data.commissions.length,
+        totalCommission: data.totalCommission ? parseFloat(data.totalCommission) : data.commissions.reduce((sum: number, commission: Commission) => sum + parseFloat(commission.amount.toString()), 0)
+      });
     } catch (error) {
       console.error('Error fetching filtered commissions:', error);
     } finally {
@@ -162,11 +166,11 @@ export function EmployeeSoldPlots({ initialCommissions, employeeId, employeeName
             <div className="flex items-center gap-12">
               <div>
                 <p className="text-sm text-muted-foreground">Total Sales</p>
-                <p className="text-xl font-bold">{commissions.length} plots</p>
+                <p className="text-xl font-bold">{totalStats.totalSales} plots</p>
               </div>
               <div className="border-l pl-12">
                 <p className="text-sm text-muted-foreground">Total Commission</p>
-                <p className="text-xl font-bold text-green-600">₹{totalCommission.toLocaleString('en-IN')}</p>
+                <p className="text-xl font-bold text-green-600">₹{totalStats.totalCommission.toLocaleString('en-IN')}</p>
               </div>
             </div>
           )}

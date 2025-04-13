@@ -30,10 +30,27 @@ export async function GET(
         startDate = subMonths(currentDate, 1);
     }
 
-    // Get filtered commissions - optimize query with pagination and selective fields
+    // First get the total count and sum for all matching commissions
+    const aggregateResults = await db.commission.aggregate({
+      where: {
+        employeeId: employeeId,
+        soldPlot: {
+          soldAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      },
+      _sum: {
+        amount: true
+      },
+      _count: true
+    });
+
+    // Then get the commissions with details, limited to pagination for UI display
     const commissions = await db.commission.findMany({
       where: {
-        employeeId: id,
+        employeeId: employeeId,
         soldPlot: {
           soldAt: {
             gte: startDate,
@@ -88,6 +105,8 @@ export async function GET(
           soldAt: commission.soldPlot.soldAt,
         },
       })),
+      totalSales: aggregateResults._count,
+      totalCommission: aggregateResults._sum.amount ? aggregateResults._sum.amount.toString() : '0'
     });
   } catch (error) {
     console.error('Error fetching employee commissions:', error);

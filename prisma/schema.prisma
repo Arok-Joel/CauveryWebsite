@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+
 }
 
 model User {
@@ -218,6 +218,19 @@ model PhoneNumber {
   adminContactInfoId String
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+model Event {
+  id          String     @id @default(cuid())
+  title       String
+  description String     @db.Text
+  date        DateTime?
+  location    String?
+  images      String[]   @db.Text
+  imageUrl    String?    @db.Text
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 enum UserRole {

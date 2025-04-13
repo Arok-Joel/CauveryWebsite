@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadToBlob, isBlobUrl } from '@/lib/blob-helpers';
 import { toast } from 'sonner';
-import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 
 interface BlobItem {
   url: string;
@@ -30,20 +31,31 @@ interface DuplicateError extends Error {
 
 export default function BlobStorageManager() {
   const [isUploading, setIsUploading] = useState(false);
+  const [isCarouselUploading, setIsCarouselUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedImages, setUploadedImages] = useState<ImageItem[]>([]);
+  const [carouselImages, setCarouselImages] = useState<ImageItem[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [carouselPreviewImage, setCarouselPreviewImage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
   const [homepageImages, setHomepageImages] = useState<string[]>([
     '/hero-bg.jpg',
-    '/plot-layout.jpg'
+    '/plot-layout.jpg',
+    '/main.png'
   ]);
+  const [isCarouselMigrating, setIsCarouselMigrating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const carouselFileInputRef = useRef<HTMLInputElement>(null);
   const [duplicateError, setDuplicateError] = useState<{ 
     message: string; 
     images: { url: string; uploadedAt: string }[]
   } | null>(null);
+  const [carouselDuplicateError, setCarouselDuplicateError] = useState<{ 
+    message: string; 
+    images: { url: string; uploadedAt: string }[]
+  } | null>(null);
+  const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
     fetchBlobs();
@@ -67,7 +79,20 @@ export default function BlobStorageManager() {
         uploadedAt: new Date(blob.uploadedAt),
       }));
 
-      setUploadedImages(images);
+      // Separate carousel images from regular images
+      const carousel: ImageItem[] = [];
+      const regular: ImageItem[] = [];
+      
+      images.forEach(img => {
+        if (img.name.toLowerCase().includes('carousel')) {
+          carousel.push(img);
+        } else {
+          regular.push(img);
+        }
+      });
+
+      setUploadedImages(regular);
+      setCarouselImages(carousel);
     } catch (error) {
       console.error('Error fetching blobs:', error);
       toast.error('Failed to fetch uploaded images');
@@ -298,203 +323,530 @@ export default function BlobStorageManager() {
     }
   };
 
+  const migrateCarouselImage = async () => {
+    if (!confirm('This will upload main.png to Blob storage as a carousel image. Continue?')) {
+      return;
+    }
+    
+    setIsCarouselMigrating(true);
+    try {
+      // Fetch the main.png image
+      const response = await fetch('/main.png');
+      if (!response.ok) {
+        throw new Error('Failed to fetch main.png');
+      }
+      
+      // Convert to file
+      const blob = await response.blob();
+      const file = new File([blob], 'carousel-main.png', { type: blob.type });
+      
+      // Upload to blob storage
+      const blobUrl = await uploadToBlob(file, '/');
+      if (!blobUrl) {
+        throw new Error('Failed to upload to Blob storage');
+      }
+      
+      toast.success('Carousel image uploaded successfully');
+      
+      // Add to our list of uploaded images
+      const newImage: ImageItem = {
+        id: Date.now().toString(),
+        url: blobUrl,
+        name: 'carousel-main.png',
+        uploadedAt: new Date(),
+      };
+      
+      setCarouselImages((prev) => [newImage, ...prev]);
+      
+      // Refresh the list
+      fetchBlobs();
+    } catch (error) {
+      console.error('Error migrating carousel image:', error);
+      if (error instanceof Error) {
+        toast.error(`Failed to upload carousel image: ${error.message}`);
+      } else {
+        toast.error('Failed to upload carousel image');
+      }
+    } finally {
+      setIsCarouselMigrating(false);
+    }
+  };
+
+  const handleCarouselFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Preview the image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCarouselPreviewImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCarouselUpload = async () => {
+    const file = carouselFileInputRef.current?.files?.[0];
+    if (!file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    // Reset any previous duplicate errors
+    setCarouselDuplicateError(null);
+    setIsCarouselUploading(true);
+    
+    try {
+      // Rename the file to include carousel prefix
+      const fileExt = file.name.includes('.') ? file.name.split('.').pop() : '';
+      const baseName = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
+      const carouselFileName = `carousel-${baseName}.${fileExt}`;
+      const carouselFile = new File([file], carouselFileName, { type: file.type });
+      
+      const blobUrl = await uploadToBlob(carouselFile, '/');
+      if (!blobUrl) {
+        throw new Error('Failed to upload carousel image');
+      }
+
+      const newImage: ImageItem = {
+        id: Date.now().toString(),
+        url: blobUrl,
+        name: carouselFileName,
+        uploadedAt: new Date(),
+      };
+
+      setCarouselImages((prev) => [newImage, ...prev]);
+      setCarouselPreviewImage(null);
+      
+      if (carouselFileInputRef.current) {
+        carouselFileInputRef.current.value = '';
+      }
+      
+      toast.success('Carousel image uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      
+      // Check if this is a duplicate error (409 status)
+      if (error instanceof Error) {
+        const dupError = error as DuplicateError;
+        if (error.message.includes('similar image already exists') && dupError.existingImages) {
+          setCarouselDuplicateError({
+            message: error.message,
+            images: dupError.existingImages
+          });
+          toast.error('This image already exists. See below for existing versions.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error('Failed to upload carousel image');
+      }
+    } finally {
+      setIsCarouselUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Upload form */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="image-upload">Upload new image</Label>
-            <Input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              disabled={isUploading}
-            />
-          </div>
-          
-          {previewImage && (
-            <div className="mt-4 relative aspect-video rounded-md overflow-hidden bg-gray-100">
-              <img
-                src={previewImage}
-                alt="Preview"
-                className="w-full h-full object-contain"
-              />
-            </div>
-          )}
-          
-          {duplicateError && (
-            <div className="mt-4 p-3 border border-orange-200 bg-orange-50 rounded-md">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-orange-700">{duplicateError.message}</p>
-                  <p className="text-xs text-orange-600 mt-1">
-                    The following similar images already exist in storage:
-                  </p>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {duplicateError.images.map((img, index) => (
-                      <div key={index} className="border border-orange-200 rounded p-2 bg-white">
-                        <div className="h-16 bg-gray-100 rounded overflow-hidden">
-                          <img 
-                            src={img.url} 
-                            alt="Existing image" 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <p className="text-xs truncate mt-1 text-gray-500">
-                          {new Date(img.uploadedAt).toLocaleString()}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full mt-1 h-7 text-xs"
-                          onClick={() => handleCopyUrl(img.url)}
-                        >
-                          Copy URL
-                        </Button>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general">General Images</TabsTrigger>
+          <TabsTrigger value="carousel">Carousel Images</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Upload form */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="image-upload">Upload new homepage image</Label>
+                <Input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                />
+              </div>
+              
+              {previewImage && (
+                <div className="mt-4 relative aspect-video rounded-md overflow-hidden bg-gray-100">
+                  <img
+                    src={previewImage}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+              
+              {duplicateError && (
+                <div className="mt-4 p-3 border border-orange-200 bg-orange-50 rounded-md">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-700">{duplicateError.message}</p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        The following similar images already exist in storage:
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {duplicateError.images.map((img, index) => (
+                          <div key={index} className="border border-orange-200 rounded p-2 bg-white">
+                            <div className="h-16 bg-gray-100 rounded overflow-hidden">
+                              <img 
+                                src={img.url} 
+                                alt="Existing image" 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <p className="text-xs truncate mt-1 text-gray-500">
+                              {new Date(img.uploadedAt).toLocaleString()}
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-1 h-7 text-xs"
+                              onClick={() => handleCopyUrl(img.url)}
+                            >
+                              Copy URL
+                            </Button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
+                </div>
+              )}
+              
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading || !previewImage}
+                className="w-full"
+              >
+                {isUploading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                    Uploading...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Upload to Blob Storage
+                  </span>
+                )}
+              </Button>
+              
+              <div className="text-sm text-gray-500 mt-2">
+                <p>
+                  Only images for the homepage will be stored in Vercel Blob storage.
+                  The URL will be in format: <code>*.public.blob.vercel-storage.com</code>
+                </p>
+              </div>
+              
+              {/* Migration section */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-md font-medium mb-2">Migrate Homepage Images</h3>
+                <div className="text-sm text-gray-500 mb-3">
+                  This will upload the standard homepage images to Blob storage.
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={migrateHomepageImages}
+                  disabled={isMigrating}
+                  className="w-full"
+                >
+                  {isMigrating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                      Migrating...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <MoveRight className="h-4 w-4" />
+                      Migrate Homepage Images
+                    </span>
+                  )}
+                </Button>
+                <div className="mt-2 text-xs text-gray-500">
+                  Images to migrate: {homepageImages.join(', ')}
                 </div>
               </div>
             </div>
-          )}
-          
-          <Button
-            onClick={handleUpload}
-            disabled={isUploading || !previewImage}
-            className="w-full"
-          >
-            {isUploading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
-                Uploading...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload to Blob Storage
-              </span>
-            )}
-          </Button>
-          
-          <div className="text-sm text-gray-500 mt-2">
-            <p>
-              Only images for the homepage will be stored in Vercel Blob storage.
-              The URL will be in format: <code>*.public.blob.vercel-storage.com</code>
-            </p>
-          </div>
-          
-          {/* Migration section */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-md font-medium mb-2">Migrate Homepage Images</h3>
-            <div className="text-sm text-gray-500 mb-3">
-              This will upload the standard homepage images to Blob storage.
-            </div>
-            <Button
-              variant="outline"
-              onClick={migrateHomepageImages}
-              disabled={isMigrating}
-              className="w-full"
-            >
-              {isMigrating ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
-                  Migrating...
-                </span>
+            
+            {/* Recently uploaded images */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Uploaded Images</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={fetchBlobs}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
+                  <div className="text-center text-gray-500">
+                    <RefreshCw className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
+                    <p>Loading images...</p>
+                  </div>
+                </div>
+              ) : uploadedImages.length === 0 ? (
+                <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
+                  <div className="text-center text-gray-500">
+                    <FileImage className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No images uploaded yet</p>
+                  </div>
+                </div>
               ) : (
-                <span className="flex items-center gap-2">
-                  <MoveRight className="h-4 w-4" />
-                  Migrate Homepage Images
-                </span>
+                <div className="grid grid-cols-1 gap-3">
+                  {uploadedImages.map((image) => (
+                    <Card key={image.id} className="p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded bg-gray-100 overflow-hidden">
+                          <img 
+                            src={image.url} 
+                            alt={image.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="font-medium truncate" title={image.name}>
+                            {image.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {image.uploadedAt.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCopyUrl(image.url)}
+                        >
+                          Copy URL
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          disabled={isDeleting === image.url}
+                          onClick={() => handleDeleteBlob(image.url)}
+                        >
+                          {isDeleting === image.url ? (
+                            <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               )}
-            </Button>
-            <div className="mt-2 text-xs text-gray-500">
-              Images to migrate: {homepageImages.join(', ')}
             </div>
           </div>
-        </div>
+        </TabsContent>
         
-        {/* Recently uploaded images */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Uploaded Images</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={fetchBlobs}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+        <TabsContent value="carousel" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Carousel Upload form */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="carousel-image-upload">Upload new carousel image</Label>
+                <Input
+                  id="carousel-image-upload"
+                  type="file"
+                  accept="image/*"
+                  ref={carouselFileInputRef}
+                  onChange={handleCarouselFileChange}
+                  disabled={isCarouselUploading}
+                />
+              </div>
+              
+              {carouselPreviewImage && (
+                <div className="mt-4 relative aspect-video rounded-md overflow-hidden bg-gray-100">
+                  <img
+                    src={carouselPreviewImage}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+              
+              {carouselDuplicateError && (
+                <div className="mt-4 p-3 border border-orange-200 bg-orange-50 rounded-md">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-700">{carouselDuplicateError.message}</p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        The following similar images already exist in storage:
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {carouselDuplicateError.images.map((img, index) => (
+                          <div key={index} className="border border-orange-200 rounded p-2 bg-white">
+                            <div className="h-16 bg-gray-100 rounded overflow-hidden">
+                              <img 
+                                src={img.url} 
+                                alt="Existing image" 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <p className="text-xs truncate mt-1 text-gray-500">
+                              {new Date(img.uploadedAt).toLocaleString()}
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-1 h-7 text-xs"
+                              onClick={() => handleCopyUrl(img.url)}
+                            >
+                              Copy URL
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <Button
+                onClick={handleCarouselUpload}
+                disabled={isCarouselUploading || !carouselPreviewImage}
+                className="w-full"
+              >
+                {isCarouselUploading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                    Uploading...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    Upload Carousel Image
+                  </span>
+                )}
+              </Button>
+              
+              <div className="text-sm text-gray-500 mt-2">
+                <p>
+                  Carousel images will be displayed in the home page carousel section.
+                  Images will automatically be prefixed with "carousel-".
+                </p>
+              </div>
+              
+              {/* Carousel Migration section */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-md font-medium mb-2">Migrate Default Carousel Image</h3>
+                <div className="text-sm text-gray-500 mb-3">
+                  This will upload main.png as a carousel image for the home page.
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={migrateCarouselImage}
+                  disabled={isCarouselMigrating}
+                  className="w-full"
+                >
+                  {isCarouselMigrating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                      Migrating...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <MoveRight className="h-4 w-4" />
+                      Migrate Default Carousel Image
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Carousel images */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Carousel Images</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={fetchBlobs}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
+                  <div className="text-center text-gray-500">
+                    <RefreshCw className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
+                    <p>Loading images...</p>
+                  </div>
+                </div>
+              ) : carouselImages.length === 0 ? (
+                <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
+                  <div className="text-center text-gray-500">
+                    <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No carousel images uploaded yet</p>
+                    <p className="text-xs mt-2">Upload images here to display in the home page carousel</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {carouselImages.map((image) => (
+                    <Card key={image.id} className="p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded bg-gray-100 overflow-hidden">
+                          <img 
+                            src={image.url} 
+                            alt={image.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="font-medium truncate" title={image.name}>
+                            {image.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {image.uploadedAt.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCopyUrl(image.url)}
+                        >
+                          Copy URL
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          disabled={isDeleting === image.url}
+                          onClick={() => handleDeleteBlob(image.url)}
+                        >
+                          {isDeleting === image.url ? (
+                            <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          
-          {isLoading ? (
-            <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
-              <div className="text-center text-gray-500">
-                <RefreshCw className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
-                <p>Loading images...</p>
-              </div>
-            </div>
-          ) : uploadedImages.length === 0 ? (
-            <div className="flex items-center justify-center h-40 border rounded-md border-dashed">
-              <div className="text-center text-gray-500">
-                <FileImage className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No images uploaded yet</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {uploadedImages.map((image) => (
-                <Card key={image.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded bg-gray-100 overflow-hidden">
-                      <img 
-                        src={image.url} 
-                        alt={image.name} 
-                        className="w-full h-full object-cover" 
-                      />
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-medium truncate" title={image.name}>
-                        {image.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {image.uploadedAt.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleCopyUrl(image.url)}
-                    >
-                      Copy URL
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      disabled={isDeleting === image.url}
-                      onClick={() => handleDeleteBlob(image.url)}
-                    >
-                      {isDeleting === image.url ? (
-                        <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 

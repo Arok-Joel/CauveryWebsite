@@ -104,16 +104,36 @@ html {
   }
   
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #2a4130;
     border-radius: 10px;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: #5d7a5f;
     border-radius: 10px;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
+    background: #7c9b7e;
+  }
+  
+  /* Green theme scrollbar */
+  .green-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .green-scrollbar::-webkit-scrollbar-track {
+    background: #2a4130;
+    border-radius: 10px;
+  }
+  
+  .green-scrollbar::-webkit-scrollbar-thumb {
+    background: #5d7a5f;
+    border-radius: 10px;
+  }
+  
+  .green-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #7c9b7e;
   }
 }

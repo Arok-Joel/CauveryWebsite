@@ -19,7 +19,9 @@ import {
   Map,
   Store,
   LogOut,
-  User
+  User,
+  FileImage,
+  Calendar
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -63,14 +65,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: LayoutDashboard,
     },
     {
-      name: 'Teams',
-      href: '/admin/teams',
-      icon: Network,
-    },
-    {
       name: 'Employees',
       href: '/admin/employees',
       icon: Users,
+    },
+    {
+      name: 'Teams',
+      href: '/admin/teams',
+      icon: Network,
     },
     {
       name: 'Promotions',
@@ -96,6 +98,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: 'Announcements',
       href: '/admin/announcements',
       icon: Bell,
+    },
+    {
+      name: 'Events',
+      href: '/admin/events',
+      icon: Calendar,
+    },
+    {
+      name: "Images",
+      href: "/admin/images",
+      icon: FileImage,
     },
     {
       name: "Messages",

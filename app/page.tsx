@@ -1,8 +1,24 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-  import { BlobImage } from '@/components/BlobImage';
+import { BlobImage } from '@/components/BlobImage';
+import HomeCarousel from '@/components/HomeCarousel';
+import { EventsSection } from '@/components/EventsSection';
+import { fetchCarouselImages, CarouselImage } from '@/lib/carousel-helpers';
 
-export default function Home() {
+export default async function Home() {
+  // Fetch carousel images
+  const carouselImages = await fetchCarouselImages();
+  
+  // Ensure main.png is included as the first image
+  const hasMainImage = carouselImages.some((img: CarouselImage) => img.url === '/main.png');
+  
+  if (!hasMainImage) {
+    carouselImages.unshift({
+      url: '/main.png',
+      alt: 'Royal Cauvery Farms'
+    });
+  }
+  
   return (
     <main className="min-h-screen w-full p-0 m-0 overflow-hidden">
       {/* Hero Section */}
@@ -38,6 +54,30 @@ export default function Home() {
             >
               <Link href="/contact">Contact Us</Link>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Carousel and Events Section - Side by Side */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-8 text-center">Explore Royal Cauvery Farms</h2>
+          
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Carousel - Left Side */}
+            <div className="lg:w-2/3">
+              <HomeCarousel images={carouselImages} />
+            </div>
+            
+            {/* Events - Right Side */}
+            <div className="lg:w-1/3">
+              <div className="bg-[#3C5A3E] text-white p-6 rounded-lg h-full flex flex-col">
+                <h2 className="text-2xl font-bold mb-6 text-center">News & Events</h2>
+                <div className="flex-grow overflow-hidden">
+                  <EventsSection minimal={true} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
