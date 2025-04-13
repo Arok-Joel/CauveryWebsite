@@ -41,8 +41,6 @@ export async function PUT(
   try {
     const { id } = context.params;
     const { name, image, plots } = await request.json();
-    
-    console.log(`Updating layout ${id} with ${plots.length} plots`);
 
     // First, update the layout details
     const updatedLayout = await prisma.layout.update({
@@ -55,8 +53,6 @@ export async function PUT(
 
     // For each plot, either update existing or create new
     for (const plot of plots) {
-      console.log(`Processing plot ${plot.plotNumber} with ${plot.images?.length || 0} images`);
-      
       if (plot.id) {
         // Update existing plot - preserve the exact coordinates
         await prisma.plot.update({
@@ -75,7 +71,6 @@ export async function PUT(
             images: plot.images ? JSON.stringify(plot.images) : "[]",
           },
         });
-        console.log(`Updated existing plot: ${plot.id}`);
       } else {
         // Create new plot with exact coordinates
         const newPlot = await prisma.plot.create({
@@ -96,7 +91,6 @@ export async function PUT(
             updatedAt: new Date(),
           },
         });
-        console.log(`Created new plot: ${newPlot.id}`);
       }
     }
 
