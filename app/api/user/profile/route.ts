@@ -39,34 +39,6 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get booked plots for this user
-    const bookedPlots = await db.soldPlot.findMany({
-      where: {
-        OR: [
-          { email: user.email },
-          { phoneNumber: user.phone }
-        ]
-      },
-      select: {
-        id: true,
-        plotNumber: true,
-        size: true,
-        price: true,
-        soldAt: true,
-        plot: {
-          select: {
-            status: true
-          }
-        }
-      },
-      orderBy: {
-        soldAt: 'desc',
-      },
-    });
-
-    console.log('Query conditions:', { email: user.email, phone: user.phone });
-    console.log('Found booked plots:', bookedPlots);
-
     // Format the response
     const response = {
       user: {
@@ -76,15 +48,7 @@ export async function GET() {
         address: user.address || '',
         pincode: user.pincode || '',
         profileImage: user.profileImage,
-      },
-      bookedPlots: bookedPlots.map(plot => ({
-        id: plot.id,
-        plotNumber: plot.plotNumber,
-        size: plot.size,
-        price: plot.price,
-        bookingDate: plot.soldAt,
-        status: plot.plot?.status || 'completed'
-      })),
+      }
     };
 
     return NextResponse.json(response);
