@@ -174,11 +174,14 @@ export default function EditLayout({ params }: PageProps) {
     const fetchLayout = async () => {
       try {
         setLoading(true);
+        console.log("Fetching layout:", id);
         const response = await fetch(`/api/layouts/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch layout');
         }
         const layout = await response.json();
+        console.log("Layout data received:", layout.name);
+        console.log("Plots from API:", layout.Plot.length);
         
         // Set layout details
         setLayoutName(layout.name);
@@ -190,6 +193,25 @@ export default function EditLayout({ params }: PageProps) {
           // Ensure we're getting the coordinates exactly as stored in the database without transformation
           const coordinates = Array.isArray(plot.coordinates) ? plot.coordinates : [];
           
+          console.log(`Plot ${plot.plotNumber} raw images:`, plot.images);
+          
+          // Check if images is a JSON string, and if so, parse it
+          let parsedImages = [];
+          if (plot.images) {
+            try {
+              if (typeof plot.images === 'string') {
+                parsedImages = JSON.parse(plot.images);
+                console.log(`Successfully parsed images for plot ${plot.plotNumber}:`, parsedImages.length);
+              } else {
+                parsedImages = plot.images;
+                console.log(`Plot ${plot.plotNumber} already has parsed images:`, parsedImages.length);
+              }
+            } catch (e) {
+              console.error(`Error parsing images for plot ${plot.plotNumber}:`, e);
+              parsedImages = [];
+            }
+          }
+          
           return {
             id: plot.id,
             points: [...coordinates], // Create a new array to avoid reference issues
@@ -200,11 +222,13 @@ export default function EditLayout({ params }: PageProps) {
             dimensions: plot.dimensions || "",
             facing: plot.facing || "North",
             status: plot.status || "available",
-            images: plot.PlotImage?.map((img: any) => ({
-              url: img.url,
-              caption: img.caption
-            })) || []
+            images: parsedImages || []
           };
+        });
+        
+        console.log("Formatted plots:", formattedPlots.length);
+        formattedPlots.forEach((p: Plot, i: number) => {
+          console.log(`Formatted plot ${i+1} (${p.plotNumber}):`, p.images?.length || 0, "images");
         });
         
         setPlots(formattedPlots);
@@ -708,41 +732,48 @@ export default function EditLayout({ params }: PageProps) {
     const imageFiles = formData.getAll("plotImages") as File[];
     const imageCaptions = formData.getAll("imageCaptions[]") as string[];
     
+    console.log("Form submission - imageFiles:", imageFiles.length, "Images have data:", imageFiles[0]?.size > 0);
+    
     try {
-      // Only upload images if files are selected
-      let uploadedImages: PlotImage[] = [];
+      // Only process images if files are selected
+      let processedImages: PlotImage[] = [];
       
       if (imageFiles.length > 0 && imageFiles[0].size > 0) {
-        // First, upload all images
-        const imageUploadPromises = imageFiles.map(async (file, index) => {
-          const imageFormData = new FormData();
-          imageFormData.append("file", file);
-          
-          const uploadResponse = await fetch("/api/upload", {
-            method: "POST",
-            body: imageFormData,
+        console.log("Processing images...");
+        // Convert all images to base64 instead of uploading to server
+        const imageProcessingPromises = imageFiles.map(async (file, index) => {
+          console.log(`Processing image ${index+1}, size: ${file.size} bytes`);
+          // Convert file to base64
+          const base64String = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = reader.result as string;
+              console.log(`Image ${index+1} converted to base64, length: ${base64.length}`);
+              resolve(base64);
+            };
+            reader.readAsDataURL(file);
           });
           
-          if (!uploadResponse.ok) {
-            throw new Error("Failed to upload image");
-          }
-          
-          const { url } = await uploadResponse.json();
           return {
-            url,
+            url: base64String,
             caption: imageCaptions[index] || undefined
           };
         });
         
-        uploadedImages = await Promise.all(imageUploadPromises);
+        processedImages = await Promise.all(imageProcessingPromises);
+        console.log("Images processed:", processedImages.length);
       }
 
       // For editing existing plot
       if (selectedTool === "details" && selectedPlot) {
+        console.log("Updating existing plot:", selectedPlot.plotNumber);
+        console.log("Current images:", selectedPlot.images?.length || 0);
+        console.log("New images to add:", processedImages.length);
+        
         // Create a copy of the plots array
         const updatedPlots = plots.map(plot => {
           if (plot === selectedPlot) {
-            return {
+            const updatedPlot = {
               ...plot,
               plotNumber,
               facing,
@@ -751,22 +782,29 @@ export default function EditLayout({ params }: PageProps) {
               size,
               plotAddress,
               dimensions,
-              // Append new images to existing ones
-              images: [...(plot.images || []), ...uploadedImages]
+              // Ensure images array exists before spreading
+              images: [...(plot.images || []), ...processedImages]
             };
+            console.log("Updated plot images count:", updatedPlot.images.length);
+            return updatedPlot;
           }
           return plot;
         });
         
         setPlots(updatedPlots);
+        // Update selectedPlot to reflect the changes
+        const updatedSelectedPlot = updatedPlots.find(p => p === selectedPlot);
+        if (updatedSelectedPlot) {
+          setSelectedPlot(updatedSelectedPlot);
+        }
         setIsDialogOpen(false);
-        setSelectedPlot(null);
         toast.success("Plot updated successfully!");
         return;
       }
       
       // For creating new plot
       if (isDrawingComplete && currentPoints.length >= 3) {
+        console.log("Creating new plot");
         const newPlot: Plot = {
           points: currentPoints,
           plotNumber,
@@ -776,8 +814,14 @@ export default function EditLayout({ params }: PageProps) {
           size,
           plotAddress,
           dimensions,
-          images: uploadedImages
+          images: processedImages
         };
+        
+        console.log("New plot data:", {
+          points: newPlot.points.length,
+          plotNumber: newPlot.plotNumber,
+          images: newPlot.images.length
+        });
         
         setPlots([...plots, newPlot]);
         setIsDialogOpen(false);
@@ -799,43 +843,61 @@ export default function EditLayout({ params }: PageProps) {
     }
 
     try {
+      console.log("Saving layout with plots:", plots.length);
+      
       // Prepare plot data for API, ensuring coordinates are preserved exactly
-      const plotsData = plots.map(plot => ({
-        id: plot.id, // Include ID for existing plots
-        // Use exact coordinates without any transformations
-        points: plot.points.map(point => ({
-          x: point.x,
-          y: point.y
-        })),
-        plotNumber: plot.plotNumber,
-        facing: plot.facing,
-        status: plot.status,
-        price: plot.price,
-        size: plot.size,
-        plotAddress: plot.plotAddress,
-        dimensions: plot.dimensions,
-        images: plot.images
-      }));
+      const plotsData = plots.map(plot => {
+        // Log each plot's image data
+        console.log(`Plot ${plot.plotNumber} has ${plot.images?.length || 0} images`);
+        if (plot.images && plot.images.length > 0) {
+          console.log(`First image URL length: ${plot.images[0]?.url?.length || 0}`);
+        }
+        
+        return {
+          id: plot.id, // Include ID for existing plots
+          // Use exact coordinates without any transformations
+          points: plot.points.map(point => ({
+            x: point.x,
+            y: point.y
+          })),
+          plotNumber: plot.plotNumber,
+          facing: plot.facing,
+          status: plot.status,
+          price: plot.price,
+          size: plot.size,
+          plotAddress: plot.plotAddress,
+          dimensions: plot.dimensions,
+          images: plot.images || [] // Ensure images array is included
+        };
+      });
+      
+      const requestBody = {
+        name: layoutName,
+        image: layoutImage,
+        plots: plotsData,
+      };
+      
+      console.log("Sending request to update layout");
       
       const response = await fetch(`/api/layouts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: layoutName,
-          image: layoutImage,
-          plots: plotsData,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error("Failed to update layout");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to update layout:", errorData);
+        throw new Error("Failed to update layout: " + (errorData.message || "Unknown error"));
+      }
 
       toast.success("Layout updated successfully!");
       router.push("/admin/plots");
     } catch (error) {
-      toast.error("Failed to update layout");
-      console.error(error);
+      console.error("Error updating layout:", error);
+      toast.error("Failed to update layout: " + (error as Error).message);
     }
   };
   
@@ -1288,6 +1350,33 @@ export default function EditLayout({ params }: PageProps) {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => {
+                    // Debug function to check current plot images
+                    console.log("Current selected plot:", selectedPlot);
+                    if (selectedPlot) {
+                      console.log("Images:", selectedPlot.images?.length || 0);
+                      selectedPlot.images?.forEach((img, i) => {
+                        console.log(`Image ${i+1} URL length:`, img.url?.length || 0);
+                        console.log(`Image ${i+1} starts with:`, img.url?.substring(0, 30));
+                      });
+                    } else {
+                      console.log("No plot selected");
+                    }
+                    // Check all plots
+                    console.log("All plots:", plots.length);
+                    plots.forEach((p: Plot, i: number) => {
+                      console.log(`Plot ${i+1} (${p.plotNumber}):`, p.images?.length || 0, "images");
+                    });
+                  }}
+                >
+                  Check Images (Debug)
+                </Button>
               </div>
             </div>
             

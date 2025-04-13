@@ -41,6 +41,8 @@ export async function PUT(
   try {
     const { id } = context.params;
     const { name, image, plots } = await request.json();
+    
+    console.log(`Updating layout ${id} with ${plots.length} plots`);
 
     // First, update the layout details
     const updatedLayout = await prisma.layout.update({
@@ -53,6 +55,8 @@ export async function PUT(
 
     // For each plot, either update existing or create new
     for (const plot of plots) {
+      console.log(`Processing plot ${plot.plotNumber} with ${plot.images?.length || 0} images`);
+      
       if (plot.id) {
         // Update existing plot - preserve the exact coordinates
         await prisma.plot.update({
@@ -66,12 +70,15 @@ export async function PUT(
             facing: plot.facing,
             status: plot.status,
             // Store the exact coordinates without any transformations
-            coordinates: plot.points, 
+            coordinates: plot.points,
+            // Store images as JSON string
+            images: plot.images ? JSON.stringify(plot.images) : "[]",
           },
         });
+        console.log(`Updated existing plot: ${plot.id}`);
       } else {
         // Create new plot with exact coordinates
-        await prisma.plot.create({
+        const newPlot = await prisma.plot.create({
           data: {
             id: crypto.randomUUID(),
             plotNumber: plot.plotNumber,
@@ -84,10 +91,12 @@ export async function PUT(
             // Store the exact coordinates
             coordinates: plot.points,
             layoutId: id,
-            images: "", 
+            // Store images as JSON string
+            images: plot.images ? JSON.stringify(plot.images) : "[]", 
             updatedAt: new Date(),
           },
         });
+        console.log(`Created new plot: ${newPlot.id}`);
       }
     }
 
@@ -95,7 +104,7 @@ export async function PUT(
     const layout = await prisma.layout.findUnique({
       where: { id },
       include: {
-        Plot: true,
+        Plot: true
       },
     });
 
@@ -103,7 +112,7 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating layout:", error);
     return NextResponse.json(
-      { error: "Failed to update layout" },
+      { error: "Failed to update layout", details: (error as Error).message },
       { status: 500 }
     );
   }

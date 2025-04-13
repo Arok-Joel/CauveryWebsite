@@ -542,28 +542,25 @@ export default function CreateLayout() {
     const imageCaptions = formData.getAll("imageCaptions[]") as string[];
     
     try {
-      // First, upload all images
-      const imageUploadPromises = imageFiles.map(async (file, index) => {
-        const imageFormData = new FormData();
-        imageFormData.append("file", file);
-        
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: imageFormData,
+      // Convert all images to base64 instead of uploading to server
+      const imageProcessingPromises = imageFiles.map(async (file, index) => {
+        // Convert file to base64
+        const base64String = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            resolve(base64);
+          };
+          reader.readAsDataURL(file);
         });
         
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload image");
-        }
-        
-        const { url } = await uploadResponse.json();
         return {
-          url,
+          url: base64String,
           caption: imageCaptions[index] || undefined
         };
       });
       
-      const uploadedImages = await Promise.all(imageUploadPromises);
+      const processedImages = await Promise.all(imageProcessingPromises);
 
       if (selectedPlot && selectedTool === "details") {
         // Update existing plot
@@ -576,7 +573,7 @@ export default function CreateLayout() {
           dimensions: formData.get("dimensions") as string || selectedPlot.dimensions,
           facing: facing || selectedPlot.facing,
           status: status || selectedPlot.status,
-          images: [...(selectedPlot.images || []), ...uploadedImages]
+          images: [...(selectedPlot.images || []), ...processedImages]
         };
         
         const response = await fetch("/api/plots", {
@@ -616,7 +613,7 @@ export default function CreateLayout() {
           dimensions: formData.get("dimensions") as string,
           facing: facing,
           status: status || "available",
-          images: uploadedImages
+          images: processedImages
         };
         
         const response = await fetch("/api/plots", {
