@@ -12,11 +12,9 @@ const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 // GET - Retrieve admin contact information for public display
 export async function GET() {
   try {
-    // Check cache first
-    const now = Date.now();
-    if (cachedContactInfo && now < cacheExpiration) {
-      return NextResponse.json(cachedContactInfo);
-    }
+    // Clear cache on every request to ensure latest data is always shown
+    // This fixes the issue with employee role changes not being reflected
+    cachedContactInfo = null;
     
     // Check if required models exist
     const modelNames = Object.keys(db).filter(key => 
@@ -52,34 +50,27 @@ export async function GET() {
     let topEmployeeName = '';
     let topEmployeeRole = '';
     try {
-      // Instead of querying for top role first, use a single optimized query
-      // This is more efficient as it avoids multiple round-trips
-      const topEmployeesWithCommissions = await db.$queryRaw`
-        WITH RankedEmployees AS (
-          SELECT 
-            e."id", 
-            e."employeeRole", 
-            e."hierarchyLevel",
-            u."name",
-            u."phone",
-            COUNT(c."id") as "soldPlots",
-            ROW_NUMBER() OVER (PARTITION BY e."hierarchyLevel" ORDER BY COUNT(c."id") DESC) as rank
-          FROM "Employee" e
-          JOIN "User" u ON e."userId" = u."id"
-          LEFT JOIN "Commission" c ON e."id" = c."employeeId"
-          GROUP BY e."id", e."employeeRole", e."hierarchyLevel", u."name", u."phone"
-        )
-        SELECT *
-        FROM RankedEmployees
-        WHERE rank = 1
-        ORDER BY "hierarchyLevel" ASC
+      // Modified query to select the highest ranking employee (lowest hierarchyLevel)
+      // With a tiebreaker of most sold plots for employees with the same role
+      const topEmployees = await db.$queryRaw`
+        SELECT 
+          e."employeeRole", 
+          u."name",
+          u."phone",
+          COUNT(c."id") as "soldPlots"
+        FROM "Employee" e
+        JOIN "User" u ON e."userId" = u."id"
+        LEFT JOIN "Commission" c ON e."id" = c."employeeId"
+        WHERE e."isTerminated" = false
+        GROUP BY e."employeeRole", e."hierarchyLevel", u."name", u."phone", e."id"
+        ORDER BY e."hierarchyLevel" ASC, COUNT(c."id") DESC
         LIMIT 1
       `;
       
-      if (Array.isArray(topEmployeesWithCommissions) && topEmployeesWithCommissions.length > 0) {
-        topEmployeePhone = topEmployeesWithCommissions[0].phone;
-        topEmployeeName = topEmployeesWithCommissions[0].name;
-        topEmployeeRole = topEmployeesWithCommissions[0].employeeRole;
+      if (Array.isArray(topEmployees) && topEmployees.length > 0) {
+        topEmployeePhone = topEmployees[0].phone;
+        topEmployeeName = topEmployees[0].name;
+        topEmployeeRole = topEmployees[0].employeeRole;
       }
     } catch (error) {
       console.error('Error fetching top employee phone:', error);
@@ -98,10 +89,6 @@ export async function GET() {
         topEmployeeRole
       };
       
-      // Cache the empty result too
-      cachedContactInfo = emptyResponse;
-      cacheExpiration = now + CACHE_DURATION_MS;
-      
       return NextResponse.json(emptyResponse);
     }
 
@@ -112,10 +99,6 @@ export async function GET() {
       topEmployeeName,
       topEmployeeRole
     };
-    
-    // Update cache
-    cachedContactInfo = response;
-    cacheExpiration = now + CACHE_DURATION_MS;
 
     return NextResponse.json(response);
   } catch (error) {

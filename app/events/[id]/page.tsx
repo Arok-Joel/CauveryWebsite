@@ -81,7 +81,10 @@ export default function EventPage() {
   // Use imageUrl first, then first image from images array, or a placeholder
   const mainImage = event.imageUrl || (event.images?.length > 0 
     ? event.images[0] 
-    : '/images/event-placeholder.jpg');
+    : null);
+    
+  // Check if we have a real image (not just a placeholder)
+  const hasRealImage = !!mainImage;
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -112,7 +115,7 @@ export default function EventPage() {
           )}
         </div>
 
-        {mainImage && (
+        {hasRealImage && mainImage && (
           <div className="mb-8 relative rounded-lg overflow-hidden h-[400px]">
             <BlobImage
               src={mainImage}

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { generateEmployeeId } from '@/lib/employee-id';
 import { sendEmployeeWelcomeEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
+import { getHierarchyLevelForRole } from '@/lib/employee-roles';
 
 const employeeRegisterSchema = z.object({
   name: z.string().min(2),
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
           ifscCode: data.ifscCode,
           dateOfJoining: new Date(),
           employeeRole: data.employeeRole,
+          hierarchyLevel: getHierarchyLevelForRole(data.employeeRole),
         },
       });
 

@@ -27,22 +27,27 @@ export function EventCard({ event }: EventCardProps) {
     setShowDetails(!showDetails);
   };
   
-  // Use imageUrl first, then first image from images array, or a placeholder
+  // Use imageUrl first, then first image from images array, or null if no images
   const thumbnail = event.imageUrl || (event.images?.length > 0 
     ? event.images[0] 
-    : '/images/event-placeholder.jpg');
+    : null);
+  
+  // Check if we have a real image
+  const hasImage = !!thumbnail;
   
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-      <div className="relative h-48">
-        <BlobImage
-          src={thumbnail}
-          alt={event.title}
-          fill
-          className="object-cover"
-          useBlobStorage={true}
-        />
-      </div>
+      {hasImage && (
+        <div className="relative h-48">
+          <BlobImage
+            src={thumbnail}
+            alt={event.title}
+            fill
+            className="object-cover"
+            useBlobStorage={true}
+          />
+        </div>
+      )}
       
       <div className="p-4">
         <h3 className="text-xl font-semibold mb-2 text-gray-800">{event.title}</h3>
