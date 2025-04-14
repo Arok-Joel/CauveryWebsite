@@ -55,6 +55,7 @@ export const getEmployeeHierarchy = cache(async () => {
             id: true,
             employeeRole: true,
             hierarchyLevel: true,
+            isTerminated: true,
             user: {
               select: {
                 id: true,
@@ -65,11 +66,15 @@ export const getEmployeeHierarchy = cache(async () => {
           }
         },
         members: {
+          where: {
+            isTerminated: false // Filter out terminated employees
+          },
           select: {
             id: true,
             employeeRole: true,
             hierarchyLevel: true,
             reportsToId: true,
+            isTerminated: true,
             user: {
               select: {
                 id: true,
@@ -101,7 +106,8 @@ export const getEmployeeHierarchy = cache(async () => {
       where: {
         AND: [
           { teamId: null },
-          { leadsTeam: null }
+          { leadsTeam: null },
+          { isTerminated: false } // Filter out terminated employees
         ]
       },
       select: {
@@ -109,6 +115,7 @@ export const getEmployeeHierarchy = cache(async () => {
         employeeRole: true,
         hierarchyLevel: true,
         reportsToId: true,
+        isTerminated: true,
         user: {
           select: {
             id: true,
@@ -123,13 +130,16 @@ export const getEmployeeHierarchy = cache(async () => {
       ]
     });
 
+    // Filter out teams with terminated leaders
+    const activeTeams = teams.filter(team => !team.leader.isTerminated);
+
     // Track processed employee IDs to avoid duplication
     const processedEmployeeIds = new Set<string>();
     const processedTeams = [];
 
     // Process each team, but ensure each team is only represented once
     // and each Executive Director appears only once
-    for (const team of teams) {
+    for (const team of activeTeams) {
       // Skip teams we've already processed
       if (processedEmployeeIds.has(team.leader.id)) {
         continue;
@@ -141,7 +151,9 @@ export const getEmployeeHierarchy = cache(async () => {
       // Filter team members to exclude those already processed
       // and exclude the leader who we'll handle separately
       const filteredMembers = team.members.filter(member => 
-        !processedEmployeeIds.has(member.id) && member.id !== team.leader.id
+        !processedEmployeeIds.has(member.id) && 
+        member.id !== team.leader.id && 
+        !member.isTerminated
       );
 
       // Mark all filtered members as processed

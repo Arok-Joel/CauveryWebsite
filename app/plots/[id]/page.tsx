@@ -8,6 +8,19 @@ import Image from "next/image";
 import { Phone, Mail, MapPin, Ruler, IndianRupee, Compass, Calendar, Clock, Share2, Download, Check, X } from "lucide-react";
 import Link from "next/link";
 import { use } from 'react';
+import { toast } from "sonner";
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { UserOptions } from 'jspdf-autotable';
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: UserOptions) => void;
+    lastAutoTable: {
+      finalY: number;
+    };
+  }
+}
 
 interface PlotData {
   id: string;
@@ -118,6 +131,187 @@ export default function PlotPage({ params }: PageProps) {
     parseImages();
   }, [plot]);
 
+  const handleShare = async () => {
+    if (!plot) return;
+
+    const shareData = {
+      title: `Plot ${plot.plotNumber} - Royal Cauvery Farms`,
+      text: `Check out Plot ${plot.plotNumber} at Royal Cauvery Farms - ${plot.size} sq.ft, ₹${plot.price.toLocaleString()}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback to copying to clipboard
+        await navigator.clipboard.writeText(`${shareData.text}\n\n${shareData.url}`);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error('Failed to share plot details');
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!plot) return;
+
+    try {
+      // Create a new PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      const pageWidth = doc.internal.pageSize.width;
+      let yPos = 10;
+
+      // Add company header with smaller font
+      doc.setFontSize(16);
+      doc.setTextColor(0, 100, 0);
+      doc.text('Royal Cauvery Farms', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 6;
+
+      // Add plot details title with smaller font
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Plot Details', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+
+      // Add plot number and date with smaller font
+      doc.setFontSize(8);
+      doc.text(`Plot Number: ${plot.plotNumber}`, 15, yPos);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, pageWidth - 15, yPos, { align: 'right' });
+      yPos += 3;
+
+      // Add separator line
+      doc.setDrawColor(0, 100, 0);
+      doc.setLineWidth(0.3);
+      doc.line(15, yPos, pageWidth - 15, yPos);
+      yPos += 8;
+
+      // Add plot image if available with reduced size
+      if (parsedImages.length > 0) {
+        try {
+          const response = await fetch(parsedImages[0].url);
+          const blob = await response.blob();
+          const imageUrl = URL.createObjectURL(blob);
+          
+          const img = document.createElement('img');
+          img.src = imageUrl;
+          
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Failed to load image'));
+          });
+          
+          // Calculate dimensions for a good aspect ratio
+          const maxWidth = pageWidth - 30; // 15mm margin on each side
+          const maxHeight = 100; // Maximum height in mm
+          
+          // Calculate aspect ratio
+          const aspectRatio = img.width / img.height;
+          let finalWidth = maxWidth;
+          let finalHeight = maxWidth / aspectRatio;
+          
+          // Adjust if height exceeds maximum
+          if (finalHeight > maxHeight) {
+            finalHeight = maxHeight;
+            finalWidth = maxHeight * aspectRatio;
+          }
+          
+          // Center the image horizontally
+          const xPos = (pageWidth - finalWidth) / 2;
+          
+          doc.addImage(img, 'JPEG', xPos, yPos, finalWidth, finalHeight, undefined, 'MEDIUM');
+          yPos += finalHeight + 10;
+          
+          // Clean up
+          URL.revokeObjectURL(imageUrl);
+        } catch (error) {
+          console.error('Error adding image to PDF:', error);
+          yPos += 8;
+        }
+      }
+
+      // Format price with Indian numbering system
+      const formatIndianPrice = (price: number) => {
+        const priceString = price.toString();
+        const lastThree = priceString.substring(priceString.length - 3);
+        const otherNumbers = priceString.substring(0, priceString.length - 3);
+        const finalFormat = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
+        return "Rs. " + finalFormat + "/-";
+      };
+
+      // Plot Details Table with reduced font size and spacing
+      autoTable(doc, {
+        startY: yPos,
+        head: [],
+        body: [
+          ['Plot Number', `#${plot.plotNumber}`],
+          ['Plot Size', `${plot.size} Sq.ft`],
+          ['Dimensions', plot.dimensions],
+          ['Facing', plot.facing],
+          ['Location', plot.plotAddress],
+          ['Status', plot.status],
+          ['Price', formatIndianPrice(plot.price)],
+        ],
+        theme: 'plain',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 50 },
+          1: { cellWidth: 90 }
+        },
+      });
+
+      // Get the final Y position after the table
+      const finalY = (doc as any).lastAutoTable.finalY + 8;
+      yPos = finalY;
+
+      // Add contact information with reduced font size
+      doc.setFontSize(10);
+      doc.setTextColor(0, 100, 0);
+      doc.text('Contact Information', 15, yPos);
+      yPos += 4;
+
+      // Contact details table with reduced font size and spacing
+      autoTable(doc, {
+        startY: yPos,
+        head: [],
+        body: [
+          ['Address', 'Royal Cauvery Farms, 117, 5th Street, Indian Bank Colony\nK.K Nagar, Tiruchirappalli - 620021, Tamil Nadu, India'],
+          ['Office Hours', 'Monday - Saturday, 9:00 AM - 6:00 PM'],
+        ],
+        theme: 'plain',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 50 },
+          1: { cellWidth: 90 }
+        },
+      });
+
+      // Footer with reduced font size
+      const footerY = doc.internal.pageSize.height - 8;
+      doc.setFontSize(7);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Royal Cauvery Farms | Email: sales@royalcauveryfarms.com', pageWidth / 2, footerY, { align: 'center' });
+
+      // Save the PDF
+      doc.save(`Plot-${plot.plotNumber}-Details.pdf`);
+      toast.success('Plot details downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-8">
@@ -221,10 +415,10 @@ export default function PlotPage({ params }: PageProps) {
                       </p>
                     </div>
                     <div className="flex gap-3">
-                      <Button variant="secondary" size="icon">
+                      <Button variant="secondary" size="icon" onClick={handleShare}>
                         <Share2 className="h-5 w-5" />
                       </Button>
-                      <Button variant="secondary" size="icon">
+                      <Button variant="secondary" size="icon" onClick={handleDownload}>
                         <Download className="h-5 w-5" />
                       </Button>
                     </div>

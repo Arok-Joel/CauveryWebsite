@@ -59,6 +59,10 @@ export function EmployeeLoginForm() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Special handling for terminated accounts
+        if (response.status === 403 && result.error === 'Account has been terminated') {
+          throw new Error('Your account has been terminated. Please contact administration.');
+        }
         throw new Error(result.error || 'Invalid employee credentials');
       }
 

@@ -47,14 +47,6 @@ interface UserProfile {
     pincode: string;
     profileImage?: string;
   };
-  bookedPlots: {
-    id: string;
-    plotNumber: string;
-    size: string;
-    price: string;
-    bookingDate: string;
-    status: string;
-  }[];
 }
 
 export default function UserProfile() {
@@ -65,7 +57,6 @@ export default function UserProfile() {
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [showAllPlots, setShowAllPlots] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -133,36 +124,6 @@ export default function UserProfile() {
     setEditing(false);
   };
 
-  const handleDownloadReceipt = async (plot: UserProfile['bookedPlots'][0]) => {
-    try {
-      const details = {
-        plotNumber: plot.plotNumber,
-        customerName: profile?.user.name || '',
-        price: plot.price,
-        size: plot.size,
-        date: new Date(plot.bookingDate).toLocaleDateString(),
-        phoneNumber: profile?.user.phone || '',
-        email: profile?.user.email || '',
-        employeeId: '', // These will be fetched from the booking details
-        employeeName: '',
-        employeeRole: '',
-      };
-
-      // Fetch employee details for this booking
-      const bookingResponse = await fetch(`/api/bookings/${plot.id}`);
-      if (bookingResponse.ok) {
-        const bookingData = await bookingResponse.json();
-        details.employeeId = bookingData.employeeId;
-        details.employeeName = bookingData.employeeName;
-        details.employeeRole = bookingData.employeeRole;
-      }
-
-      await generatePDF(details);
-    } catch (error) {
-      toast.error('Failed to generate receipt');
-    }
-  };
-
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -220,9 +181,6 @@ export default function UserProfile() {
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
-
-  // Get the plots to display based on showAllPlots state
-  const displayedPlots = showAllPlots ? profile?.bookedPlots : profile?.bookedPlots.slice(0, 3);
 
   if (loading) {
     return (
@@ -325,37 +283,63 @@ export default function UserProfile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* Personal Information */}
-          <Card className="border border-gray-200 h-fit">
-            <CardHeader className="border-b bg-gray-50/50 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+        {/* Personal Information */}
+        <Card className="border border-gray-200 overflow-hidden">
+          <CardHeader className="border-b bg-[#3C5A3E]/5 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#3C5A3E]/10 p-2 rounded-full">
                   <User className="h-5 w-5 text-[#3C5A3E]" />
-                  <CardTitle className="text-lg font-medium">Personal Information</CardTitle>
                 </div>
-                {!editing ? (
-                  <Button variant="ghost" size="sm" onClick={handleEdit} className="text-[#3C5A3E] hover:text-[#3C5A3E] hover:bg-[#3C5A3E]/10">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleCancel} className="text-red-500 hover:text-red-500 hover:bg-red-50">
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleSave} className="text-[#3C5A3E] hover:text-[#3C5A3E] hover:bg-[#3C5A3E]/10">
-                      <Save className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div>
+                  <CardTitle className="text-lg font-semibold text-[#3C5A3E]">Personal Information</CardTitle>
+                  <CardDescription className="text-sm text-[#3C5A3E]/60">Manage your personal details</CardDescription>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {editing ? (
-                  <>
+              {!editing ? (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleEdit} 
+                  className="text-[#3C5A3E] hover:text-[#3C5A3E] hover:bg-[#3C5A3E]/10 gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Edit</span>
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleCancel} 
+                    className="text-red-500 hover:text-red-500 hover:bg-red-50 gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Cancel</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleSave} 
+                    className="text-[#3C5A3E] hover:text-[#3C5A3E] hover:bg-[#3C5A3E]/10 gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>Save</span>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-w-4xl mx-auto">
+              {editing ? (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500">Full Name</label>
+                      <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Full Name
+                      </label>
                       <Input
                         value={editedProfile?.user.name || ''}
                         onChange={(e) =>
@@ -364,10 +348,14 @@ export default function UserProfile() {
                           )
                         }
                         className="border-gray-200"
+                        placeholder="Enter your full name"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </label>
                       <Input
                         value={editedProfile?.user.email || ''}
                         onChange={(e) =>
@@ -375,12 +363,15 @@ export default function UserProfile() {
                             prev ? { ...prev, user: { ...prev.user, email: e.target.value } } : null
                           )
                         }
-                        className="border-gray-200"
+                        className="border-gray-200 bg-gray-50"
                         disabled
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                      <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Phone Number
+                      </label>
                       <Input
                         value={editedProfile?.user.phone || ''}
                         onChange={(e) =>
@@ -389,10 +380,14 @@ export default function UserProfile() {
                           )
                         }
                         className="border-gray-200"
+                        placeholder="Enter your phone number"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500">Address</label>
+                      <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Address
+                      </label>
                       <Input
                         value={editedProfile?.user.address || ''}
                         onChange={(e) =>
@@ -401,100 +396,54 @@ export default function UserProfile() {
                           )
                         }
                         className="border-gray-200"
+                        placeholder="Enter your address"
                       />
                     </div>
-                  </>
-                ) : (
-                  <div className="divide-y">
-                    <div className="flex justify-between items-center py-3">
-                      <span className="text-sm text-gray-500">Full Name</span>
-                      <span className="font-medium">{profile.user.name}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  <div className="grid grid-cols-12 hover:bg-gray-50/50 transition-colors">
+                    <div className="col-span-12 md:col-span-4 p-4 md:p-6 flex items-center gap-3">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-500">Full Name</span>
                     </div>
-                    <div className="flex justify-between items-center py-3">
-                      <span className="text-sm text-gray-500">Email</span>
-                      <span className="font-medium">{profile.user.email}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3">
-                      <span className="text-sm text-gray-500">Phone Number</span>
-                      <span className="font-medium">{profile.user.phone}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3">
-                      <span className="text-sm text-gray-500">Address</span>
-                      <span className="font-medium">{profile.user.address || 'Not provided'}</span>
+                    <div className="col-span-12 md:col-span-8 p-4 md:p-6 md:border-l bg-white">
+                      <span className="font-medium text-gray-900">{profile.user.name}</span>
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Booked Plots */}
-          <Card className="border border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50 py-3">
-              <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-[#3C5A3E]" />
-                <CardTitle className="text-lg font-medium">Booked Plots</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4">
-                {displayedPlots?.map((plot) => (
-                  <Card key={plot.id}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="space-y-2">
-                          <p className="text-lg font-medium">Plot Number: {plot.plotNumber}</p>
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              Size: {plot.size}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <CreditCard className="h-4 w-4" />
-                              Price: ₹{plot.price}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              Booked on: {new Date(plot.bookingDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          className="flex items-center gap-2"
-                          onClick={() => handleDownloadReceipt(plot)}
-                        >
-                          <Receipt className="h-4 w-4" />
-                          Download Receipt
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              
-              {profile?.bookedPlots.length > 3 && (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAllPlots(!showAllPlots)}
-                    className="flex items-center gap-2"
-                  >
-                    {showAllPlots ? 'Show Less' : 'View All Plots'}
-                  </Button>
+                  <div className="grid grid-cols-12 hover:bg-gray-50/50 transition-colors">
+                    <div className="col-span-12 md:col-span-4 p-4 md:p-6 flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-500">Email</span>
+                    </div>
+                    <div className="col-span-12 md:col-span-8 p-4 md:p-6 md:border-l bg-white">
+                      <span className="font-medium text-gray-900">{profile.user.email}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-12 hover:bg-gray-50/50 transition-colors">
+                    <div className="col-span-12 md:col-span-4 p-4 md:p-6 flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-500">Phone Number</span>
+                    </div>
+                    <div className="col-span-12 md:col-span-8 p-4 md:p-6 md:border-l bg-white">
+                      <span className="font-medium text-gray-900">{profile.user.phone}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-12 hover:bg-gray-50/50 transition-colors">
+                    <div className="col-span-12 md:col-span-4 p-4 md:p-6 flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-500">Address</span>
+                    </div>
+                    <div className="col-span-12 md:col-span-8 p-4 md:p-6 md:border-l bg-white">
+                      <span className="font-medium text-gray-900">{profile.user.address || 'Not provided'}</span>
+                    </div>
+                  </div>
                 </div>
               )}
-              
-              {profile?.bookedPlots.length === 0 && (
-                <Card>
-                  <CardContent className="p-6 text-center text-gray-500">
-                    No plots booked yet
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Delete Account Dialog */}

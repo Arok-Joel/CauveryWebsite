@@ -34,7 +34,7 @@ export async function verifyAuth(token: string) {
       return verified;
     }
     
-    // For employee users, we check the session in the database
+    // For employee users, we check the session in the database and termination status
     if (verified.role === 'EMPLOYEE' && verified.sessionId) {
       console.log('Checking session for employee:', verified.sessionId);
       
@@ -44,6 +44,13 @@ export async function verifyAuth(token: string) {
           sessionToken: verified.sessionId,
           isValid: true,
         },
+        include: {
+          user: {
+            include: {
+              employee: true
+            }
+          }
+        }
       });
 
       console.log('Session found:', session);
@@ -51,6 +58,13 @@ export async function verifyAuth(token: string) {
       if (!session || new Date(session.expires) < new Date()) {
         // Session expired or invalidated
         console.error('Session not found or expired:', verified.sessionId);
+        return null;
+      }
+
+      // Check if the user is terminated (has inactive status or is terminated)
+      if (session.user.status === 'INACTIVE' || 
+          (session.user.employee && session.user.employee.isTerminated)) {
+        console.error('User is terminated or inactive');
         return null;
       }
     }

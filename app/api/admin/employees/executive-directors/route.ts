@@ -7,6 +7,7 @@ export async function GET() {
     const executiveDirectors = await db.employee.findMany({
       where: {
         employeeRole: 'EXECUTIVE_DIRECTOR',
+        isTerminated: false
       },
       select: {
         id: true,

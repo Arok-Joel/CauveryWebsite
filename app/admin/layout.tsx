@@ -21,7 +21,8 @@ import {
   LogOut,
   User,
   FileImage,
-  Calendar
+  Calendar,
+  UserMinus
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -73,6 +74,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: 'Teams',
       href: '/admin/teams',
       icon: Network,
+    },
+    {
+      name: 'Terminated Employees',
+      href: '/admin/terminated-employees',
+      icon: UserMinus,
     },
     {
       name: 'Promotions',

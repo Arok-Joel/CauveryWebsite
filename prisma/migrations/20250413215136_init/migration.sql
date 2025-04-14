@@ -4,6 +4,9 @@ CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER', 'EMPLOYEE');
 -- CreateEnum
 CREATE TYPE "EmployeeRole" AS ENUM ('EXECUTIVE_DIRECTOR', 'DIRECTOR', 'JOINT_DIRECTOR', 'FIELD_OFFICER');
 
+-- CreateEnum
+CREATE TYPE "RequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -17,6 +20,10 @@ CREATE TABLE "User" (
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "resetToken" TEXT,
+    "resetExpires" TIMESTAMP(3),
+    "otp" TEXT,
+    "otpExpires" TIMESTAMP(3),
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -46,9 +53,13 @@ CREATE TABLE "Employee" (
     "ifscCode" TEXT NOT NULL,
     "dateOfJoining" TIMESTAMP(3) NOT NULL,
     "employeeRole" "EmployeeRole" NOT NULL,
+    "hierarchyLevel" INTEGER NOT NULL DEFAULT 0,
     "userId" TEXT NOT NULL,
     "teamId" TEXT,
     "reportsToId" TEXT,
+    "isTerminated" BOOLEAN NOT NULL DEFAULT false,
+    "terminationDate" TIMESTAMP(3),
+    "leadsTeamId" TEXT,
 
     CONSTRAINT "Employee_pkey" PRIMARY KEY ("id")
 );
@@ -94,6 +105,7 @@ CREATE TABLE "SoldPlot" (
     "aadhaarNumber" TEXT NOT NULL,
     "soldAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "plotId" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
 
     CONSTRAINT "SoldPlot_pkey" PRIMARY KEY ("id")
 );
@@ -146,6 +158,88 @@ CREATE TABLE "Commission" (
     CONSTRAINT "Commission_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "PromotionRequest" (
+    "id" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "currentRole" "EmployeeRole" NOT NULL,
+    "targetRole" "EmployeeRole" NOT NULL,
+    "status" "RequestStatus" NOT NULL DEFAULT 'PENDING',
+    "condition" TEXT NOT NULL,
+    "autoApplied" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "reviewedAt" TIMESTAMP(3),
+    "reviewedById" TEXT,
+
+    CONSTRAINT "PromotionRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ContactMessage" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ContactMessage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CustomerInquiry" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "email" TEXT,
+    "preferredLanguage" TEXT NOT NULL DEFAULT 'English',
+    "preferredTime" TEXT,
+    "message" TEXT,
+    "plotId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CustomerInquiry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InquiryStatus" (
+    "id" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "notes" TEXT,
+    "fieldOfficerId" TEXT NOT NULL,
+    "inquiryId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InquiryStatus_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminContactInfo" (
+    "id" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdminContactInfo_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PhoneNumber" (
+    "id" TEXT NOT NULL,
+    "number" TEXT NOT NULL,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "adminContactInfoId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PhoneNumber_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -160,6 +254,9 @@ CREATE UNIQUE INDEX "Employee_aadharCardNumber_key" ON "Employee"("aadharCardNum
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Employee_leadsTeamId_key" ON "Employee"("leadsTeamId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SoldPlot_plotId_key" ON "SoldPlot"("plotId");
@@ -189,6 +286,9 @@ ALTER TABLE "Announcement" ADD CONSTRAINT "Announcement_adminId_fkey" FOREIGN KE
 ALTER TABLE "SoldPlot" ADD CONSTRAINT "SoldPlot_plotId_fkey" FOREIGN KEY ("plotId") REFERENCES "Plot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "SoldPlot" ADD CONSTRAINT "SoldPlot_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Plot" ADD CONSTRAINT "Plot_layoutId_fkey" FOREIGN KEY ("layoutId") REFERENCES "Layout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -196,3 +296,21 @@ ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "Commission" ADD CONSTRAINT "Commission_soldPlotId_fkey" FOREIGN KEY ("soldPlotId") REFERENCES "SoldPlot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Commission" ADD CONSTRAINT "Commission_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PromotionRequest" ADD CONSTRAINT "PromotionRequest_reviewedById_fkey" FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CustomerInquiry" ADD CONSTRAINT "CustomerInquiry_plotId_fkey" FOREIGN KEY ("plotId") REFERENCES "Plot"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InquiryStatus" ADD CONSTRAINT "InquiryStatus_fieldOfficerId_fkey" FOREIGN KEY ("fieldOfficerId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InquiryStatus" ADD CONSTRAINT "InquiryStatus_inquiryId_fkey" FOREIGN KEY ("inquiryId") REFERENCES "CustomerInquiry"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PhoneNumber" ADD CONSTRAINT "PhoneNumber_adminContactInfoId_fkey" FOREIGN KEY ("adminContactInfoId") REFERENCES "AdminContactInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;

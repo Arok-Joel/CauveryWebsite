@@ -15,6 +15,9 @@ export async function GET(
       where: {
         AND: [
           {
+            isTerminated: false,
+          },
+          {
             employeeRole: {
               not: 'EXECUTIVE_DIRECTOR',
             },
