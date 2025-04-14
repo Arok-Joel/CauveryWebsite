@@ -13,26 +13,11 @@ export interface CarouselImage {
  */
 export async function fetchCarouselImages(): Promise<CarouselImage[]> {
   try {
-    // Use Next.js cache tag in the dynamic fetch
-    const response = await fetch('https://api.vercel.com/v6/blobs?prefix=/', {
-      headers: {
-        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-      },
-      next: { 
-        tags: ['carousel-images'],
-        revalidate: 60  // Revalidate every 60 seconds
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch blobs');
-    }
-    
-    const data = await response.json();
-    const blobs = data.blobs || [];
+    // Use the Vercel Blob SDK's list function
+    const { blobs } = await list();
     
     // Filter blobs to find carousel images (using prefix convention)
-    const carouselBlobs = blobs.filter((blob: any) => {
+    const carouselBlobs = blobs.filter(blob => {
       const fileName = blob.url.split('/').pop() || '';
       // Check if filename starts with 'carousel-'
       return fileName.toLowerCase().startsWith('carousel-');
@@ -41,11 +26,11 @@ export async function fetchCarouselImages(): Promise<CarouselImage[]> {
     // If we have carousel images in Blob storage, use those
     if (carouselBlobs.length > 0) {
       // Sort by upload date to get newest first
-      const sortedBlobs = carouselBlobs.sort((a: any, b: any) => 
+      const sortedBlobs = carouselBlobs.sort((a, b) => 
         new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
       );
       
-      return sortedBlobs.map((blob: any) => {
+      return sortedBlobs.map(blob => {
         // Extract name from filename for alt text
         const fileName = blob.url.split('/').pop() || '';
         const nameMatch = fileName.match(/carousel-(.+?)([-\d]*)\.[\w]+$/i);

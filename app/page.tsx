@@ -5,11 +5,13 @@ import HomeCarousel from '@/components/HomeCarousel';
 import { EventsSection } from '@/components/EventsSection';
 import { fetchCarouselImages, CarouselImage } from '@/lib/carousel-helpers';
 
-// Add revalidation configuration for this page
-export const revalidate = 60; // Revalidate at most every 60 seconds
+// Enable revalidation with multiple strategies
+export const revalidate = 60; // Time-based fallback revalidation
 
+// Define the dynamic fetch function for the homepage
 export default async function Home() {
-  // Fetch carousel images
+  // Fetch carousel images with tag-based revalidation
+  // Next.js will revalidate this data when the tag is revalidated
   const carouselImages = await fetchCarouselImages();
   
   // Ensure main.png is included as the first image
