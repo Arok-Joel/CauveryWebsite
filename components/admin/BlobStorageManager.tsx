@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadToBlob, isBlobUrl } from '@/lib/blob-helpers';
 import { revalidateCarouselImages } from '@/lib/carousel-helpers';
 import { toast } from 'sonner';
-import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle, Image as ImageIcon } from 'lucide-react';
+import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle, Image as ImageIcon, RefreshCcw } from 'lucide-react';
 
 interface BlobItem {
   url: string;
@@ -57,6 +57,7 @@ export default function BlobStorageManager() {
     images: { url: string; uploadedAt: string }[]
   } | null>(null);
   const [activeTab, setActiveTab] = useState('general');
+  const [isRevalidating, setIsRevalidating] = useState(false);
 
   useEffect(() => {
     fetchBlobs();
@@ -458,6 +459,29 @@ export default function BlobStorageManager() {
     }
   };
 
+  const handleManualRevalidation = async () => {
+    setIsRevalidating(true);
+    try {
+      const response = await fetch('/api/revalidate?tag=carousel-images', { 
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to revalidate cache');
+      }
+      
+      const result = await response.json();
+      toast.success('Carousel cache revalidated successfully!');
+      console.log('Revalidation result:', result);
+    } catch (error) {
+      console.error('Error revalidating cache:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to revalidate cache');
+    } finally {
+      setIsRevalidating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -774,6 +798,32 @@ export default function BlobStorageManager() {
                     <span className="flex items-center gap-2">
                       <MoveRight className="h-4 w-4" />
                       Migrate Default Carousel Image
+                    </span>
+                  )}
+                </Button>
+              </div>
+              
+              {/* Manual Cache Revalidation section */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-md font-medium mb-2">Manually Refresh Carousel Cache</h3>
+                <div className="text-sm text-gray-500 mb-3">
+                  If new images are not showing up on the live site, click this button to force an update.
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleManualRevalidation}
+                  disabled={isRevalidating}
+                  className="w-full"
+                >
+                  {isRevalidating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                      Refreshing Cache...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <RefreshCcw className="h-4 w-4" />
+                      Force Refresh Carousel Cache
                     </span>
                   )}
                 </Button>

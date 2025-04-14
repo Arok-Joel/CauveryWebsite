@@ -5,11 +5,24 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
-    // Authentication - restrict to admin users
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    // Check if the request is from an admin page or section
+    const url = new URL(request.url);
+    const referer = request.headers.get('referer') || '';
+    const isFromAdminPage = referer.includes('/admin/');
     
-    if (token) {
+    // Only check authentication for non-admin page requests
+    if (!isFromAdminPage) {
+      // Authentication - restrict to admin users
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth-token')?.value;
+      
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized - Authentication required' },
+          { status: 401 }
+        );
+      }
+      
       const verified = await verifyAuth(token);
       if (!verified || verified.role !== 'ADMIN') {
         // Only admin can revalidate manually
@@ -21,7 +34,6 @@ export async function POST(request: Request) {
     }
 
     // Get the tag from the URL
-    const url = new URL(request.url);
     const tag = url.searchParams.get('tag');
     
     if (!tag) {
