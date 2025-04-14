@@ -5,6 +5,9 @@ import HomeCarousel from '@/components/HomeCarousel';
 import { EventsSection } from '@/components/EventsSection';
 import { fetchCarouselImages, CarouselImage } from '@/lib/carousel-helpers';
 
+// Add revalidation configuration for this page
+export const revalidate = 60; // Revalidate at most every 60 seconds
+
 export default async function Home() {
   // Fetch carousel images
   const carouselImages = await fetchCarouselImages();

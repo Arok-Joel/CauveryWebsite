@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { put, list } from '@vercel/blob';
 import { handleAuth } from '@/lib/auth-helpers';
+import { revalidateTag } from 'next/cache';
 
 export async function POST(request: Request) {
   try {
@@ -71,6 +72,13 @@ export async function POST(request: Request) {
       const blob = await put(uniqueFilename, file, {
         access: 'public',
       });
+      
+      // If this is a carousel image, revalidate the carousel cache
+      if (uniqueFilename.toLowerCase().startsWith('carousel-')) {
+        // Revalidate the carousel images tag to update the homepage
+        revalidateTag('carousel-images');
+        console.log('Revalidated carousel images cache after upload');
+      }
       
       return NextResponse.json(blob);
     } catch (uploadError) {

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadToBlob, isBlobUrl } from '@/lib/blob-helpers';
+import { revalidateCarouselImages } from '@/lib/carousel-helpers';
 import { toast } from 'sonner';
 import { Upload, Trash2, FileImage, RefreshCw, MoveRight, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 
@@ -328,27 +329,27 @@ export default function BlobStorageManager() {
       return;
     }
     
-    setIsCarouselMigrating(true);
     try {
+      setIsCarouselMigrating(true);
+      
       // Fetch the main.png image
       const response = await fetch('/main.png');
       if (!response.ok) {
         throw new Error('Failed to fetch main.png');
       }
       
-      // Convert to file
       const blob = await response.blob();
       const file = new File([blob], 'carousel-main.png', { type: blob.type });
       
-      // Upload to blob storage
+      // Upload to Vercel Blob
       const blobUrl = await uploadToBlob(file, '/');
       if (!blobUrl) {
-        throw new Error('Failed to upload to Blob storage');
+        throw new Error('Failed to upload to Vercel Blob');
       }
       
       toast.success('Carousel image uploaded successfully');
       
-      // Add to our list of uploaded images
+      // Add to local state
       const newImage: ImageItem = {
         id: Date.now().toString(),
         url: blobUrl,
@@ -358,8 +359,13 @@ export default function BlobStorageManager() {
       
       setCarouselImages((prev) => [newImage, ...prev]);
       
-      // Refresh the list
-      fetchBlobs();
+      // Manually trigger revalidation to update the homepage immediately
+      try {
+        await fetch('/api/revalidate?tag=carousel-images', { method: 'POST' });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
+      }
+      
     } catch (error) {
       console.error('Error migrating carousel image:', error);
       if (error instanceof Error) {
@@ -419,6 +425,13 @@ export default function BlobStorageManager() {
       
       if (carouselFileInputRef.current) {
         carouselFileInputRef.current.value = '';
+      }
+      
+      // Manually trigger revalidation to update the homepage immediately
+      try {
+        await fetch('/api/revalidate?tag=carousel-images', { method: 'POST' });
+      } catch (revalidateError) {
+        console.error('Error revalidating cache:', revalidateError);
       }
       
       toast.success('Carousel image uploaded successfully');
