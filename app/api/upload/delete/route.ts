@@ -24,10 +24,17 @@ export async function DELETE(request: Request) {
     // Delete the blob
     await del(url);
     
-    // If a carousel image was deleted, revalidate the carousel cache
+    // If a carousel image was deleted, revalidate with both tags
     if (isCarouselImage) {
-      revalidateTag('carousel-images');
-      console.log('Revalidated carousel images cache after deletion');
+      // First tag specifically for deletions
+      revalidateTag('carousel-images-deleted');
+      // Short delay to ensure proper cache invalidation sequence
+      setTimeout(() => {
+        // Then the standard tag
+        revalidateTag('carousel-images');
+      }, 50);
+      
+      console.log('Revalidated carousel images cache with deletion tags after deletion');
     }
 
     return NextResponse.json({ success: true, message: 'Blob deleted successfully' });

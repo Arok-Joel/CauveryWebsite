@@ -54,9 +54,18 @@ export async function fetchCarouselImages(): Promise<CarouselImage[]> {
 }
 
 /**
- * Trigger revalidation of carousel images
- * Call this function after uploading a new carousel image
+ * Trigger revalidation of carousel images after adding a new image
  */
 export function revalidateCarouselImages() {
+  revalidateTag('carousel-images');
+}
+
+/**
+ * Trigger revalidation of carousel images after deleting an image
+ * This uses a separate tag to ensure deletion is properly handled
+ */
+export function revalidateCarouselImagesAfterDeletion() {
+  revalidateTag('carousel-images-deleted');
+  // Also update the main tag to ensure consistency
   revalidateTag('carousel-images');
 } 

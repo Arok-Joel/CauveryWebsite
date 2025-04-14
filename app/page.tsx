@@ -8,10 +8,15 @@ import { fetchCarouselImages, CarouselImage } from '@/lib/carousel-helpers';
 // Enable revalidation with multiple strategies
 export const revalidate = 60; // Time-based fallback revalidation
 
+// Define the dynamic metadata for the page to ensure proper tagging for both add and delete events
+export const dynamic = 'force-dynamic';
+
 // Define the dynamic fetch function for the homepage
 export default async function Home() {
   // Fetch carousel images with tag-based revalidation
   // Next.js will revalidate this data when the tag is revalidated
+  // We include fetchCarouselImages() in this function to ensure it's
+  // called every time the page renders with a revalidation
   const carouselImages = await fetchCarouselImages();
   
   // Ensure main.png is included as the first image

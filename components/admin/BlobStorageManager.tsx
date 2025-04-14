@@ -182,6 +182,10 @@ export default function BlobStorageManager() {
     
     setIsDeleting(url);
     try {
+      // Check if it's a carousel image by analyzing the URL
+      const fileName = url.split('/').pop() || '';
+      const isCarouselImage = fileName.toLowerCase().startsWith('carousel-');
+      
       const response = await fetch('/api/upload/delete', {
         method: 'DELETE',
         headers: {
@@ -194,8 +198,33 @@ export default function BlobStorageManager() {
         throw new Error('Failed to delete image');
       }
       
-      setUploadedImages((prev) => prev.filter(image => image.url !== url));
+      // Remove from local state first - this way the UI updates immediately
+      if (isCarouselImage) {
+        setCarouselImages((prev) => prev.filter(image => image.url !== url));
+      } else {
+        setUploadedImages((prev) => prev.filter(image => image.url !== url));
+      }
+      
       toast.success('Image deleted successfully');
+      
+      // If it's a carousel image, trigger an immediate revalidation
+      if (isCarouselImage) {
+        try {
+          // First revalidation to remove the image from the list
+          await fetch('/api/revalidate?tag=carousel-images-deleted', {
+            method: 'POST'
+          });
+          
+          // Second revalidation after a small delay to ensure the cache is fully updated
+          setTimeout(async () => {
+            await fetch('/api/revalidate?tag=carousel-images', {
+              method: 'POST'
+            });
+          }, 500);
+        } catch (revalidateError) {
+          console.error('Error revalidating cache after deletion:', revalidateError);
+        }
+      }
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete image');

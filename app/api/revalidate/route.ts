@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import { verifyAuth } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
@@ -43,8 +43,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // Revalidate the tag
-    revalidateTag(tag);
+    // Handle special case for carousel images
+    if (tag === 'carousel-images') {
+      // Also revalidate the deletion tag to ensure full refresh
+      revalidateTag('carousel-images-deleted');
+      // Standard tag
+      revalidateTag('carousel-images');
+      // Also revalidate the homepage for good measure
+      revalidatePath('/');
+    } else if (tag === 'carousel-images-deleted') {
+      // When deletion happens, revalidate both tags
+      revalidateTag('carousel-images-deleted');
+      setTimeout(() => {
+        revalidateTag('carousel-images');
+      }, 50);
+      revalidatePath('/');
+    } else {
+      // For any other tag, just revalidate as normal
+      revalidateTag(tag);
+    }
     
     return NextResponse.json({
       revalidated: true,
