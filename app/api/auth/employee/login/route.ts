@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { createUserSession, decrypt } from '@/lib/auth';
 
 const loginSchema = z.object({
-  employeeId: z.string().regex(/^RCF\d{7}$/),
+  employeeId: z.string().min(1),
   password: z.string().min(1),
 });
 
@@ -15,23 +15,29 @@ export async function POST(req: Request) {
     const { employeeId, password } = loginSchema.parse(body);
 
     // Find employee by ID
-    const employee = await db.employee.findUnique({
+    const employee = await db.employee.findFirst({
       where: { id: employeeId },
       include: {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
+            name: true,
             password: true,
             role: true,
-          }
-        }
-      }
+            status: true
+          },
+        },
+      },
     });
 
     if (!employee || !employee.user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'Employee not found' }, { status: 401 });
+    }
+
+    // Check if employee is terminated
+    if (employee.isTerminated || employee.user.status === 'INACTIVE') {
+      return NextResponse.json({ error: 'Account has been terminated' }, { status: 403 });
     }
 
     const user = employee.user;

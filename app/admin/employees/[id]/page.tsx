@@ -31,6 +31,7 @@ import { EmployeeSoldPlots } from "@/app/components/employee/EmployeeSoldPlots";
 import { EmployeeOrgChart } from "@/app/components/EmployeeOrgChart";
 import { AdminStyleOrgChart } from "@/app/components/AdminStyleOrgChart";
 import { TeamHierarchyView } from "@/app/components/TeamHierarchyView";
+import EmployeePageClient from './page-client';
 
 interface PageProps {
   params: {
@@ -646,11 +647,11 @@ export default async function EmployeePage({ params }: PageProps) {
         </Card>
       </div>
 
-      {/* Sold Plots Information */}
-      <EmployeeSoldPlots 
-        initialCommissions={commissions} 
+      {/* Client Side Components - Termination and Sold Plots */}
+      <EmployeePageClient 
         employeeId={id}
         employeeName={employee.user.name}
+        commissions={commissions}
       />
     </div>
   );

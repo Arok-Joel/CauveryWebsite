@@ -10,6 +10,9 @@ import { getHierarchyLevelForRole } from '@/lib/employee-roles';
 export async function GET() {
   try {
     const employees = await db.employee.findMany({
+      where: {
+        isTerminated: false // Only get active (non-terminated) employees
+      },
       include: {
         user: {
           select: {

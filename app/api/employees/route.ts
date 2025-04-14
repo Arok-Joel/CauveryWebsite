@@ -27,6 +27,9 @@ export async function GET() {
 
     // Get all employees with their user details
     const employees = await db.employee.findMany({
+      where: {
+        isTerminated: false // Only include active employees
+      },
       include: {
         user: {
           select: {

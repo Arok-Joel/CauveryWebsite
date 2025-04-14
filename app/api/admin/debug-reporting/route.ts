@@ -23,6 +23,9 @@ export async function GET(req: Request) {
 
     // Get all employees with their reporting relationships
     const employees = await db.employee.findMany({
+      where: {
+        isTerminated: false // Only include active employees
+      },
       include: {
         user: {
           select: {

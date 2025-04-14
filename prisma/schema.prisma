@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -18,6 +17,7 @@ model User {
   pincode       String?
   profileImage  String?        @db.Text
   role          UserRole       @default(USER)
+  status        String         @default("ACTIVE")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   announcements Announcement[]
@@ -57,6 +57,8 @@ model Employee {
   userId           String       @unique
   teamId           String?
   reportsToId      String?
+  isTerminated     Boolean      @default(false)
+  terminationDate  DateTime?
   reportsTo        Employee?    @relation("EmployeeReporting", fields: [reportsToId], references: [id])
   subordinates     Employee[]   @relation("EmployeeReporting")
   memberOfTeam     Team?        @relation("TeamMembers", fields: [teamId], references: [id])

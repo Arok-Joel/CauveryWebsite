@@ -179,3 +179,41 @@ export async function sendEmployeeWelcomeEmail({
     html,
   });
 }
+
+// Add employee termination email function
+export async function sendTerminationEmail({
+  to,
+  employeeName,
+}: {
+  to: string;
+  employeeName: string;
+}) {
+  const subject = 'Employment Termination Notice - Royal Cauvery Farms';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <div style="background-color: #3C5A3E; padding: 20px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Royal Cauvery Farms</h1>
+      </div>
+      
+      <div style="padding: 20px;">
+        <h2 style="color: #3C5A3E; border-bottom: 2px solid #3C5A3E; padding-bottom: 10px;">Employment Termination Notice</h2>
+        <p>Dear ${employeeName},</p>
+        <p>This email serves as notification that your employment with Royal Cauvery Farms has been terminated, effective immediately.</p>
+        <p>Your system access has been revoked and you will no longer be able to log in to the employee portal.</p>
+        <p>Please contact HR for any further information regarding final settlements and exit formalities.</p>
+        <p>We wish you the best in your future endeavors.</p>
+        <p>Best regards,<br>Royal Cauvery Farms Team</p>
+      </div>
+      
+      <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; font-size: 12px;">
+        <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to,
+    subject,
+    html,
+  });
+}
