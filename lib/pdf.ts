@@ -111,7 +111,7 @@ export function generatePlotBookingReceiptHtml(data: PlotBookingReceiptData): st
     <body>
       <div class="container">
         <div class="header">
-          <h1>Royal Cauvery Farms</h1>
+          <h1>Nilam</h1>
         </div>
         
         <div class="content">
@@ -183,17 +183,17 @@ export function generatePlotBookingReceiptHtml(data: PlotBookingReceiptData): st
                 <li>This is a booking confirmation receipt only.</li>
                 <li>Final sale deed will be executed after complete payment.</li>
                 <li>This receipt is subject to the terms and conditions of the sale agreement.</li>
-                <li>All payments should be made in favor of "Royal Cauvery Farms" only.</li>
+                <li>All payments should be made in favor of "Nilam" only.</li>
               </ol>
             </div>
           </div>
         </div>
         
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+          <p>© ${new Date().getFullYear()} Nilam. All rights reserved.</p>
         </div>
       </div>
     </body>
     </html>
   `;
-} 
+}

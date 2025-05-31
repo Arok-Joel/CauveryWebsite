@@ -135,8 +135,8 @@ export default function PlotPage({ params }: PageProps) {
     if (!plot) return;
 
     const shareData = {
-      title: `Plot ${plot.plotNumber} - Royal Cauvery Farms`,
-      text: `Check out Plot ${plot.plotNumber} at Royal Cauvery Farms - ${plot.size} sq.ft, ₹${plot.price.toLocaleString()}`,
+      title: `Plot ${plot.plotNumber} - Nilam`,
+      text: `Check out Plot ${plot.plotNumber} at Nilam - ${plot.size} sq.ft, ₹${plot.price.toLocaleString()}`,
       url: window.location.href,
     };
 
@@ -170,7 +170,7 @@ export default function PlotPage({ params }: PageProps) {
       // Add company header with smaller font
       doc.setFontSize(16);
       doc.setTextColor(0, 100, 0);
-      doc.text('Royal Cauvery Farms', pageWidth / 2, yPos, { align: 'center' });
+      doc.text('Nilam', pageWidth / 2, yPos, { align: 'center' });
       yPos += 6;
 
       // Add plot details title with smaller font
@@ -283,7 +283,7 @@ export default function PlotPage({ params }: PageProps) {
         startY: yPos,
         head: [],
         body: [
-          ['Address', 'Royal Cauvery Farms, 117, 5th Street, Indian Bank Colony\nK.K Nagar, Tiruchirappalli - 620021, Tamil Nadu, India'],
+          ['Address', 'Nilam, 117, 5th Street, Indian Bank Colony\nK.K Nagar, Tiruchirappalli - 620021, Tamil Nadu, India'],
           ['Office Hours', 'Monday - Saturday, 9:00 AM - 6:00 PM'],
         ],
         theme: 'plain',
@@ -301,7 +301,7 @@ export default function PlotPage({ params }: PageProps) {
       const footerY = doc.internal.pageSize.height - 8;
       doc.setFontSize(7);
       doc.setTextColor(128, 128, 128);
-      doc.text('Royal Cauvery Farms | Email: sales@royalcauveryfarms.com', pageWidth / 2, footerY, { align: 'center' });
+      doc.text('Nilam | Email: sales@nilam.com', pageWidth / 2, footerY, { align: 'center' });
 
       // Save the PDF
       doc.save(`Plot-${plot.plotNumber}-Details.pdf`);
@@ -607,7 +607,7 @@ export default function PlotPage({ params }: PageProps) {
                   <p className="text-sm text-muted-foreground flex items-start">
                     <MapPin className="h-4 w-4 mr-2 mt-0.5" />
                     <span>
-                      Royal Cauvery Farms<br />
+                      Nilam<br />
                       117, 5th Street<br />
                       Indian Bank Colony<br />
                       K K Nagar<br />

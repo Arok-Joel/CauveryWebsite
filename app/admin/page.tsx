@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Welcome Message */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Royal Cauvery Farms</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Nilam</h1>
         <p className="text-gray-600">
           Manage your teams, employees, plots, and sales from this admin dashboard.
         </p>

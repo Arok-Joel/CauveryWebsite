@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import BlobStorageManager from '@/components/admin/BlobStorageManager';
 
 export const metadata: Metadata = {
-  title: 'Image Management | Royal Cauvery Farms Admin',
+  title: 'Image Management | Nilam Admin',
   description: 'Manage images in Vercel Blob Storage',
 };
 

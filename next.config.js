@@ -12,7 +12,7 @@ const nextConfig = {
   // Ensure static files in public directory are served
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'royal-cauvery-farms.vercel.app'],
+      allowedOrigins: ['localhost:3000', 'nilam.vercel.app'],
     },
   },
   typescript: {

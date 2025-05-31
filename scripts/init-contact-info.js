@@ -20,7 +20,7 @@ async function main() {
     const adminContactInfo = await prisma.adminContactInfo.create({
       data: {
         address: "117, 5th Street\nIndian Bank Colony\nK K Nagar\nTiruchirappalli - 620021\nTamil Nadu, India",
-        email: "info@royalcauveryfarms.com",
+        email: "info@nilam.com",
         phoneNumbers: {
           create: [
             { number: "+91 98765 43210", isDefault: true },

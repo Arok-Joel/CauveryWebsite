@@ -6,7 +6,7 @@ import { EventsSection } from '@/components/EventsSection';
 import { fetchCarouselImages, CarouselImage } from '@/lib/carousel-helpers';
 
 // Enable revalidation with multiple strategies
-export const revalidate = 60; // Time-based fallback revalidation
+export const revalidate = 15; // Time-based fallback revalidation
 
 // Define the dynamic metadata for the page to ensure proper tagging for both add and delete events
 export const dynamic = 'force-dynamic';
@@ -20,14 +20,7 @@ export default async function Home() {
   const carouselImages = await fetchCarouselImages();
   
   // Ensure main.png is included as the first image
-  const hasMainImage = carouselImages.some((img: CarouselImage) => img.url === '/main.png');
-  
-  if (!hasMainImage) {
-    carouselImages.unshift({
-      url: '/main.png',
-      alt: 'Royal Cauvery Farms'
-    });
-  }
+  // Remove the fallback that adds main.png with 'Royal Cauvery Farms' alt text
   
   return (
     <main className="min-h-screen w-full p-0 m-0 overflow-hidden">
@@ -48,9 +41,9 @@ export default async function Home() {
         </div>
         <div className="container relative z-20 mx-auto px-4">
           <div className="max-w-3xl">
-            <h1 className="text-6xl font-bold text-white mb-6 text-shadow-lg">Welcome to Royal Cauvery Farms</h1>
+            <h1 className="text-6xl font-bold text-white mb-6 text-shadow-lg">Welcome to Nilam</h1>
             <p className="text-2xl text-white mb-8 text-shadow-md">
-              Your gateway to premium plots in Sri Sai Nagar. Experience the perfect blend of nature
+              Your gateway to premium plots in Trichy. Experience the perfect blend of nature
               and modern living.
             </p>
             <Button asChild size="lg" className="mr-4 text-lg px-6 py-3">
@@ -71,7 +64,7 @@ export default async function Home() {
       {/* Carousel and Events Section - Side by Side */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-8 text-center">Explore Royal Cauvery Farms</h2>
+          <h2 className="text-3xl font-bold mb-8 text-center">Explore Trichy</h2>
           
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Carousel - Left Side */}
@@ -97,9 +90,9 @@ export default async function Home() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">About Sri Sai Nagar</h2>
+              <h2 className="text-3xl font-bold mb-6">About Trichy</h2>
               <p className="text-gray-600 mb-4">
-                Located in a prime location, Sri Sai Nagar offers meticulously planned plots perfect
+                Located in a prime location, Trichy offers meticulously planned plots perfect
                 for building your dream home. Our development features:
               </p>
               <ul className="space-y-3 text-gray-600">
@@ -113,7 +106,7 @@ export default async function Home() {
             <div className="relative h-[400px]">
               <BlobImage
                 src="/plot-layout.jpg"
-                alt="Sri Sai Nagar Layout"
+                alt="Trichy Layout"
                 fill
                 className="object-cover rounded-lg"
                 useBlobStorage={true}
@@ -129,7 +122,7 @@ export default async function Home() {
           <h2 className="text-3xl font-bold mb-6">Ready to Find Your Perfect Plot?</h2>
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
             Browse through our available plots and take the first step towards owning your piece of
-            Sri Sai Nagar.
+            Trichy.
           </p>
           <Button asChild size="lg">
             <Link href="/plots">View Available Plots</Link>

@@ -67,12 +67,15 @@ export function EventsSection({ minimal = false }: EventsSectionProps) {
     return (
       <div className="space-y-4 h-full max-h-[400px] overflow-y-auto pr-2 green-scrollbar">
         {events.map((event) => (
-          <div key={event.id} className="border-b border-[#5d7a5f] pb-4 last:border-0">
+          <div key={event.id} className="last:border-0">
             <Link 
-              href={`/events/${event.id}`} 
-              className="block text-base hover:text-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-300 rounded p-1"
+              href={`/events/${event.id}`}
+              className="flex items-center justify-between bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors rounded-lg px-4 py-3 text-base text-white font-medium shadow-sm group focus:outline-none focus:ring-2 focus:ring-green-300"
             >
-              {event.title}
+              <span className="truncate group-hover:underline">{event.title}</span>
+              <span className="ml-2 text-green-200 group-hover:translate-x-1 transition-transform">
+                <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M7 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </span>
             </Link>
           </div>
         ))}

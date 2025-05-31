@@ -17,7 +17,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendEmail({ to, subject, html, attachments }: EmailOptions) {
   try {
     const result = await resend.emails.send({
-      from: 'Royal Cauvery Farms <no-reply@royalcauveryfarms.com>',
+      from: 'Nilam <no-reply@nilam.com>',
       to,
       subject,
       html,
@@ -88,24 +88,24 @@ export async function sendPlotBookingConfirmationEmail({
       employeeRole,
     });
 
-    const subject = 'Plot Booking Confirmation - Royal Cauvery Farms';
+    const subject = 'Plot Booking Confirmation - Nilam';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <div style="background-color: #3C5A3E; padding: 20px; text-align: center;">
-          <h1 style="color: white; margin: 0;">Royal Cauvery Farms</h1>
+          <h1 style="color: white; margin: 0;">Nilam</h1>
         </div>
         
         <div style="padding: 20px;">
           <h2 style="color: #3C5A3E; border-bottom: 2px solid #3C5A3E; padding-bottom: 10px;">Plot Booking Confirmation</h2>
           <p>Dear ${customerName},</p>
-          <p>Thank you for booking a plot with Royal Cauvery Farms.</p>
+          <p>Thank you for booking a plot with Nilam.</p>
           <p>Please find your booking receipt attached to this email.</p>
           <p>Our team will contact you shortly to complete the formalities.</p>
-          <p>Best regards,<br>Royal Cauvery Farms Team</p>
+          <p>Best regards,<br>Nilam Team</p>
         </div>
         
         <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+          <p>© ${new Date().getFullYear()} Nilam. All rights reserved.</p>
         </div>
       </div>
     `;
@@ -138,17 +138,17 @@ export async function sendEmployeeWelcomeEmail({
   employeeName: string;
   employeeId: string;
 }) {
-  const subject = 'Welcome to Royal Cauvery Farms';
+  const subject = 'Welcome to Nilam';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <div style="background-color: #3C5A3E; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Royal Cauvery Farms</h1>
+        <h1 style="color: white; margin: 0;">Nilam</h1>
       </div>
       
       <div style="padding: 20px;">
-        <h2 style="color: #3C5A3E; border-bottom: 2px solid #3C5A3E; padding-bottom: 10px;">Welcome to Royal Cauvery Farms!</h2>
+        <h2 style="color: #3C5A3E; border-bottom: 2px solid #3C5A3E; padding-bottom: 10px;">Welcome to Nilam!</h2>
         <p>Dear ${employeeName},</p>
-        <p>Welcome to the Royal Cauvery Farms family! We're excited to have you on board.</p>
+        <p>Welcome to the Nilam family! We're excited to have you on board.</p>
         <p>Here is your employee ID for future reference:</p>
         
         <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; margin: 20px 0; border-radius: 5px;">
@@ -164,11 +164,11 @@ export async function sendEmployeeWelcomeEmail({
           <li>Enter your password</li>
         </ol>
         
-        <p>Best regards,<br>Royal Cauvery Farms Team</p>
+        <p>Best regards,<br>Nilam Team</p>
       </div>
       
       <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+        <p>© ${new Date().getFullYear()} Nilam. All rights reserved.</p>
       </div>
     </div>
   `;
@@ -188,25 +188,25 @@ export async function sendTerminationEmail({
   to: string;
   employeeName: string;
 }) {
-  const subject = 'Employment Termination Notice - Royal Cauvery Farms';
+  const subject = 'Employment Termination Notice - Nilam';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <div style="background-color: #3C5A3E; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Royal Cauvery Farms</h1>
+        <h1 style="color: white; margin: 0;">Nilam</h1>
       </div>
       
       <div style="padding: 20px;">
         <h2 style="color: #3C5A3E; border-bottom: 2px solid #3C5A3E; padding-bottom: 10px;">Employment Termination Notice</h2>
         <p>Dear ${employeeName},</p>
-        <p>This email serves as notification that your employment with Royal Cauvery Farms has been terminated, effective immediately.</p>
+        <p>This email serves as notification that your employment with Nilam has been terminated, effective immediately.</p>
         <p>Your system access has been revoked and you will no longer be able to log in to the employee portal.</p>
         <p>Please contact HR for any further information regarding final settlements and exit formalities.</p>
         <p>We wish you the best in your future endeavors.</p>
-        <p>Best regards,<br>Royal Cauvery Farms Team</p>
+        <p>Best regards,<br>Nilam Team</p>
       </div>
       
       <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+        <p>© ${new Date().getFullYear()} Nilam. All rights reserved.</p>
       </div>
     </div>
   `;
@@ -216,4 +216,8 @@ export async function sendTerminationEmail({
     subject,
     html,
   });
+}
+
+export function getEmailAddress() {
+  return 'info@nilam.com';
 }

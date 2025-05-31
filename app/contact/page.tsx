@@ -145,11 +145,7 @@ export default function ContactPage() {
 
   // Get email addresses
   const getEmailAddresses = () => {
-    if (!adminContactInfo?.email) {
-      return [];
-    }
-    
-    return [adminContactInfo.email];
+    return ['info@nilam.com'];
   };
 
   // Prepare contact info sections
@@ -157,7 +153,12 @@ export default function ContactPage() {
     {
       icon: MapPin,
       title: "Visit Us",
-      details: getAddressLines(),
+      details: [
+        "Nilam",
+      
+        "Trichy - 620021",
+        "Tamil Nadu, India"
+      ],
     },
     {
       icon: Phone,
@@ -336,7 +337,7 @@ export default function ContactPage() {
         <Card>
           <CardContent className="p-0">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3919.289703686081!2d78.6843101!3d10.807659099999999!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3baaf5f9d64c8a45%3A0xb616962dc6124094!2s117%2C%205th%20Cross%20St%2C%20Indian%20Bank%20Colony%2C%20K.K.Nagar%2C%20Tiruchirappalli%2C%20Tamil%20Nadu%20620021!5e0!3m2!1sen!2sin!4v1709699574961!5m2!1sen!2sin"
+              src="https://www.google.com/maps?q=Trichy,+Tamil+Nadu,+India&output=embed"
               width="100%"
               height="400"
               style={{ border: 0 }}

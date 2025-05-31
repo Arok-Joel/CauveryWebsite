@@ -12,10 +12,10 @@ export default function AboutPage() {
           <Badge variant="outline" className="mb-4">
             About Us
           </Badge>
-          <h1 className="text-4xl font-bold mb-4">Royal Cauvery Farms</h1>
+          <h1 className="text-4xl font-bold mb-4">Nilam</h1>
           <p className="text-gray-600 max-w-3xl mx-auto">
-            Welcome to Royal Cauvery Farms, a premium residential plot development located in the
-            heart of Kalladai, offering the perfect blend of modern living and natural serenity.
+            Welcome to Nilam, a premium residential plot development located in the
+            heart of Trichy, offering the perfect blend of modern living and natural serenity.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export default function AboutPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Project Launch</h3>
                   <p className="text-gray-600">
-                    Sri Sai Nagar was conceptualized with a vision to create a modern residential
+                    Trichy was conceptualized with a vision to create a modern residential
                     community.
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export default function AboutPage() {
         {/* Why Choose Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Why Choose Sri Sai Nagar?</CardTitle>
+            <CardTitle className="text-2xl text-center">Why Choose Trichy?</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-4">

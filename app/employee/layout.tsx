@@ -198,7 +198,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
               </nav>
             </SheetContent>
           </Sheet>
-          <h1 className="text-lg font-bold text-[#3C5A3E]">Royal Cauvery Farms</h1>
+          <h1 className="text-lg font-bold text-[#3C5A3E]">Nilam</h1>
         </div>
       </header>
 
@@ -206,7 +206,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-64 bg-white border-r border-gray-200">
           <div className="p-6">
-            <h1 className="text-xl font-bold text-[#3C5A3E]">Royal Cauvery Farms</h1>
+            <h1 className="text-xl font-bold text-[#3C5A3E]">Nilam</h1>
             <p className="text-sm text-gray-500 mt-1">Employee Portal</p>
           </div>
           <nav className="mt-6 px-3">

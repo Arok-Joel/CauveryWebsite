@@ -3,8 +3,8 @@ import { Metadata } from 'next';
 import PlotPageLoading from './loading';
 
 export const metadata: Metadata = {
-  title: 'Royal Cauvery Farms - Plots',
-  description: 'Browse available plots at Royal Cauvery Farms',
+  title: 'Nilam - Plots',
+  description: 'Browse available plots at Nilam',
 }
 
 export default function PlotsLayout({

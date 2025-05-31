@@ -27,7 +27,7 @@ export const generatePDF = async (details: BookingDetails) => {
   // Add company header
   doc.setFontSize(18);
   doc.setTextColor(0, 100, 0); // Dark green color
-  doc.text('Royal Cauvery Farms', pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Nilam', pageWidth / 2, yPos, { align: 'center' });
   yPos += 8;
   
   // Add receipt title
@@ -91,7 +91,7 @@ export const generatePDF = async (details: BookingDetails) => {
       ['Plot Number', `#${details.plotNumber}`],
       ['Plot Size', `${details.size} Sq.ft`],
       ['Plot Facing', 'North'],
-      ['Location', 'Royal Cauvery Farms, Bangalore'],
+      ['Location', 'Nilam, Trichy'],
       ['Layout', 'Phase 1'],
       ['Plot Type', 'Residential'],
       ['Total Amount', `Rs. ${Number(details.price).toLocaleString('en-IN')}`],
@@ -144,7 +144,7 @@ export const generatePDF = async (details: BookingDetails) => {
   doc.setTextColor(64, 64, 64);
   doc.text('Terms & Conditions:', 15, yPos);
   yPos += 4;
-  doc.text('1. This receipt confirms your plot booking at Royal Cauvery Farms.', 15, yPos);
+  doc.text('1. This receipt confirms your plot booking at Nilam.', 15, yPos);
   yPos += 3;
   doc.text('2. Plot allocation is subject to documentation verification.', 15, yPos);
   yPos += 3;
@@ -154,7 +154,7 @@ export const generatePDF = async (details: BookingDetails) => {
   const footerY = doc.internal.pageSize.height - 10;
   doc.setFontSize(8);
   doc.setTextColor(128, 128, 128);
-  doc.text('Royal Cauvery Farms | Email: sales@royalcauveryfarms.com | Support: +91-80-XXXX-XXXX', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Nilam | Email: sales@nilam.com | Support: +91-80-XXXX-XXXX', pageWidth / 2, footerY, { align: 'center' });
 
   // Save the PDF
   doc.save(`booking-confirmation-${details.plotNumber}.pdf`);
@@ -184,7 +184,7 @@ export const generatePDFForEmail = (details: {
   // Add company header
   doc.setFontSize(18);
   doc.setTextColor(0, 100, 0); // Dark green color
-  doc.text('Royal Cauvery Farms', pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Nilam', pageWidth / 2, yPos, { align: 'center' });
   yPos += 8;
   
   // Add receipt title
@@ -268,7 +268,7 @@ export const generatePDFForEmail = (details: {
   if (details.plotAddress) {
     plotDetails.push(['Plot Address', details.plotAddress]);
   } else {
-    plotDetails.push(['Location', 'Royal Cauvery Farms, Bangalore']);
+    plotDetails.push(['Location', 'Nilam, Trichy']);
     plotDetails.push(['Layout', 'Phase 1']);
     plotDetails.push(['Plot Type', 'Residential']);
   }
@@ -333,7 +333,7 @@ export const generatePDFForEmail = (details: {
   doc.setTextColor(64, 64, 64);
   doc.text('Terms & Conditions:', 15, yPos);
   yPos += 4;
-  doc.text('1. This receipt confirms your plot booking at Royal Cauvery Farms.', 15, yPos);
+  doc.text('1. This receipt confirms your plot booking at Nilam.', 15, yPos);
   yPos += 3;
   doc.text('2. Plot allocation is subject to documentation verification.', 15, yPos);
   yPos += 3;
@@ -343,7 +343,7 @@ export const generatePDFForEmail = (details: {
   const footerY = doc.internal.pageSize.height - 10;
   doc.setFontSize(8);
   doc.setTextColor(128, 128, 128);
-  doc.text('Royal Cauvery Farms | Email: sales@royalcauveryfarms.com | Support: +91-80-XXXX-XXXX', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Nilam | Email: sales@nilam.com | Support: +91-80-XXXX-XXXX', pageWidth / 2, footerY, { align: 'center' });
 
   // Return the PDF as base64 string
   return doc.output('datauristring').split(',')[1];

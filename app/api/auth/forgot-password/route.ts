@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     const emailTemplate = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <div style="background-color: #3C5A3E; padding: 20px; text-align: center;">
-          <h1 style="color: white; margin: 0;">Royal Cauvery Farms</h1>
+          <h1 style="color: white; margin: 0;">Nilam</h1>
         </div>
         
         <div style="padding: 20px;">
@@ -64,18 +64,18 @@ export async function POST(req: Request) {
           <p>This OTP will expire in 10 minutes.</p>
           <p>If you didn't request this password reset, please ignore this email.</p>
           
-          <p>Best regards,<br>Royal Cauvery Farms Team</p>
+          <p>Best regards,<br>Nilam Team</p>
         </div>
         
         <div style="background-color: #3C5A3E; color: white; padding: 15px; text-align: center; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} Royal Cauvery Farms. All rights reserved.</p>
+          <p>© ${new Date().getFullYear()} Nilam. All rights reserved.</p>
         </div>
       </div>
     `;
 
     await sendEmail({
       to: email,
-      subject: 'Password Reset OTP - Royal Cauvery Farms',
+      subject: 'Password Reset OTP - Nilam',
       html: emailTemplate,
     });
 

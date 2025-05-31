@@ -34,11 +34,11 @@ export async function fetchCarouselImages(): Promise<CarouselImage[]> {
         // Extract name from filename for alt text
         const fileName = blob.url.split('/').pop() || '';
         const nameMatch = fileName.match(/carousel-(.+?)([-\d]*)\.[\w]+$/i);
-        const name = nameMatch ? nameMatch[1].replace(/-/g, ' ') : 'Royal Cauvery Farms';
+        const name = nameMatch ? nameMatch[1].replace(/-/g, ' ') : 'Nilam';
         
         return {
           url: blob.url,
-          alt: `${name} - Royal Cauvery Farms`
+          alt: `${name} - Nilam`
         };
       });
     }

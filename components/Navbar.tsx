@@ -141,8 +141,19 @@ export function Navbar() {
     <nav className="bg-[#3C5A3E] text-white py-4">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold">
-            Royal Cauvery Farms
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold leading-tight">
+            <span className="h-8 w-8 flex items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="10" height="10" fill="white"/>
+                <rect x="18" y="4" width="10" height="10" fill="white"/>
+                <rect x="4" y="18" width="10" height="10" fill="white"/>
+                <rect x="18" y="18" width="10" height="10" fill="white"/>
+              </svg>
+            </span>
+            <span className="flex flex-col items-start">
+              Nilam
+              <span className="text-sm font-normal text-white/80 mt-[-2px]">Your Trusted Plot Partner</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}

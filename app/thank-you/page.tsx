@@ -91,7 +91,7 @@ function ThankYouContent() {
               </div>
               <h1 className="text-2xl font-bold mb-1">Booking Confirmed!</h1>
               <p className="text-green-50">
-                Thank you for choosing Royal Cauvery Farms
+                Thank you for choosing Nilam
               </p>
             </div>
           </div>
